@@ -3,27 +3,16 @@
 
 #[macro_use(array)]
 extern crate ndarray;
-// extern crate graphics;
 extern crate ggez;
 
-use std::f64::consts::PI;
+mod drawing;
+mod types;
 
+use std::f64::consts::PI;
 use ndarray::prelude::*;
 
-mod drawing;
+use types::{Node, Edge};
 
-
-#[derive(Debug)]
-struct Node {
-    a: Array1<f64>,
-    id: i32,
-}
-
-#[derive(Debug)]
-struct Edge {
-    node1: i32,  // The node's id
-    node2: i32,
-}
 
 #[derive(Debug)]
 struct Camera {
@@ -110,7 +99,7 @@ fn camera_transform_3d(cam: &Camera, node: &Node) -> Array1<f64> {
     D.dot(&(&node.a - &cam.c))
 }
 
-fn project(cam: &Camera, node: &Node) -> Array1<f64> {
+fn project_4d(cam: &Camera, node: &Node) -> Node {
     // Project a 4d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
 
@@ -127,7 +116,29 @@ fn project(cam: &Camera, node: &Node) -> Array1<f64> {
         &(arr1(&[d[0], d[1], d[2], 1.]))
     );
 
-    array![&f[0] / &f[3], &f[1] / &f[3]]
+    // Keep the original node's id, but transform its position to 2d space.
+    Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
+}
+
+fn project_3d(cam: &Camera, node: &Node) -> Node {
+    // Project a 3d node onto a 2d plane.
+    // https://en.wikipedia.org/wiki/3D_projection
+
+    let d = camera_transform_3d(cam, node);
+
+    let A = array![
+        [1., 0., -cam.e[0] / cam.e[2], 0.],
+        [0., 1., -cam.e[1] / cam.e[2], 0.],
+        [0., 0., 1., 0.],
+        [0., 0., -1. / cam.e[2], 1.],
+    ];
+
+    let f = A.dot(
+        &(arr1(&[d[0], d[1], d[2], 1.]))
+    );
+
+    // Keep the original node's id, but transform its position to 2d space.
+    Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
 }
 
 fn main() {
@@ -137,7 +148,7 @@ fn main() {
         e: arr1(&[-0.2, -1., 1.4]),
     };
 
-    let cube = vec![
+    let cube_nodes = vec![
         Node {a: array![1., 0., 0.], id: 0},
         Node {a: array![1., 1., 0.], id: 1},
         Node {a: array![2., 1., 0.], id: 2},
@@ -148,14 +159,27 @@ fn main() {
         Node {a: array![2., 0., 1.], id: 7}
     ];
 
-    println!("Cube: {:?}", &cube);
+    let cube_edges = vec![
+        Edge {node1: 0, node2: 1},
+        Edge {node1: 1, node2: 2},
+        Edge {node1: 2, node2: 3},
+        Edge {node1: 3, node2: 0},
+        Edge {node1: 4, node2: 5},
+        Edge {node1: 5, node2: 6},
+        Edge {node1: 6, node2: 7},
+        Edge {node1: 7, node2: 4},
+        Edge {node1: 0, node2: 4},
+        Edge {node1: 1, node2: 5},
+        Edge {node1: 2, node2: 6},
+        Edge {node1: 3, node2: 7},
+    ];
 
-    let projection: Vec<Array1<f64>> = cube.into_iter()
-        .map(|node| project(&camera, &node)).collect();
+    // nodes are projected from 3 or 4d space into 2d space. Node associations
+    // with edges are not affected by the transformation.
+    let projected_nodes: Vec<Node> = cube_nodes.into_iter()
+        .map(|node| project_3d(&camera, &node)).collect();
 
-    drawing::render(&projection);
-   
-    println!("Projection: {:?}", projection);
+    drawing::render(projected_nodes, cube_edges);
 }
 
 #[cfg(test)]
