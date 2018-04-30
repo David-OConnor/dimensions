@@ -3,49 +3,59 @@
 // example: https://github.com/ggez/ggez/blob/master/examples/drawing.rs
 
 use std::collections::HashMap;
-
+use ndarray::prelude::*;
 use ggez::conf;
 use ggez::event;
 use ggez::{Context, GameResult};
+use ggez::event::{MouseButton, Button, MouseState, Keycode, Mod, Axis};
 use ggez::graphics;
 use ggez::graphics::{Point2};
 use ggez::timer;
 
-use types::{Node, Edge};
+use transforms;
+use types::{Node, Edge, Camera};
 
 
 struct MainState {
-    nodes: Vec<Node>,
+    nodes: Vec<Node>,  // raw nodes; not projected.
     edges: Vec<Edge>,
     zoomlevel: f32,
+    camera: Camera,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context, projected_nodes: Vec<Node>, edges: Vec<Edge>) -> GameResult<MainState> {  
+    fn new(_ctx: &mut Context, nodes: Vec<Node>, edges: Vec<Edge>) -> GameResult<MainState> {  
         
+        let default_camera = Camera {
+            c: Array::from_vec(vec![-0.5, 0., 0.]),
+            theta: array![0., 0., 0.],
+            e: arr1(&[0., 0., 5.]),
+        };
+
         let s = MainState {
-            // Nodes used here are projected 2d nodes.
-            nodes: projected_nodes,
+            // Nodes used here are projected 2d projected_nodes.
+            nodes: nodes,
             edges: edges,
             zoomlevel: 1.0,
+            camera: default_camera,
         };
 
         Ok(s)
     }
 }
 
-fn build_mesh(ctx: &mut Context, nodes: &Vec<Node>, edges: &Vec<Edge>) -> GameResult<graphics::Mesh> {
-    // Draw a set of of connected lines.
+fn build_mesh(ctx: &mut Context, projected_nodes: &Vec<Node>, edges: &Vec<Edge>) -> GameResult<graphics::Mesh> {
+    // Draw a set of of connected lines, given projected nodes and edges.
     let mb = &mut graphics::MeshBuilder::new();
 
     const SCALER: f32 = 100.;
     const OFFSET: f32 = 200.;
 
-    // create a map of nodes we can query from edges.  Perhaps this extra
+    // create a map of projected_nodes we can query from edges.  Perhaps this extra
     // data structure is unecessary, or that hashmaps should be the primary
-    // way of storing nodes.
+    // way of storing projected_nodes.
     let mut node_map = HashMap::new();
-    for node in nodes.iter() {
+    for node in projected_nodes.iter() {
         node_map.insert(node.id, node.clone());
     }
 
@@ -86,16 +96,42 @@ impl event::EventHandler for MainState {
         graphics::clear(ctx);
         graphics::set_color(ctx, graphics::WHITE)?;
         
-        let mesh = build_mesh(ctx, &self.nodes, &self.edges)?;
+        // nodes are projected from 3d space into 2d space. Node associations
+        // with edges are not affected by the transformation.
+
+        // todo this map setup's currently giving ref errors.
+        let projected_nodes: Vec<Node> = (&self.nodes).into_iter()
+            .map(|node| transforms::project_3d(&self.camera, &node)).collect();
+
+        let mesh = build_mesh(ctx, &projected_nodes, &self.edges)?;
         graphics::set_color(ctx, (0, 255, 255).into())?;
         graphics::draw_ex(ctx, &mesh, Default::default())?;
 
         graphics::present(ctx);
         Ok(())
     }
-}
+    
+    fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, keymod: Mod, repeat: bool) {
+        const SENSITIVITY: f64 = 0.05;
 
-pub fn render(projected_nodes: Vec<Node>, edges: Vec<Edge>) {
+        match keycode {
+            Keycode::Left => {
+                self.camera.c[0] -= 1. * SENSITIVITY;
+            },
+            Keycode::Right => {
+                self.camera.c[0] += 1. * SENSITIVITY;
+            },
+            Keycode::Up => {
+                self.camera.c[2] += 1. * SENSITIVITY;
+            },
+            Keycode::Down => {
+                self.camera.c[2] -= 1. * SENSITIVITY;
+            },
+            _ => (),
+        } 
+    }
+
+pub fn run(projected_nodes: Vec<Node>, edges: Vec<Edge>) {
     // Render lines using ggez.
     let c = conf::Conf::new();
     let ctx = &mut Context::load_from_conf("drawing", "ggez", c).unwrap();
