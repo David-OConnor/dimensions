@@ -1,15 +1,14 @@
 // Code for displaying the rendered product on the screen go in this
 // module.
+// example: https://github.com/ggez/ggez/blob/master/examples/drawing.rs
 
 use std::collections::HashMap;
-
-use ndarray::prelude::*;
 
 use ggez::conf;
 use ggez::event;
 use ggez::{Context, GameResult};
 use ggez::graphics;
-use ggez::graphics::{DrawMode, Point2};
+use ggez::graphics::{Point2};
 use ggez::timer;
 
 use types::{Node, Edge};
@@ -22,7 +21,7 @@ struct MainState {
 }
 
 impl MainState {
-    fn new(ctx: &mut Context, projected_nodes: Vec<Node>, edges: Vec<Edge>) -> GameResult<MainState> {  
+    fn new(_ctx: &mut Context, projected_nodes: Vec<Node>, edges: Vec<Edge>) -> GameResult<MainState> {  
         
         let s = MainState {
             // Nodes used here are projected 2d nodes.
@@ -36,31 +35,40 @@ impl MainState {
 }
 
 fn build_mesh(ctx: &mut Context, nodes: &Vec<Node>, edges: &Vec<Edge>) -> GameResult<graphics::Mesh> {
+    // Draw a set of of connected lines.
     let mb = &mut graphics::MeshBuilder::new();
 
-    // create a map of nodes we can query from edges.
+    const SCALER: f32 = 100.;
+    const OFFSET: f32 = 200.;
+
+    // create a map of nodes we can query from edges.  Perhaps this extra
+    // data structure is unecessary, or that hashmaps should be the primary
+    // way of storing nodes.
     let mut node_map = HashMap::new();
     for node in nodes.iter() {
-        node_map.insert(&node.id, &node);
+        node_map.insert(node.id, node.clone());
     }
 
-    let mut points = vec![];
     for edge in edges.iter() {
         let start: &Node = node_map.get(&edge.node1).unwrap();
         let end: &Node = node_map.get(&edge.node2).unwrap();
-        // ggez::graphics::Point2 accepts f32 only.
-        points.push(Point2::new(start.a[0] as f32, start.a[1] as f32));
-        points.push(Point2::new(end.a[0] as f32, end.a[1] as f32));
+
+        let points = &[
+            Point2::new(
+                OFFSET + start.a[0] as f32 * SCALER, 
+                OFFSET + start.a[1] as f32 * SCALER
+            ),
+            Point2::new(
+                OFFSET + end.a[0] as f32 * SCALER, 
+                OFFSET + end.a[1] as f32 * SCALER
+            ),
+        ];
+
+        mb.line(
+            points,
+            3.0,  // line width.
+        );
     }
-
-    mb.line(
-        &points,
-        4.0,
-    );
-
-    // mb.ellipse(DrawMode::Fill, Point2::new(600.0, 200.0), 50.0, 120.0, 1.0);
-    // mb.circle(DrawMode::Fill, Point2::new(600.0, 380.0), 40.0, 1.0);
-
     mb.build(ctx)
 }
 
@@ -88,13 +96,10 @@ impl event::EventHandler for MainState {
 }
 
 pub fn render(projected_nodes: Vec<Node>, edges: Vec<Edge>) {
-    // Attempting to render lines using ggez
+    // Render lines using ggez.
     let c = conf::Conf::new();
     let ctx = &mut Context::load_from_conf("drawing", "ggez", c).unwrap();
     
-    // let points = Point2
-    // graphics::line(ctx, points, 200)
-
     println!("{}", graphics::get_renderer_info(ctx).unwrap());
 
     let state = &mut MainState::new(ctx, projected_nodes, edges).unwrap();

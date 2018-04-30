@@ -13,6 +13,7 @@ use ndarray::prelude::*;
 
 use types::{Node, Edge};
 
+const TAU: f64 = 2. * PI;
 
 #[derive(Debug)]
 struct Camera {
@@ -26,7 +27,7 @@ struct Camera {
     e: Array1<f64>,
 }
 
-fn camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
+fn _camera_transform_4d(cam: &Camera, _node: &Node) -> Array1<f64> {
     // Perform a camera transform; define a vector d as the position
     // of point A with respect to the coordinate system defined by 
     // the camera, with origin in C and rotated by θ with respect
@@ -34,28 +35,28 @@ fn camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
 
     // Split the transform constructor into three parts to make it
     // easier to read and write.
-    let D_0 = array![
+    let _D_0 = array![
         [1., 0., 0., 0.],
         [0., cam.theta[0].cos(), cam.theta[0].sin(), 2.],
         [0., -cam.theta[0].sin(), cam.theta[0].cos(), 2.],
         [2., 2., 2., 2.],
     ];
 
-    let D_1 = array![
+    let _D_1 = array![
         [cam.theta[1].cos(), 0., -cam.theta[1].sin(), 2.],
         [0., 1., 0., 0.],
         [cam.theta[1].sin(), 0., cam.theta[1].cos(), 2.],
         [2., 2., 2., 2.]
     ];
 
-    let D_2 = array![
+    let _D_2 = array![
         [cam.theta[2].cos(), cam.theta[2].sin(), 0., 2.],
         [-cam.theta[2].sin(), cam.theta[2].cos(), 0., 2.],
         [0., 0., 1., 0.],
         [2., 2., 2., 2.]
     ];
 
-    let D_3 = array![
+    let _D_3 = array![
         [cam.theta[3].cos(), cam.theta[3].sin(), 0., 2.],
         [-cam.theta[3].sin(), cam.theta[3].cos(), 0., 2.],
         [2., 2., 2., 2.],
@@ -99,7 +100,7 @@ fn camera_transform_3d(cam: &Camera, node: &Node) -> Array1<f64> {
     D.dot(&(&node.a - &cam.c))
 }
 
-fn project_4d(cam: &Camera, node: &Node) -> Node {
+fn _project_4d(cam: &Camera, node: &Node) -> Node {
     // Project a 4d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
 
@@ -142,21 +143,24 @@ fn project_3d(cam: &Camera, node: &Node) -> Node {
 }
 
 fn main() {
+    const _FOV: f64 = 80.;  // Degrees.
+
     let camera = Camera {
-        c: Array::from_vec(vec![0., 0., 0.]),
+        c: Array::from_vec(vec![-0.5, 0., 0.]),
         theta: array![0., 0., 0.],
-        e: arr1(&[-0.2, -1., 1.4]),
+        e: arr1(&[0., 0., 5.]),
     };
 
     let cube_nodes = vec![
-        Node {a: array![1., 0., 0.], id: 0},
-        Node {a: array![1., 1., 0.], id: 1},
-        Node {a: array![2., 1., 0.], id: 2},
-        Node {a: array![2., 0., 0.], id: 3},
-        Node {a: array![1., 0., 1.], id: 4},
-        Node {a: array![1., 1., 1.], id: 5},
-        Node {a: array![2., 1., 1.], id: 6},
-        Node {a: array![2., 0., 1.], id: 7}
+        Node {a: array![0., 0., 0.], id: 0},
+        Node {a: array![0., 1., 0.], id: 1},
+        Node {a: array![1., 1., 0.], id: 2},
+        Node {a: array![1., 0., 0.], id: 3},
+        
+        Node {a: array![0., 0., 1.], id: 4},
+        Node {a: array![0., 1., 1.], id: 5},
+        Node {a: array![1., 1., 1.], id: 6},
+        Node {a: array![1., 0., 1.], id: 7}
     ];
 
     let cube_edges = vec![
@@ -164,15 +168,91 @@ fn main() {
         Edge {node1: 1, node2: 2},
         Edge {node1: 2, node2: 3},
         Edge {node1: 3, node2: 0},
+        
         Edge {node1: 4, node2: 5},
         Edge {node1: 5, node2: 6},
         Edge {node1: 6, node2: 7},
         Edge {node1: 7, node2: 4},
+        
+        // Bridger
         Edge {node1: 0, node2: 4},
         Edge {node1: 1, node2: 5},
         Edge {node1: 2, node2: 6},
         Edge {node1: 3, node2: 7},
     ];
+
+    let hypercube_nodes = vec![
+        Node {a: array![0., 0., 0., 0.], id: 0},
+        Node {a: array![0., 1., 0., 0.], id: 1},
+        Node {a: array![1., 1., 0., 0.], id: 2},
+        Node {a: array![1., 0., 0., 0.], id: 3},
+        
+        Node {a: array![0., 0., 1., 0.], id: 4},
+        Node {a: array![0., 1., 1., 0.], id: 5},
+        Node {a: array![1., 1., 1., 0.], id: 6},
+        Node {a: array![1., 0., 1., 0.], id: 7},
+        
+        Node {a: array![0., 0., 0., 1.], id: 8},
+        Node {a: array![0., 1., 0., 2.], id: 9},
+        Node {a: array![1., 1., 0., 3.], id: 10},
+        Node {a: array![1., 0., 0., 4.], id: 11},
+        
+        Node {a: array![0., 0., 1., 5.], id: 12},
+        Node {a: array![0., 1., 1., 6.], id: 13},
+        Node {a: array![1., 1., 1., 7.], id: 14},
+        Node {a: array![1., 0., 1., 8.], id: 15}
+    ];
+
+    let hypercube_edges = vec![
+        // "inner" cube bottom
+        Edge {node1: 0, node2: 1},
+        Edge {node1: 1, node2: 2},
+        Edge {node1: 2, node2: 3},
+        Edge {node1: 3, node2: 0},
+        
+        // "inner" cube top
+        Edge {node1: 4, node2: 5},
+        Edge {node1: 5, node2: 6},
+        Edge {node1: 6, node2: 7},
+        Edge {node1: 7, node2: 4},
+        
+        // Bridge inner cube
+        Edge {node1: 0, node2: 4},
+        Edge {node1: 1, node2: 5},
+        Edge {node1: 2, node2: 6},
+        Edge {node1: 3, node2: 7},
+
+        // "outer" cube bottom
+        Edge {node1: 8, node2: 9},
+        Edge {node1: 9, node2: 10},
+        Edge {node1: 10, node2: 11},
+        Edge {node1: 11, node2: 8},
+        
+        // "outer" cube top
+        Edge {node1: 12, node2: 13},
+        Edge {node1: 13, node2: 14},
+        Edge {node1: 14, node2: 15},
+        Edge {node1: 15, node2: 12},
+        
+        // Bridge outer cube
+        Edge {node1: 8, node2: 12},
+        Edge {node1: 9, node2: 13},
+        Edge {node1: 10, node2: 14},
+        Edge {node1: 11, node2: 15},
+
+        // Bridge inner to outer bottom
+        Edge {node1: 0, node2: 8},
+        Edge {node1: 1, node2: 9},
+        Edge {node1: 2, node2: 10},
+        Edge {node1: 3, node2: 11},
+        
+        // Bridge inner to outer top
+        Edge {node1: 4, node2: 12},
+        Edge {node1: 5, node2: 13},
+        Edge {node1: 6, node2: 14},
+        Edge {node1: 7, node2: 15},
+    ];
+
 
     // nodes are projected from 3 or 4d space into 2d space. Node associations
     // with edges are not affected by the transformation.
