@@ -8,11 +8,12 @@ extern crate ggez;
 mod types;
 mod drawing;
 mod transforms;
+mod shape_maker;
 
 use std::f64::consts::PI;
 use ndarray::prelude::*;
 
-use types::{Node, Edge, Camera};
+use types::{Node, Edge, Shape, Camera};
 
 const TAU: f64 = 2. * PI;
 
@@ -32,7 +33,14 @@ fn run_3d() -> (Vec<Node>, Vec<Edge>) {
         Node {a: array![0., 0., 1.], id: 4},
         Node {a: array![0., 1., 1.], id: 5},
         Node {a: array![1., 1., 1.], id: 6},
-        Node {a: array![1., 0., 1.], id: 7}
+        Node {a: array![1., 0., 1.], id: 7},
+
+        // Pyramid too
+        Node {a: array![2., 0., 0.], id: 20},
+        Node {a: array![2., 1., 0.], id: 21},
+        Node {a: array![3., 1., 0.], id: 22},
+        Node {a: array![3., 0., 0.], id: 23},
+        Node {a: array![2.5, 0.5, 1.], id: 24},
     ];
 
     let cube_edges = vec![
@@ -51,6 +59,20 @@ fn run_3d() -> (Vec<Node>, Vec<Edge>) {
         Edge {node1: 1, node2: 5},
         Edge {node1: 2, node2: 6},
         Edge {node1: 3, node2: 7},
+
+        // pyramid
+        // base
+        Edge {node1: 20, node2: 21},
+        Edge {node1: 21, node2: 22},
+        Edge {node1: 22, node2: 23},
+        Edge {node1: 23, node2: 20},
+
+        // Connect base to height
+        Edge {node1: 20, node2: 24},
+        Edge {node1: 21, node2: 24},
+        Edge {node1: 22, node2: 24},
+        Edge {node1: 23, node2: 24},
+
     ];
 
     (cube_nodes, cube_edges)
@@ -150,9 +172,13 @@ fn run_4d() -> (Vec<Node>, Vec<Edge>) {
 fn main() {
     const _FOV: f64 = 80.;  // Degrees.
     
-    let (nodes, edges) = run_3d(); 
+    let shapes = vec![
+        shape_maker::make_cube(array![0, 0, 0], 1., 0),
+        shape_maker::make_rectangular_prism(array![2, 1, 0], 1.5, 1.5., 1.5, 1),
+        shape_maker::make_rectangular_pyramid(array![-1, -1, 0], 2., 1.5, .5, 2),
+    ]
 
-    drawing::run(nodes, edges);
+    drawing::run(shapes);
 }
 
 #[cfg(test)]

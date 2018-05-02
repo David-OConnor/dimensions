@@ -13,6 +13,15 @@ pub struct Edge {
 }
 
 #[derive(Debug)]
+pub struct Shape {
+    // Currently, the main use of this is to allow node ids to remain local,
+    // preventing duplicates when generating shapes independently.
+    pub nodes: Vec<Node>,
+    pub edges: Vec<Edges>,
+    pub id: i32,
+}
+
+#[derive(Debug)]
 pub struct Camera {
     pub c: Array1<f64>,
 
