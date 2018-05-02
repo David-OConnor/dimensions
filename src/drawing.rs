@@ -79,7 +79,7 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
 
             mb.line(
                 points,
-                3.0,  // line width.
+                2.0,  // line width.
             );
         }
     }

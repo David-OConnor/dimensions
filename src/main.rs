@@ -10,20 +10,18 @@ mod drawing;
 mod transforms;
 mod shape_maker;
 
-use std::f64::consts::PI;
 use ndarray::prelude::*;
-
-use types::{Node, Edge, Camera};
-
-const _TAU: f64 = 2. * PI;
 
 fn main() {
     const _FOV: f64 = 80.;  // Degrees.
     
     let shapes = vec![
         shape_maker::make_cube(array![0., 0., 0.], 1., 0),
-        shape_maker::make_box(array![2., 1., 0.], 1.5, 0.5, 2.5, 1),
-        shape_maker::make_rectangular_pyramid(array![-1., -1., -3.], 2., 1.5, 0.5, 2),
+        shape_maker::make_box(array![2., 0., 0.], 1.5, 0.5, 2.5, 1),
+        shape_maker::make_rectangular_pyramid(array![-1., -0., -3.], 2., 1.5, 0.5, 2),
+        shape_maker::make_house(array![-3., 0., -3.], 1., 1., 1., 3),
+
+        shape_maker::make_street(array![0., 0., 2.], array![0., 0., 0.], 1., 4),
     ];
 
     drawing::run(shapes);

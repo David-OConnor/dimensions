@@ -125,15 +125,6 @@ pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera) -> Vec<Shape> {
             let projected_nodes: Vec<Node> = (&shape.nodes).into_iter()
                 .map(|node| project_3d(camera, &node)).collect();
 
-            // Dealing with the borrow checker? Find more elegant way to reinsert edges?
-            // let new_edges: Vec<Edge> = (&shape.edges).into_iter()
-            //     .map(|edge| edge).collect();
-
-            // let new_edges = vec![];
-            // for edge in (&shape.edges).iter() {
-            //     new_edges.push(edge);
-            // }
-
             projected_shapes.push(Shape {
                 nodes: projected_nodes,
                 edges: shape.edges.clone(),
