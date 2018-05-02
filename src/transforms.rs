@@ -1,6 +1,6 @@
 use ndarray::prelude::*;
 
-use types::{Node, Edge, Camera};
+use types::{Node, Shape, Camera};
 
 pub fn camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
     // Perform a camera transform; define a vector d as the position
@@ -116,4 +116,29 @@ pub fn project_3d(cam: &Camera, node: &Node) -> Node {
 
     // Keep the original node's id, but transform its position to 2d space.
     Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
+}
+
+pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera) -> Vec<Shape> {
+    // Project shapes; modify their nodes to be projected on a 2d surface.
+    let mut projected_shapes: Vec<Shape> = vec![];
+        for shape in shapes.iter() {
+            let projected_nodes: Vec<Node> = (&shape.nodes).into_iter()
+                .map(|node| project_3d(camera, &node)).collect();
+
+            // Dealing with the borrow checker? Find more elegant way to reinsert edges?
+            // let new_edges: Vec<Edge> = (&shape.edges).into_iter()
+            //     .map(|edge| edge).collect();
+
+            // let new_edges = vec![];
+            // for edge in (&shape.edges).iter() {
+            //     new_edges.push(edge);
+            // }
+
+            projected_shapes.push(Shape {
+                nodes: projected_nodes,
+                edges: shape.edges.clone(),
+                id: shape.id
+            })
+        }
+    projected_shapes
 }

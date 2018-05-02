@@ -13,7 +13,7 @@ use ggez::graphics::{Point2};
 use ggez::timer;
 
 use transforms;
-use types::{Node, Edge, Shape, Camera};
+use types::{Node, Shape, Camera};
 
 
 struct MainState {
@@ -46,41 +46,44 @@ impl MainState {
     }
 }
 
-fn build_mesh(ctx: &mut Context, projected_nodes: &Vec<Node>, edges: &Vec<Edge>) -> GameResult<graphics::Mesh> {
+fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
     let mb = &mut graphics::MeshBuilder::new();
 
     const SCALER: f32 = 100.;
     const OFFSET: f32 = 200.;
 
-    // create a map of projected_nodes we can query from edges.  Perhaps this extra
-    // data structure is unecessary, or that hashmaps should be the primary
-    // way of storing projected_nodes.
-    let mut node_map = HashMap::new();
-    for node in projected_nodes.iter() {
-        node_map.insert(node.id, node.clone());
+    for shape in projected_shapes {
+        // create a map of projected_nodes we can query from edges.  Perhaps this extra
+        // data structure is unecessary, or that hashmaps should be the primary
+        // way of storing projected_nodes.
+        let mut node_map = HashMap::new();
+        for node in shape.nodes.iter() {
+            node_map.insert(node.id, node.clone());
+        }
+
+        for edge in shape.edges.iter() {
+            let start: &Node = node_map.get(&edge.node1).unwrap();
+            let end: &Node = node_map.get(&edge.node2).unwrap();
+
+            let points = &[
+                Point2::new(
+                    OFFSET + start.a[0] as f32 * SCALER, 
+                    OFFSET + start.a[1] as f32 * SCALER
+                ),
+                Point2::new(
+                    OFFSET + end.a[0] as f32 * SCALER, 
+                    OFFSET + end.a[1] as f32 * SCALER
+                ),
+            ];
+
+            mb.line(
+                points,
+                3.0,  // line width.
+            );
+        }
     }
 
-    for edge in edges.iter() {
-        let start: &Node = node_map.get(&edge.node1).unwrap();
-        let end: &Node = node_map.get(&edge.node2).unwrap();
-
-        let points = &[
-            Point2::new(
-                OFFSET + start.a[0] as f32 * SCALER, 
-                OFFSET + start.a[1] as f32 * SCALER
-            ),
-            Point2::new(
-                OFFSET + end.a[0] as f32 * SCALER, 
-                OFFSET + end.a[1] as f32 * SCALER
-            ),
-        ];
-
-        mb.line(
-            points,
-            3.0,  // line width.
-        );
-    }
     mb.build(ctx)
 }
 
@@ -114,12 +117,9 @@ impl event::EventHandler for MainState {
         
         // nodes are projected from 3d space into 2d space. Node associations
         // with edges are not affected by the transformation.
+        let projected_shapes = transforms::project_shapes(&self.shapes, &self.camera);
 
-        // todo this map setup's currently giving ref errors.
-        let projected_nodes: Vec<Node> = (&self.nodes).into_iter()
-            .map(|node| transforms::project_3d(&self.camera, &node)).collect();
-
-        let mesh = build_mesh(ctx, &projected_nodes, &self.edges)?;
+        let mesh = build_mesh(ctx, projected_shapes)?;
         graphics::set_color(ctx, (0, 255, 255).into())?;
         graphics::draw_ex(ctx, &mesh, Default::default())?;
 

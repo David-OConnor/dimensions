@@ -6,7 +6,9 @@ pub struct Node {
     pub id: i32,
 }
 
-#[derive(Debug)]
+// We derive clone on edge for when copying it, unchanged, into a new shape
+// when transforming.
+#[derive(Debug, Clone)]
 pub struct Edge {
     pub node1: i32,  // The node's id
     pub node2: i32,
@@ -17,7 +19,7 @@ pub struct Shape {
     // Currently, the main use of this is to allow node ids to remain local,
     // preventing duplicates when generating shapes independently.
     pub nodes: Vec<Node>,
-    pub edges: Vec<Edges>,
+    pub edges: Vec<Edge>,
     pub id: i32,
 }
 
