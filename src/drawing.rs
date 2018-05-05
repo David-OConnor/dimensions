@@ -27,6 +27,7 @@ impl MainState {
         
         let default_camera = Camera {
             c: Array::from_vec(vec![-0., 0., 0.]),
+            position: array![0., 5.0, 5.],
             theta: array![0., 0., 0.],
             e: arr1(&[0., 0., -5.]),
         };
@@ -82,23 +83,38 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
     mb.build(ctx)
 }
 
-// enum MoveDirection{
-//     Forward,
-//     Back,
-//     Left,
-//     Right,
-//     Up,
-//     Down,
-// }
+enum MoveDirection{
+    Forward,
+    Back,
+    Left,
+    Right,
+    Up,
+    Down,
+}
 
-// fn move_camera(direction: MoveDirection, camera: Camera) -> Array1<f64> {
-//     // Move the camera to a new position, based on where it's pointing.
-//     array![1., 2.]
-// }
+fn move_camera(direction: MoveDirection, cam: &Camera) -> Array1<f64> {
+    // Move the camera to a new position, based on where it's pointing.
+    let unit_vec = match direction {
+        MoveDirection::Forward => array![0., 0., 1.],
+        MoveDirection::Back => array![0., 0., -1.],
+        MoveDirection::Left => array![-1., 0., 0.],
+        MoveDirection::Right => array![1., 0., 0.],
+        MoveDirection::Up => array![0., 1., 0.],
+        MoveDirection::Down => array![0., -1., 0.],
+    };
+
+    transforms::rotate_3d(cam).dot(&unit_vec)
+}
 
 // fn _crop_to_screen(points: Vec<Point2>) -> Vec<Shape> {
 //     // Examine each point; if it 
 // }
+
+fn add_vectors(vec1: &Array1<f64>, vec2: &Array1<f64>) -> Array1<f64> {
+    // Work around borrow issues by creating a new vector with elements
+    // of the arguments.
+    array![vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]]
+}
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -125,7 +141,7 @@ impl event::EventHandler for MainState {
         graphics::present(ctx);
         Ok(())
     }
-    
+   
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, _keymod: Mod, _repeat: bool) {
         const MOVE_SENSITIVITY: f64 = 0.05;
         const TURN_SENSITIVITY: f64 = 0.05;
@@ -133,13 +149,38 @@ impl event::EventHandler for MainState {
         // Some of the entries appear for reversed, for reasons I don't
         // understand yet.
         match keycode {
-            Keycode::A => self.camera.c[0] -= 1. * MOVE_SENSITIVITY,
-            Keycode::D => self.camera.c[0] += 1. * MOVE_SENSITIVITY,
-            Keycode::S => self.camera.c[2] -= 1. * MOVE_SENSITIVITY,
-            Keycode::W => self.camera.c[2] += 1. * MOVE_SENSITIVITY,
-            Keycode::C => self.camera.c[1] -= 1. * MOVE_SENSITIVITY,
-            Keycode::LCtrl => self.camera.c[1] -= 1. * MOVE_SENSITIVITY,
-            Keycode::Space => self.camera.c[1] += 1. * MOVE_SENSITIVITY,
+            // Keycode::A => self.camera.position += MOVE_SENSITIVITY * move_camera(MoveDirection::Left, &self.camera),
+
+            Keycode::D => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Right, &self.camera)
+            ),
+            Keycode::S => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Back, &self.camera)
+            ),
+            Keycode::W => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Forward, &self.camera)
+            ),
+            Keycode::C => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Down, &self.camera)
+            ),
+            Keycode::LCtrl => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Down, &self.camera)
+            ),
+            Keycode::Space => self.camera.position = MOVE_SENSITIVITY * add_vectors(
+                &self.camera.position, 
+                &move_camera(MoveDirection::Up, &self.camera)
+            ),
+            // Keycode::D => self.camera.position += move_camera(MoveDirection::Right, &self.camera) * MOVE_SENSITIVITY,
+            // Keycode::S => self.camera.position += move_camera(MoveDirection::Back, &self.camera) * MOVE_SENSITIVITY,
+            // Keycode::W => self.camera.position += move_camera(MoveDirection::Forward, &self.camera) * MOVE_SENSITIVITY,
+            // Keycode::C => self.camera.position += move_camera(MoveDirection::Down, &self.camera) * MOVE_SENSITIVITY,
+            // Keycode::LCtrl => self.camera.position += move_camera(MoveDirection::Down, &self.camera) * MOVE_SENSITIVITY,
+            // Keycode::Space => self.camera.position += move_camera(MoveDirection::Up, &self.camera) * MOVE_SENSITIVITY,
             
             Keycode::Left => self.camera.theta[1] -= 1. * TURN_SENSITIVITY,
             Keycode::Right => self.camera.theta[1] += 1. * TURN_SENSITIVITY,
@@ -158,7 +199,8 @@ impl event::EventHandler for MainState {
             // reset
             Keycode::Backspace => {
                 self.camera = Camera {
-                    c: Array::from_vec(vec![-0.5, 0., 0.]),
+                    c: Array::from_vec(vec![0., 0., 0.]),
+                    position: array![0., 0., 0.],
                     theta: array![0., 0., 0.],
                     e: arr1(&[0., 0., -5.]),
                 };

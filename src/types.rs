@@ -25,7 +25,12 @@ pub struct Shape {
 
 #[derive(Debug)]
 pub struct Camera {
+    // Keep c at the origin; camera location should stay there.
     pub c: Array1<f64>,
+    
+    // Position shifts all points prior to the camera transform; this is what
+    // we adjust with move keys.
+    pub position: Array1<f64>,
 
     // theta is in tait-bryan angles. Note that using the θ
     // character is currently unsupported.

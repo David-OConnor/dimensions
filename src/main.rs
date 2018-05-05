@@ -22,7 +22,7 @@ fn main() {
         shape_maker::make_house(array![-3., 0., -3.], 1., 1., 1., 3),
 
         shape_maker::make_origin(array![0., 0., 0.], 1., 4),
-        shape_maker::make_street(array![0., 0., 2.], array![0., 0., 0.], 1., 5),
+        // shape_maker::make_street(array![0., 0., 2.], array![0., 0., 0.], 1., 5),
     ];
 
     drawing::run(shapes);
