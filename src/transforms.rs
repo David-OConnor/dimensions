@@ -113,29 +113,6 @@ fn project_3d(cam: &Camera, node: &Node) -> Node {
         [0., 0., -1. / cam.e[2], 1.],
     ];
 
-
-    // todo temp from https://www.3dgep.com/understanding-the-view-matrix/
-    
-    // yaw, pitch roll. pitch is -tau/4 to tau/4. yaw and roll
-    // are 0 to tau.
-    // todo roll.
-    // let cos_yaw = cam.theta[0].cos();
-    // let sin_yaw = cam.theta[0].sin();
-    // let cos_pitch = cam.theta[0].cos();
-    // let sin_pitch = cam.theta[1].sin();
-
-    // let x = array![cos_yaw, 0., -sin_yaw];
-    // let y = array![sin_yaw * sin_pitch, cos_pitch, cos_yaw * sin_pitch];
-    // let z = array![sin_yaw * cos_pitch, -sin_pitch, cos_pitch * cos_yaw];
-
-    // let fps_matrix = array![
-    //     [x[0], y[0], z[0], 0.],
-    //     [x[1], y[1], z[1], 0.],
-    //     [x[2], y[2], z[2], 0.],
-    //     [-x.dot(&cam.c), -y.dot(&cam.c), -z.dot(&cam.c), 1.]
-    // ];
-    // let i = fps_matrix.inv();
-
     let f = A.dot(
         &array![d[0], d[1], d[2], 1.]
     );
