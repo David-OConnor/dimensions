@@ -6,6 +6,5 @@ build = "build.rs"
 
 [dependencies]
 ndarray = "0.11.2"
-# piston2d-graphics = "0.26.0"
 ggez = "0.4"
-# cairo-rs = "0.4.1"
+# ndarray-linalg = { version = "0.9.0", features = ["openblas"] }

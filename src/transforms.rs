@@ -2,7 +2,7 @@ use ndarray::prelude::*;
 
 use types::{Node, Shape, Camera};
 
-pub fn camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
+fn _camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
     // Perform a camera transform; define a vector d as the position
     // of point A with respect to the coordinate system defined by 
     // the camera, with origin in C and rotated by θ with respect
@@ -43,7 +43,7 @@ pub fn camera_transform_4d(cam: &Camera, node: &Node) -> Array1<f64> {
     D.dot(&(&node.a - &cam.c))
 }
 
-pub fn camera_transform_3d(cam: &Camera, node: &Node) -> Array1<f64> {
+fn camera_transform_3d(cam: &Camera, node: &Node) -> Array1<f64> {
     // Perform a camera transform; define a vector d as the position
     // of point A with respect to the coordinate system defined by 
     // the camera, with origin in C and rotated by θ with respect
@@ -71,16 +71,19 @@ pub fn camera_transform_3d(cam: &Camera, node: &Node) -> Array1<f64> {
 
     let D = D_0.dot(&(D_1.dot(&D_2)));
 
-    D.dot(&(&node.a - &cam.c))
+    // D.dot(&(&node.a - &cam.c))
+
+    // testing keeping cam at origin, and shifting the world...
+    D.dot(&(&node.a))
 }
 
-pub fn project_4d(cam: &Camera, node: &Node) -> Node {
+fn _project_4d(cam: &Camera, node: &Node) -> Node {
     // Project a 4d node onto a 3d space.  Note that to turn into a 2d
     // projection, we must then apply the 3d projection using this function's
     // output.
     // https://en.wikipedia.org/wiki/3D_projection
 
-    let d = camera_transform_4d(cam, node);
+    let d = _camera_transform_4d(cam, node);
 
     let A = array![
         [1., 0., -cam.e[1] / cam.e[3], 0.],
@@ -97,7 +100,7 @@ pub fn project_4d(cam: &Camera, node: &Node) -> Node {
     Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
 }
 
-pub fn project_3d(cam: &Camera, node: &Node) -> Node {
+fn project_3d(cam: &Camera, node: &Node) -> Node {
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
 
@@ -109,6 +112,29 @@ pub fn project_3d(cam: &Camera, node: &Node) -> Node {
         [0., 0., 1., 0.],
         [0., 0., -1. / cam.e[2], 1.],
     ];
+
+
+    // todo temp from https://www.3dgep.com/understanding-the-view-matrix/
+    
+    // yaw, pitch roll. pitch is -tau/4 to tau/4. yaw and roll
+    // are 0 to tau.
+    // todo roll.
+    // let cos_yaw = cam.theta[0].cos();
+    // let sin_yaw = cam.theta[0].sin();
+    // let cos_pitch = cam.theta[0].cos();
+    // let sin_pitch = cam.theta[1].sin();
+
+    // let x = array![cos_yaw, 0., -sin_yaw];
+    // let y = array![sin_yaw * sin_pitch, cos_pitch, cos_yaw * sin_pitch];
+    // let z = array![sin_yaw * cos_pitch, -sin_pitch, cos_pitch * cos_yaw];
+
+    // let fps_matrix = array![
+    //     [x[0], y[0], z[0], 0.],
+    //     [x[1], y[1], z[1], 0.],
+    //     [x[2], y[2], z[2], 0.],
+    //     [-x.dot(&cam.c), -y.dot(&cam.c), -z.dot(&cam.c), 1.]
+    // ];
+    // let i = fps_matrix.inv();
 
     let f = A.dot(
         &array![d[0], d[1], d[2], 1.]

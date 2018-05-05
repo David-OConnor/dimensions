@@ -7,7 +7,7 @@ use ndarray::prelude::*;
 use ggez::conf;
 use ggez::event;
 use ggez::{Context, GameResult};
-use ggez::event::{MouseButton, Button, MouseState, Keycode, Mod, Axis};
+use ggez::event::{Keycode, Mod};
 use ggez::graphics;
 use ggez::graphics::{Point2};
 use ggez::timer;
@@ -17,8 +17,6 @@ use types::{Node, Shape, Camera};
 
 
 struct MainState {
-    // nodes: Vec<Node>,  // raw nodes; not projected.
-    // edges: Vec<Edge>,
     shapes: Vec<Shape>,
     zoomlevel: f32,
     camera: Camera,
@@ -28,15 +26,12 @@ impl MainState {
     fn new(_ctx: &mut Context, shapes: Vec<Shape>) -> GameResult<MainState> {  
         
         let default_camera = Camera {
-            c: Array::from_vec(vec![-0.5, 0., 0.]),
+            c: Array::from_vec(vec![-0., 0., 0.]),
             theta: array![0., 0., 0.],
             e: arr1(&[0., 0., -5.]),
         };
 
         let s = MainState {
-            // Nodes used here are projected 2d projected_nodes.
-            // nodes: nodes,
-            // edges: edges,
             shapes: shapes,
             zoomlevel: 1.0,
             camera: default_camera,
@@ -87,19 +82,23 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
     mb.build(ctx)
 }
 
-enum MoveDirection{
-    Forward,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down,
-}
+// enum MoveDirection{
+//     Forward,
+//     Back,
+//     Left,
+//     Right,
+//     Up,
+//     Down,
+// }
 
-fn _move_camera(direction: MoveDirection, camera: Camera) -> Array1<f64> {
-    // Move the camera to a new position, based on where it's pointing.
-    array![1., 2.]
-}
+// fn move_camera(direction: MoveDirection, camera: Camera) -> Array1<f64> {
+//     // Move the camera to a new position, based on where it's pointing.
+//     array![1., 2.]
+// }
+
+// fn _crop_to_screen(points: Vec<Point2>) -> Vec<Shape> {
+//     // Examine each point; if it 
+// }
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -149,12 +148,12 @@ impl event::EventHandler for MainState {
             Keycode::Q => self.camera.theta[2] -= 1. * TURN_SENSITIVITY,
             Keycode::E => self.camera.theta[2] += 1. * TURN_SENSITIVITY,
 
-            Keycode::J => self.camera.e[0] -= 1. * TURN_SENSITIVITY,
-            Keycode::L => self.camera.e[0] += 1. * TURN_SENSITIVITY,
-            Keycode::I => self.camera.e[1] -= 1. * TURN_SENSITIVITY,
-            Keycode::K => self.camera.e[1] += 1. * TURN_SENSITIVITY,
-            Keycode::U => self.camera.e[2] -= 1. * TURN_SENSITIVITY,
-            Keycode::O => self.camera.e[2] += 1. * TURN_SENSITIVITY,
+            Keycode::J => self.camera.e[0] -= 1. * 5. * TURN_SENSITIVITY,
+            Keycode::L => self.camera.e[0] += 1. * 5. * TURN_SENSITIVITY,
+            Keycode::I => self.camera.e[1] -= 1. * 5. * TURN_SENSITIVITY,
+            Keycode::K => self.camera.e[1] += 1. * 5. * TURN_SENSITIVITY,
+            Keycode::U => self.camera.e[2] -= 1. * 5. * TURN_SENSITIVITY,
+            Keycode::O => self.camera.e[2] += 1. * 5. * TURN_SENSITIVITY,
 
             // reset
             Keycode::Backspace => {
