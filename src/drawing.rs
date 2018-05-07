@@ -3,6 +3,8 @@
 // example: https://github.com/ggez/ggez/blob/master/examples/drawing.rs
 
 use std::collections::HashMap;
+use std::f64::consts::PI;
+
 use ndarray::prelude::*;
 use ggez::conf;
 use ggez::event;
@@ -15,6 +17,18 @@ use ggez::timer;
 use transforms;
 use types::{Node, Shape, Camera};
 
+const CANVAS_SIZE: (u32, u32) = (1024, 768);
+
+fn DEFAULT_CAMERA() -> Camera {
+    // Effectively a global constant.
+    Camera {
+        c: Array::from_vec(vec![-0., 0., 0.]),
+        position: array![0., 5.0, 5.],
+        theta: array![0., 0., 0.],
+        // e: arr1(&[0., 0., 5.]),
+        fov: (2. * PI) / 5., 
+    }
+}
 
 struct MainState {
     shapes: Vec<Shape>,
@@ -24,18 +38,10 @@ struct MainState {
 
 impl MainState {
     fn new(_ctx: &mut Context, shapes: Vec<Shape>) -> GameResult<MainState> {  
-        
-        let default_camera = Camera {
-            c: Array::from_vec(vec![-0., 0., 0.]),
-            position: array![0., 5.0, 5.],
-            theta: array![0., 0., 0.],
-            e: arr1(&[0., 0., -5.]),
-        };
-
         let s = MainState {
             shapes: shapes,
             zoomlevel: 1.0,
-            camera: default_camera,
+            camera: DEFAULT_CAMERA(),
         };
 
         Ok(s)
@@ -47,7 +53,10 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
     let mb = &mut graphics::MeshBuilder::new();
 
     const SCALER: f32 = 100.;
-    const OFFSET: f32 = 200.;
+    const OFFSET_X: f32 = (CANVAS_SIZE.0 / 2) as f32;
+    const OFFSET_Y: f32 = (CANVAS_SIZE.1 / 2) as f32;
+
+    // Scale to window.
 
     for shape in projected_shapes {
         // create a map of projected_nodes we can query from edges.  Perhaps this extra
@@ -64,12 +73,12 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
 
             let points = &[
                 Point2::new(
-                    OFFSET + start.a[0] as f32 * SCALER, 
-                    OFFSET + start.a[1] as f32 * SCALER
+                    OFFSET_X + start.a[0] as f32 * SCALER, 
+                    OFFSET_Y + start.a[1] as f32 * SCALER
                 ),
                 Point2::new(
-                    OFFSET + end.a[0] as f32 * SCALER, 
-                    OFFSET + end.a[1] as f32 * SCALER
+                    OFFSET_X + end.a[0] as f32 * SCALER, 
+                    OFFSET_Y + end.a[1] as f32 * SCALER
                 ),
             ];
 
@@ -92,7 +101,7 @@ enum MoveDirection{
     Down,
 }
 
-fn move_camera(direction: MoveDirection, cam: &Camera) -> Array1<f64> {
+fn move_camera(direction: MoveDirection, theta: &Array1<f64>) -> Array1<f64> {
     // Move the camera to a new position, based on where it's pointing.
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
@@ -102,19 +111,12 @@ fn move_camera(direction: MoveDirection, cam: &Camera) -> Array1<f64> {
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
     };
-
-    transforms::rotate_3d(cam).dot(&unit_vec)
+    transforms::rotate_3d(theta).dot(&unit_vec)
 }
 
-// fn _crop_to_screen(points: Vec<Point2>) -> Vec<Shape> {
+// fn _clip_to_screen(points: Vec<Point2>) -> Vec<Shape> {
 //     // Examine each point; if it 
 // }
-
-fn add_vectors(vec1: &Array1<f64>, vec2: &Array1<f64>) -> Array1<f64> {
-    // Work around borrow issues by creating a new vector with elements
-    // of the arguments.
-    array![vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]]
-}
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -132,7 +134,14 @@ impl event::EventHandler for MainState {
         
         // nodes are projected from 3d space into 2d space. Node associations
         // with edges are not affected by the transformation.
-        let projected_shapes = transforms::project_shapes(&self.shapes, &self.camera);
+
+        // Compute R here; we don't need to compute it for each node.
+        let R = transforms::rotate_3d(&self.camera.theta);
+        let projected_shapes = transforms::project_shapes(
+            &self.shapes, &self.camera, R, (640., 480.)
+        );
+
+        // todo clip here??
 
         let mesh = build_mesh(ctx, projected_shapes)?;
         graphics::set_color(ctx, (0, 255, 255).into())?;
@@ -145,43 +154,40 @@ impl event::EventHandler for MainState {
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, _keymod: Mod, _repeat: bool) {
         const MOVE_SENSITIVITY: f64 = 0.05;
         const TURN_SENSITIVITY: f64 = 0.05;
+        const ZOOM_SENSITIVITY: f64 = 0.02;
 
         // Some of the entries appear for reversed, for reasons I don't
         // understand yet.
         match keycode {
-            // Keycode::A => self.camera.position += MOVE_SENSITIVITY * move_camera(MoveDirection::Left, &self.camera),
+            Keycode::W => {
+                let move_vec = move_camera(MoveDirection::Forward, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::S => {
+                let move_vec = move_camera(MoveDirection::Back, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::A => {
+                let move_vec = move_camera(MoveDirection::Left, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::D => {
+                let move_vec = move_camera(MoveDirection::Right, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::C => {
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::LCtrl => {
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::Space => {
+                let move_vec = move_camera(MoveDirection::Up, &self.camera.theta);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
 
-            Keycode::D => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Right, &self.camera)
-            ),
-            Keycode::S => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Back, &self.camera)
-            ),
-            Keycode::W => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Forward, &self.camera)
-            ),
-            Keycode::C => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Down, &self.camera)
-            ),
-            Keycode::LCtrl => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Down, &self.camera)
-            ),
-            Keycode::Space => self.camera.position = MOVE_SENSITIVITY * add_vectors(
-                &self.camera.position, 
-                &move_camera(MoveDirection::Up, &self.camera)
-            ),
-            // Keycode::D => self.camera.position += move_camera(MoveDirection::Right, &self.camera) * MOVE_SENSITIVITY,
-            // Keycode::S => self.camera.position += move_camera(MoveDirection::Back, &self.camera) * MOVE_SENSITIVITY,
-            // Keycode::W => self.camera.position += move_camera(MoveDirection::Forward, &self.camera) * MOVE_SENSITIVITY,
-            // Keycode::C => self.camera.position += move_camera(MoveDirection::Down, &self.camera) * MOVE_SENSITIVITY,
-            // Keycode::LCtrl => self.camera.position += move_camera(MoveDirection::Down, &self.camera) * MOVE_SENSITIVITY,
-            // Keycode::Space => self.camera.position += move_camera(MoveDirection::Up, &self.camera) * MOVE_SENSITIVITY,
-            
             Keycode::Left => self.camera.theta[1] -= 1. * TURN_SENSITIVITY,
             Keycode::Right => self.camera.theta[1] += 1. * TURN_SENSITIVITY,
             Keycode::Up => self.camera.theta[0] += 1. * TURN_SENSITIVITY,
@@ -189,23 +195,11 @@ impl event::EventHandler for MainState {
             Keycode::Q => self.camera.theta[2] -= 1. * TURN_SENSITIVITY,
             Keycode::E => self.camera.theta[2] += 1. * TURN_SENSITIVITY,
 
-            Keycode::J => self.camera.e[0] -= 1. * 5. * TURN_SENSITIVITY,
-            Keycode::L => self.camera.e[0] += 1. * 5. * TURN_SENSITIVITY,
-            Keycode::I => self.camera.e[1] -= 1. * 5. * TURN_SENSITIVITY,
-            Keycode::K => self.camera.e[1] += 1. * 5. * TURN_SENSITIVITY,
-            Keycode::U => self.camera.e[2] -= 1. * 5. * TURN_SENSITIVITY,
-            Keycode::O => self.camera.e[2] += 1. * 5. * TURN_SENSITIVITY,
+            Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
+            Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
 
             // reset
-            Keycode::Backspace => {
-                self.camera = Camera {
-                    c: Array::from_vec(vec![0., 0., 0.]),
-                    position: array![0., 0., 0.],
-                    theta: array![0., 0., 0.],
-                    e: arr1(&[0., 0., -5.]),
-                };
-            },
-
+            Keycode::Backspace => self.camera = DEFAULT_CAMERA(),
             _ => (),
         } 
     }
@@ -213,7 +207,31 @@ impl event::EventHandler for MainState {
 
 pub fn run(shapes: Vec<Shape>) {
     // Render lines using ggez.
-    let c = conf::Conf::new();
+    let c = conf::Conf {
+        window_mode: conf::WindowMode {
+            width: CANVAS_SIZE.0,
+            height: CANVAS_SIZE.1,
+            borderless: false,
+            fullscreen_type: conf::FullscreenType::Off,
+            vsync: true,
+            min_width: 640,
+            min_height: 480,
+            max_width: 1024,
+            max_height: 1024,
+    },
+        window_setup: conf::WindowSetup {
+            title: String::from("4D visualization"),
+            icon: String::from(""),
+            resizable: false,
+            allow_highdpi: true,
+            samples: conf::NumSamples::Eight  // ie anti-aliasing.
+    },
+        backend: conf::Backend::OpenGL {
+            major: 3,
+            minor: 2,
+        }
+    };
+
     let ctx = &mut Context::load_from_conf("drawing", "ggez", c).unwrap();
     
     println!("{}", graphics::get_renderer_info(ctx).unwrap());

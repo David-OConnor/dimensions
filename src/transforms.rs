@@ -2,48 +2,77 @@ use ndarray::prelude::*;
 
 use types::{Node, Shape, Camera};
 
-// fn rotate_4d(cam: &Camera, node: &Node) -> Array4<f64> {
-//     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-//     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
-   
-//     // cache trig computations
-//     let cos_x = cam.theta[0].cos();
-//     let sin_x = cam.theta[0].sin();
-//     let cos_y = cam.theta[1].cos();
-//     let sin_y = cam.theta[1].sin();
-//     let cos_z = cam.theta[2].cos();
-//     let sin_z = cam.theta[2].sin();
-//     let sin_u = cam.theta[3].sin();
-//     let sin_u = cam.theta[3].sin();
+pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
+    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
+    // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
+    // We rotation around each of six planes.
 
-//     // R_axis1axis2 matrices rotate a vector around a plane
-//     // There may be a second approach to this that rotates around each xis
-//     // rather than planes.
+    // cache trig computations
+    // todo fix this
+    let cos_xy = theta[0].cos();
+    let sin_xy = theta[0].sin();
+    let cos_yz = theta[1].cos();
+    let sin_yz = theta[1].sin();
+    let cos_xz = theta[2].cos();
+    let sin_xz = theta[2].sin();
+    let cos_xu = theta[3].cos();
+    let sin_xu = theta[3].sin();
+    let cos_yu = theta[2].cos();
+    let sin_yu = theta[2].sin();
+    let cos_zu = theta[3].cos();
+    let sin_zu = theta[3].sin();
 
-//     // TODO which thetas??
-//     let R_xy = &array![
-//         [cos_x, sin_x, 0., 0.],
-//         [-sin_x, cos_x, 0., 0.],
-//         [0., 0., 1., 0.],
-//         [0., 0., 0., 1.]
-//     ];
+    // R_axis1axis2 matrices rotate a vector around a plane
+    // There may be a second approach to this that rotates around each xis
+    // rather than planes.
 
-//     let R_yz = &array![
-//         [1., 0., 0., 0.],
-//         [0., cos_y, sin_y, 0.],
-//         [0., -sin_y, cos_y, 0.],
-//         [0., 0., 0., 1.]
-//     ];
+    let R_xy = array![
+        [cos_xy, sin_xy, 0., 0.],
+        [-sin_xy, cos_xy, 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.]
+    ];
 
-//     let xz = &array![
-//         [cos_z, sin_z, 0.],
-//         [-sin_z, cos_z, 0.],
-//         [0., 0., 1.]
-//     ];
+    let R_yz = array![
+        [1., 0., 0., 0.],
+        [0., cos_yz, sin_yz, 0.],
+        [0., -sin_yz, cos_yz, 0.],
+        [0., 0., 0., 1.]
+    ];
 
-//     // Combine the rotations.
-//     R_xy.dot(R_yz.dot(R_xz.dot(R_xu.dot(R_yu.dot(R_zu)))))
-// }
+    let R_xz = array![
+        [cos_xz, 0., -sin_xz, 0.],
+        [0., 1., 0., 0.], 
+        [sin_xz, 0., cos_xz, 0.],
+        [0., 0., 0., 1.]
+    ];
+
+    let R_xu = array![
+        [cos_xu, 0., 0., sin_xu],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [-sin_xu, 0., 0., cos_xu]
+    ];
+
+    let R_yu = array![
+        [1., 0., 0., 0.],
+        [0., cos_yu, 0., -sin_yu],
+        [0., 0., 1., 0.],
+        [0., sin_yu, 0., cos_yu]
+    ];
+
+    let R_zu = array![
+        [1., 0., 0., 0.],
+        [0., 1., 0., 0.], 
+        [0., 0., cos_zu, -sin_zu],
+        [0., 0., sin_zu, cos_zu]
+    ];
+
+    // Combine the rotations.
+    let R_1 = R_xy.dot(&(R_yz.dot(&R_xz)));
+    let R_2 = R_xu.dot(&(R_yu.dot(&R_zu)));
+    R_1.dot(&R_2)
+}
 
 
 // fn _project_4d(cam: &Camera) -> Node {
@@ -69,16 +98,17 @@ use types::{Node, Shape, Camera};
 //     Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
 // }
 
-pub fn rotate_3d(cam: &Camera) -> Array2<f64> {
+pub fn rotate_3d(theta: &Array1<f64>) -> Array2<f64> {
+    // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-   
+    
     // cache trig computations
-    let cos_x = cam.theta[0].cos();
-    let sin_x = cam.theta[0].sin();
-    let cos_y = cam.theta[1].cos();
-    let sin_y = cam.theta[1].sin();
-    let cos_z = cam.theta[2].cos();
-    let sin_z = cam.theta[2].sin();
+    let cos_x = theta[0].cos();
+    let sin_x = theta[0].sin();
+    let cos_y = theta[1].cos();
+    let sin_y = theta[1].sin();
+    let cos_z = theta[2].cos();
+    let sin_z = theta[2].sin();
 
     // R matrices rotate a vector around a single axis.
     let R_x = array![
@@ -103,7 +133,7 @@ pub fn rotate_3d(cam: &Camera) -> Array2<f64> {
     R_x.dot(&(R_y.dot(&R_z)))
 }
 
-fn project_3d(cam: &Camera, node: &Node) -> Node {
+fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64)) -> Node {
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
 
@@ -112,44 +142,65 @@ fn project_3d(cam: &Camera, node: &Node) -> Node {
     // the camera, with origin in C and rotated by θ with respect
     // to the initial coordinate system.
 
-    // todo could use a matrix for this 'world transform', especially if we allow
-    // shapes to be rotated.
-    let shifted_node = Node {
-        a: array![
-            node.a[0] - cam.position[0],
-            node.a[1] - cam.position[1],
-            node.a[2] - cam.position[2],
-        ],
-        id: node.id
-    };
-
-    let R = rotate_3d(cam);
-
-    // let view_offset = R.dot(&cam.e);
-    
-    let d = R.dot(&(&shifted_node.a - &cam.c));
-
-    let A = array![
-        [1., 0., -cam.e[0] / cam.e[2], 0.],
-        [0., 1., -cam.e[1] / cam.e[2], 0.],
-        [0., 0., 1., 0.],
-        [0., 0., -1. / cam.e[2], 1.],
+    // World transform matrix, translation only.
+    let translation_matrix = array![
+        [1., 0., 0., -cam.position[0]],
+        [0., 1., 0., -cam.position[1]],
+        [0., 0., 1., -cam.position[2]],
+        [0., 0., 0., 1.],
     ];
-
-    let f = A.dot(
-        &array![d[0], d[1], d[2], 1.]
+    let new_node_posit = translation_matrix.dot(
+        &array![node.a[0], node.a[1], node.a[2], 1.]
     );
 
+    let shifted_node = Node {
+        a: array![new_node_posit[0], new_node_posit[1], new_node_posit[2]],
+        id: node.id,
+    };
+
+    // cam.c should remain static, ie at the origin.
+    let d = R.dot(&(&shifted_node.a - &cam.c));
+
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
+    // projection-matrix/building-basic-perspective-projection-matrix
+    let s = 1. / (cam.fov / 2. as f64).tan();
+
+    // near and far clipping planes
+    let f = 30.;
+    let n = 0.2;
+
+    let perspective_projection = array![
+        [s, 0., 0., 0.],
+        [0., s, 0., 0.],
+        [0., 0., -f / (f-n), 0.],
+        [0., 0., -f*n / (f-n), 0.]
+    ];
+
+    let homogenous_node = array![d[0], d[1], d[2], 1.];
+    let f = perspective_projection.dot(&homogenous_node);
+
+    // Divide by w to find the 2d projected coords.
+    let b = array![&f[0] / &f[3], &f[1] / &f[3]];
+
+    // Clip parts of lines that are not visible by the camera.
+    // edges containing nodes that have a w value < 0 (w is f[3]) need to be clipped.
+    // let clip_matrix = array![
+    //     [near / width, 0., 0., 0.],
+    //     [0., near/height, 0., 0.],
+    //     [0., 0., (far + near) / (far - near), 1.],
+    //     [0., 0., -(2 * near * far) / (far - near)]
+    // ];
+
     // Keep the original node's id, but transform its position to 2d space.
-    Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
+    Node {a: b, id: node.id}
 }
 
-pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera) -> Vec<Shape> {
+pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera, R: Array2<f64>, canvas_size: (f64, f64)) -> Vec<Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     let mut projected_shapes: Vec<Shape> = vec![];
         for shape in shapes.iter() {
             let projected_nodes: Vec<Node> = (&shape.nodes).into_iter()
-                .map(|node| project_3d(camera, &node)).collect();
+                .map(|node| project_3d(camera, &R, &node, canvas_size)).collect();
 
             projected_shapes.push(Shape {
                 nodes: projected_nodes,

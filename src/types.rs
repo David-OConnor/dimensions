@@ -37,5 +37,6 @@ pub struct Camera {
     pub theta: Array1<f64>,
 
     // e is the viewer's position relative to teh display surface.
-    pub e: Array1<f64>,
+    // pub e: Array1<f64>,
+    pub fov: f64,
 }
