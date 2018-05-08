@@ -25,9 +25,6 @@ pub struct Shape {
 
 #[derive(Debug)]
 pub struct Camera {
-    // Keep c at the origin; camera location should stay there.
-    pub c: Array1<f64>,
-    
     // Position shifts all points prior to the camera transform; this is what
     // we adjust with move keys.
     pub position: Array1<f64>,
@@ -36,7 +33,5 @@ pub struct Camera {
     // character is currently unsupported.
     pub theta: Array1<f64>,
 
-    // e is the viewer's position relative to teh display surface.
-    // pub e: Array1<f64>,
-    pub fov: f64,
+    pub fov: f64,  // radians.
 }

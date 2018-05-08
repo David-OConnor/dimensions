@@ -19,14 +19,14 @@ use types::{Node, Shape, Camera};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 768);
 
+const TAU: f64 = 2. * PI;
+
 fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
-        c: Array::from_vec(vec![-0., 0., 0.]),
-        position: array![0., 5.0, 5.],
-        theta: array![0., 0., 0.],
-        // e: arr1(&[0., 0., 5.]),
-        fov: (2. * PI) / 5., 
+        position: array![0., 2.0, -5.],
+        theta: array![0., TAU / 16., 0.],
+        fov: TAU / 5., 
     }
 }
 
@@ -111,12 +111,23 @@ fn move_camera(direction: MoveDirection, theta: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
     };
-    transforms::rotate_3d(theta).dot(&unit_vec)
+
+    // todo not sure why I need to negate values like this.
+    let workaround_theta = array![theta[0], theta[1], theta[2]];
+    transforms::rotate_3d(&workaround_theta).dot(&unit_vec)
 }
 
 // fn _clip_to_screen(points: Vec<Point2>) -> Vec<Shape> {
 //     // Examine each point; if it 
-// }
+// }w
+
+fn normalized_add_angle(angle: f64, amount: f64) -> f64 {
+    let mut new_angle = (angle + amount) % TAU;
+    if new_angle < 0. {
+        new_angle += TAU;
+    }
+    new_angle
+}
 
 impl event::EventHandler for MainState {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
@@ -136,7 +147,17 @@ impl event::EventHandler for MainState {
         // with edges are not affected by the transformation.
 
         // Compute R here; we don't need to compute it for each node.
-        let R = transforms::rotate_3d(&self.camera.theta);
+
+        // Invert theta, since we're treating the camera as static, rotating
+        // the world around it.
+        // Same reason we invert the position transforms in transforms.rs.
+        let neg_theta = array![
+            -self.camera.theta[0],
+            -self.camera.theta[1],
+            -self.camera.theta[2],
+        ];
+
+        let R = transforms::rotate_3d(&neg_theta);
         let projected_shapes = transforms::project_shapes(
             &self.shapes, &self.camera, R, (640., 480.)
         );
@@ -161,7 +182,10 @@ impl event::EventHandler for MainState {
         match keycode {
             Keycode::W => {
                 let move_vec = move_camera(MoveDirection::Forward, &self.camera.theta);
-                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+                self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
+                // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
+                println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
+                println!("theta {}", &self.camera.theta);
             },
             Keycode::S => {
                 let move_vec = move_camera(MoveDirection::Back, &self.camera.theta);
@@ -188,13 +212,27 @@ impl event::EventHandler for MainState {
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 
-            Keycode::Left => self.camera.theta[1] -= 1. * TURN_SENSITIVITY,
-            Keycode::Right => self.camera.theta[1] += 1. * TURN_SENSITIVITY,
-            Keycode::Up => self.camera.theta[0] += 1. * TURN_SENSITIVITY,
-            Keycode::Down => self.camera.theta[0] -= 1. * TURN_SENSITIVITY,
-            Keycode::Q => self.camera.theta[2] -= 1. * TURN_SENSITIVITY,
-            Keycode::E => self.camera.theta[2] += 1. * TURN_SENSITIVITY,
-
+            // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
+            // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
+            Keycode::Left => self.camera.theta[1] = normalized_add_angle(self.camera.theta[1], -TURN_SENSITIVITY),
+            Keycode::Right => self.camera.theta[1] = normalized_add_angle(self.camera.theta[1], TURN_SENSITIVITY),
+            // Don't allow us to look greater than τ/4 up or down.
+            Keycode::Down => {
+                self.camera.theta[0] -= TURN_SENSITIVITY;
+                if self.camera.theta[0] <= -TAU / 4. {
+                    self.camera.theta[0] = -TAU / 4.
+                }
+            },
+            Keycode::Up => {
+                self.camera.theta[0] += TURN_SENSITIVITY;
+                if self.camera.theta[0] >= TAU / 4. {
+                    self.camera.theta[0] = TAU / 4.
+                }
+            },
+            
+            Keycode::Q => self.camera.theta[2] = normalized_add_angle(self.camera.theta[2], -TURN_SENSITIVITY),
+            Keycode::E => self.camera.theta[2] = normalized_add_angle(self.camera.theta[2], TURN_SENSITIVITY),
+            
             Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
             Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
 

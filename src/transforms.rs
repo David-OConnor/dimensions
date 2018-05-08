@@ -81,7 +81,7 @@ pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
 //     // output.
 //     // https://en.wikipedia.org/wiki/3D_projection
 
-//     let d = _camera_transform_4d(cam, node);
+//     let rotated_shifted_point = _camera_transform_4d(cam, node);
 
 //     let A = array![
 //         [1., 0., -cam.e[1] / cam.e[3], 0.],
@@ -91,7 +91,7 @@ pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
 //     ];
 
 //     let f = A.dot(
-//         &array![d[1], d[2], d[3], 1.]
+//         &array![rotated_shifted_point[1], rotated_shifted_point[2], rotated_shifted_point[3], 1.]
 //     );
 
 //     // Keep the original node's id, but transform its position to 2d space.
@@ -137,7 +137,7 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
 
-    // Perform a camera transform; define a vector d as the position
+    // Perform a camera transform; define a vector rotated_shifted_point as the position
     // of point A with respect to the coordinate system defined by 
     // the camera, with origin in C and rotated by θ with respect
     // to the initial coordinate system.
@@ -149,47 +149,52 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
         [0., 0., 1., -cam.position[2]],
         [0., 0., 0., 1.],
     ];
-    let new_node_posit = translation_matrix.dot(
+    let shifted_pt = translation_matrix.dot(
         &array![node.a[0], node.a[1], node.a[2], 1.]
     );
 
-    let shifted_node = Node {
-        a: array![new_node_posit[0], new_node_posit[1], new_node_posit[2]],
-        id: node.id,
-    };
-
     // cam.c should remain static, ie at the origin.
-    let d = R.dot(&(&shifted_node.a - &cam.c));
+    let rotated_shifted_pt = R.dot(
+        &array![shifted_pt[0], shifted_pt[1], shifted_pt[2]]
+    );
 
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
     // projection-matrix/building-basic-perspective-projection-matrix
     let s = 1. / (cam.fov / 2. as f64).tan();
 
     // near and far clipping planes
-    let f = 30.;
+    let f = 20.;
     let n = 0.2;
 
+    // todo s in [0, 0] is not negative in the description above... Working around
+    // the results I
     let perspective_projection = array![
         [s, 0., 0., 0.],
         [0., s, 0., 0.],
-        [0., 0., -f / (f-n), 0.],
+        [0., 0., -f / (f-n), -1.],
         [0., 0., -f*n / (f-n), 0.]
     ];
 
-    let homogenous_node = array![d[0], d[1], d[2], 1.];
-    let f = perspective_projection.dot(&homogenous_node);
+    let r = 0.04;
+    let t = 0.04;
+
+    // http://www.songho.ca/opengl/gl_projectionmatrix_mathml.html
+    let perspective_projection2 = array![
+        [n / r, 0., 0., 0.],
+        [0., n / t, 0., 0.],
+        [0., 0., -(f+n) / (f-n), (-2.*f*n) / (f-n)],
+        [0., 0., -1., 0.]
+    ];
+
+    let homogenous_pt = array![
+        rotated_shifted_pt[0], 
+        rotated_shifted_pt[1], 
+        rotated_shifted_pt[2], 1.
+    ];
+    let f = perspective_projection.dot(&homogenous_pt);
 
     // Divide by w to find the 2d projected coords.
     let b = array![&f[0] / &f[3], &f[1] / &f[3]];
-
-    // Clip parts of lines that are not visible by the camera.
-    // edges containing nodes that have a w value < 0 (w is f[3]) need to be clipped.
-    // let clip_matrix = array![
-    //     [near / width, 0., 0., 0.],
-    //     [0., near/height, 0., 0.],
-    //     [0., 0., (far + near) / (far - near), 1.],
-    //     [0., 0., -(2 * near * far) / (far - near)]
-    // ];
 
     // Keep the original node's id, but transform its position to 2d space.
     Node {a: b, id: node.id}
