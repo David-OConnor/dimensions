@@ -75,27 +75,27 @@ pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
 }
 
 
-// fn _project_4d(cam: &Camera) -> Node {
-//     // Project a 4d node onto a 3d space.  Note that to turn into a 2d
-//     // projection, we must then apply the 3d projection using this function's
-//     // output.
+// fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64)) -> Node {
+//     // Project a 4d node onto a 2d space.
 //     // https://en.wikipedia.org/wiki/3D_projection
 
-//     let rotated_shifted_point = _camera_transform_4d(cam, node);
-
-//     let A = array![
-//         [1., 0., -cam.e[1] / cam.e[3], 0.],
-//         [0., 1., -cam.e[2] / cam.e[3], 0.],
-//         [0., 0., 1., 0.],
-//         [0., 0., -1. / cam.e[3], 1.],
+//     // Translating the point is a simple extension of the 2d translation.
+//     let translation_matrix = array![
+//         [1., 0., 0., 0., -cam.position[0]],
+//         [0., 1., 0., 0., -cam.position[1]],
+//         [0., 0., 1., 0., -cam.position[2]],
+//         [0., 0., 0., 1., -cam.position[3]],
+//         [0., 0., 0., 0., 1.],
 //     ];
-
-//     let f = A.dot(
-//         &array![rotated_shifted_point[1], rotated_shifted_point[2], rotated_shifted_point[3], 1.]
+//     let shifted_pt = translation_matrix.dot(
+//         &array![node.a[0], node.a[1], node.a[2], node.a[3], 1.]
 //     );
 
-//     // Keep the original node's id, but transform its position to 2d space.
-//     Node {a: array![&f[0] / &f[3], &f[1] / &f[3]], id: node.id}
+//     let rotated_shifted_pt = R.dot(
+//         &array![shifted_pt[0], shifted_pt[1], shifted_pt[2], shifted_pt[3]]
+//     );
+
+//     node
 // }
 
 pub fn rotate_3d(theta: &Array1<f64>) -> Array2<f64> {
@@ -153,7 +153,6 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
         &array![node.a[0], node.a[1], node.a[2], 1.]
     );
 
-    // cam.c should remain static, ie at the origin.
     let rotated_shifted_pt = R.dot(
         &array![shifted_pt[0], shifted_pt[1], shifted_pt[2]]
     );
@@ -163,11 +162,9 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
     let s = 1. / (cam.fov / 2. as f64).tan();
 
     // near and far clipping planes
-    let f = 20.;
-    let n = 0.2;
+    let f = 30.;
+    let n = 0.3;
 
-    // todo s in [0, 0] is not negative in the description above... Working around
-    // the results I
     let perspective_projection = array![
         [s, 0., 0., 0.],
         [0., s, 0., 0.],
@@ -175,21 +172,22 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
         [0., 0., -f*n / (f-n), 0.]
     ];
 
-    let r = 0.04;
-    let t = 0.04;
+    // let r = 0.04;
+    // let t = 0.04;
 
-    // http://www.songho.ca/opengl/gl_projectionmatrix_mathml.html
-    let perspective_projection2 = array![
-        [n / r, 0., 0., 0.],
-        [0., n / t, 0., 0.],
-        [0., 0., -(f+n) / (f-n), (-2.*f*n) / (f-n)],
-        [0., 0., -1., 0.]
-    ];
+    // // http://www.songho.ca/opengl/gl_projectionmatrix_mathml.html
+    // let perspective_projection2 = array![
+    //     [n / r, 0., 0., 0.],
+    //     [0., n / t, 0., 0.],
+    //     [0., 0., -(f+n) / (f-n), (-2.*f*n) / (f-n)],
+    //     [0., 0., -1., 0.]
+    // ];
 
     let homogenous_pt = array![
         rotated_shifted_pt[0], 
         rotated_shifted_pt[1], 
-        rotated_shifted_pt[2], 1.
+        rotated_shifted_pt[2], 
+        1.
     ];
     let f = perspective_projection.dot(&homogenous_pt);
 
@@ -198,6 +196,131 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
 
     // Keep the original node's id, but transform its position to 2d space.
     Node {a: b, id: node.id}
+}
+
+
+
+pub mod clipping {
+    // Functions for clipping; Cohen-Sutherland algorithm, from:
+    // https://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
+
+    // todo I do not understand bitwise operators...
+    // It appears that this algorithm clips post-projection.
+
+    use types::Pt2D;
+
+    // todo import these instead of dupping the values.
+    const X_MIN: f64 = 0.;
+    const X_MAX: f64 = 1024.;
+    const Y_MIN: f64 = 0.;
+    const Y_MAX: f64 = 768.;
+
+    const INSIDE: i8 = 0;
+    const LEFT: i8 = 1;
+    const RIGHT: i8 = 2;
+    const BOTTOM: i8 = 4;
+    const TOP: i8 = 8;
+   
+    fn compute_outcode(pt: Pt2D) -> i8 {
+        // initialised as being inside of clip window
+        // Learn how this bitwise stuff works.
+        let code = INSIDE;
+
+        if Pt.x < X_MIN {
+            code |= LEFT;
+        }
+        else if Pt.x > X_MAX {
+            code |= RIGHT;
+        }
+        if Pt.y < Y_MIN {
+            code |= BOTTOM;
+        }
+        else if Pt.y > Y_MAX {
+            code |= TOP;
+        }
+        code
+    }
+
+    pub fn clip(pt_0: Pt2D, pt_1: Pt2D) -> (Pt2D, Pt2D) {
+        // Cohen–Sutherland clipping algorithm clips a line from
+        // P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
+        // diagonal from (xmin, ymin) to (xmax, ymax).
+        
+        let outcode_0 = compute_outcode(pt_0);
+        let outcode_1 = compute_outcode(pt_1);
+
+        let accept = false;
+        let x_0: f64;
+        let y_0: f64;
+        let x_1: f64;
+        let y_1: f64;
+        
+        
+        loop {
+            if !(outcode_0 | outcode_1 > 0) {
+                // bitwise OR is 0: both points inside window; trivially accept and exit loop
+                accept = true;
+                break;
+            } else if outcode_0 & outcode_1 > 0 {
+                // bitwise AND is not 0: both points share an outside zone (LEFT, RIGHT, TOP,
+			    // or BOTTOM), so both must be outside window; exit loop (accept is false)
+                break;
+            } else {
+                // At least one endpoint is outside the clip rectangle; pick it.
+                let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
+            
+                // Now find the intersection point;
+                // use formulas:
+                //   slope = (y1 - y0) / (x1 - x0)
+                //   x = x0 + (1 / slope) * (ym - y0), where ym is ymin or ymax
+                //   y = y0 + slope * (xm - x0), where xm is xmin or xmax
+                // No need to worry about divide-by-zero because, in each case, the
+                // outcode bit being tested guarantees the denominator is non-zero
+                if outcode_out & TOP > 0 { 
+                    // point is above the clip window
+                    let x = x_0 + (x_1 - x_0) * (Y_MAX - y_0) / (y_1 - y_0); 
+                    let y = Y_MIN;
+                }
+                else if outcode_out & BOTTOM > 0 { 
+                    // point is below the clip window
+                    let x = x_0 + (x_1 - x_0) * (Y_MIN - y_0) / (y_1 - y_0); 
+                    let y = Y_MIN;
+                }
+                else if outcode_out & LEFT > 0 { 
+                    // point is to the right of the clip window
+                    let y = y_0 + (y_1 - y_0) * (X_MAX - x_0) / (x_1 - x_0); 
+                    let x = X_MAX;
+                }
+                else if outcode_out & RIGHT > 0 { 
+                    // point is to the left of the clip window
+                    let y = y_0 + (y_1 - y_0) * (X_MIN - x_0) / (x_1 - x_0); 
+                    let x = X_MIN;
+                }
+
+                // Now we move outside point to intersection point to clip
+			    // and get ready for next pass.
+                if outcode_out == outcode_0 {
+                    x_0 = x;
+                    y_0 = y;
+                    outcode_0 = compute_outcode(Pt2D {x: x_0, y: y_0});
+                } else {
+                    x_1 = x;
+                    y_1 = y;
+                    outcode_1 = compute_outcode(Pt2D {x: x_1, y: y_1})
+                }
+            }
+        }
+
+        // If we've accepted, return the full line.  If rejected, return the
+        // clipped line. 
+        if accept {
+            return (pt_0, pt_1);
+        }
+        else {
+            return (Pt {x: x_0, y: y_0}, Pt {x: x_1, y: y_1})
+        }
+    }
+
 }
 
 pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera, R: Array2<f64>, canvas_size: (f64, f64)) -> Vec<Shape> {
@@ -214,4 +337,19 @@ pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera, R: Array2<f64>, canv
             })
         }
     projected_shapes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clip_1() {
+        let pt_0 = (32., -11.);
+        let pt_1 = (0., -1.2);
+
+        let expected = 0;
+
+        assert_eq!(clipping::clip_and_draw(pt_0[0], pt_0[1], pt_1[0], pt_1[1]), expected);
+    }
 }

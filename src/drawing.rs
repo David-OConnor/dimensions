@@ -15,7 +15,7 @@ use ggez::graphics::{Point2};
 use ggez::timer;
 
 use transforms;
-use types::{Node, Shape, Camera};
+use types::{Node, Shape, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 768);
 
@@ -71,14 +71,19 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<gra
             let start: &Node = node_map.get(&edge.node1).unwrap();
             let end: &Node = node_map.get(&edge.node2).unwrap();
 
+            let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
+            let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
+
+            let (start_clipped, end_clipped) = transforms::clipping::clip(start_pt, end_pt);
+
             let points = &[
                 Point2::new(
-                    OFFSET_X + start.a[0] as f32 * SCALER, 
-                    OFFSET_Y + start.a[1] as f32 * SCALER
+                    OFFSET_X + start_clipped.x as f32 * SCALER, 
+                    OFFSET_Y + start_clipped.y as f32 * SCALER
                 ),
                 Point2::new(
-                    OFFSET_X + end.a[0] as f32 * SCALER, 
-                    OFFSET_Y + end.a[1] as f32 * SCALER
+                    OFFSET_X + end_clipped.x as f32 * SCALER, 
+                    OFFSET_Y + end_clipped.y as f32 * SCALER
                 ),
             ];
 
@@ -112,9 +117,7 @@ fn move_camera(direction: MoveDirection, theta: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Down => array![0., -1., 0.],
     };
 
-    // todo not sure why I need to negate values like this.
-    let workaround_theta = array![theta[0], theta[1], theta[2]];
-    transforms::rotate_3d(&workaround_theta).dot(&unit_vec)
+    transforms::rotate_3d(theta).dot(&unit_vec)
 }
 
 // fn _clip_to_screen(points: Vec<Point2>) -> Vec<Shape> {

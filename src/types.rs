@@ -1,6 +1,12 @@
 use ndarray::prelude::*;
 
 #[derive(Debug)]
+pub struct Pt2D {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Debug)]
 pub struct Node {
     pub a: Array1<f64>,
     pub id: i32,
