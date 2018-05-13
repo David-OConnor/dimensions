@@ -2,25 +2,25 @@ use ndarray::prelude::*;
 
 use types::{Node, Shape, Camera};
 
-pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
+pub fn _rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // We rotation around each of six planes.
 
     // cache trig computations
     // todo fix this
-    let cos_xy = theta[0].cos();
-    let sin_xy = theta[0].sin();
-    let cos_yz = theta[1].cos();
-    let sin_yz = theta[1].sin();
-    let cos_xz = theta[2].cos();
-    let sin_xz = theta[2].sin();
-    let cos_xu = theta[3].cos();
-    let sin_xu = theta[3].sin();
-    let cos_yu = theta[2].cos();
-    let sin_yu = theta[2].sin();
-    let cos_zu = theta[3].cos();
-    let sin_zu = theta[3].sin();
+    let cos_xy = θ[0].cos();
+    let sin_xy = θ[0].sin();
+    let cos_yz = θ[1].cos();
+    let sin_yz = θ[1].sin();
+    let cos_xz = θ[2].cos();
+    let sin_xz = θ[2].sin();
+    let cos_xu = θ[3].cos();
+    let sin_xu = θ[3].sin();
+    let cos_yu = θ[2].cos();
+    let sin_yu = θ[2].sin();
+    let cos_zu = θ[3].cos();
+    let sin_zu = θ[3].sin();
 
     // R_axis1axis2 matrices rotate a vector around a plane
     // There may be a second approach to this that rotates around each xis
@@ -74,7 +74,6 @@ pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
     R_1.dot(&R_2)
 }
 
-
 // fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64)) -> Node {
 //     // Project a 4d node onto a 2d space.
 //     // https://en.wikipedia.org/wiki/3D_projection
@@ -98,17 +97,17 @@ pub fn _rotate_4d(theta: &Array1<f64>) -> Array2<f64> {
 //     node
 // }
 
-pub fn rotate_3d(theta: &Array1<f64>) -> Array2<f64> {
+pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     
     // cache trig computations
-    let cos_x = theta[0].cos();
-    let sin_x = theta[0].sin();
-    let cos_y = theta[1].cos();
-    let sin_y = theta[1].sin();
-    let cos_z = theta[2].cos();
-    let sin_z = theta[2].sin();
+    let cos_x = θ[0].cos();
+    let sin_x = θ[0].sin();
+    let cos_y = θ[1].cos();
+    let sin_y = θ[1].sin();
+    let cos_z = θ[2].cos();
+    let sin_z = θ[2].sin();
 
     // R matrices rotate a vector around a single axis.
     let R_x = array![
@@ -161,15 +160,11 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
     // projection-matrix/building-basic-perspective-projection-matrix
     let s = 1. / (cam.fov / 2. as f64).tan();
 
-    // near and far clipping planes
-    let f = 30.;
-    let n = 0.3;
-
     let perspective_projection = array![
         [s, 0., 0., 0.],
         [0., s, 0., 0.],
-        [0., 0., -f / (f-n), -1.],
-        [0., 0., -f*n / (f-n), 0.]
+        [0., 0., -cam.f / (cam.f-cam.n), -1.],
+        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
     ];
 
     // let r = 0.04;
@@ -192,28 +187,19 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node, canvas_size: (f64, f64
     let f = perspective_projection.dot(&homogenous_pt);
 
     // Divide by w to find the 2d projected coords.
-    let b = array![&f[0] / &f[3], &f[1] / &f[3]];
+    let b = array![f[0] / f[3], f[1] / f[3]];
 
     // Keep the original node's id, but transform its position to 2d space.
     Node {a: b, id: node.id}
 }
 
-
-
 pub mod clipping {
     // Functions for clipping; Cohen-Sutherland algorithm, from:
     // https://en.wikipedia.org/wiki/Cohen%E2%80%93Sutherland_algorithm
 
-    // todo I do not understand bitwise operators...
-    // It appears that this algorithm clips post-projection.
+    // This algorithm clips post-projection, ie on the 2d screen.
 
     use types::Pt2D;
-
-    // todo import these instead of dupping the values.
-    const X_MIN: f64 = 0.;
-    const X_MAX: f64 = 1024.;
-    const Y_MIN: f64 = 0.;
-    const Y_MAX: f64 = 768.;
 
     const INSIDE: i8 = 0;
     const LEFT: i8 = 1;
@@ -221,43 +207,49 @@ pub mod clipping {
     const BOTTOM: i8 = 4;
     const TOP: i8 = 8;
    
-    fn compute_outcode(pt: Pt2D) -> i8 {
-        // initialised as being inside of clip window
-        // Learn how this bitwise stuff works.
-        let code = INSIDE;
+    fn compute_outcode(pt: &Pt2D, x_min: f64, x_max: f64, y_min: f64, y_max: f64) -> i8 {
+        // Initialised as being inside of clip window
+        let mut code = INSIDE;
 
-        if Pt.x < X_MIN {
+        if pt.x < x_min {
             code |= LEFT;
         }
-        else if Pt.x > X_MAX {
+        else if pt.x > x_max {
             code |= RIGHT;
         }
-        if Pt.y < Y_MIN {
+        if pt.y < y_min {
             code |= BOTTOM;
         }
-        else if Pt.y > Y_MAX {
+        else if pt.y > y_max {
             code |= TOP;
         }
         code
     }
 
-    pub fn clip(pt_0: Pt2D, pt_1: Pt2D) -> (Pt2D, Pt2D) {
+    pub fn clip(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64, 
+                y_min: f64, y_max: f64) -> (Pt2D, Pt2D) {
         // Cohen–Sutherland clipping algorithm clips a line from
         // P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
         // diagonal from (xmin, ymin) to (xmax, ymax).
         
-        let outcode_0 = compute_outcode(pt_0);
-        let outcode_1 = compute_outcode(pt_1);
+        let mut outcode_0 = compute_outcode(&pt_0, x_min, x_max, y_min, y_max);
+        let mut outcode_1 = compute_outcode(&pt_1, x_min, x_max, y_min, y_max);
 
-        let accept = false;
+        let mut accept = false;
         let x_0: f64;
         let y_0: f64;
         let x_1: f64;
         let y_1: f64;
+        let mut x: f64;
+        let mut y: f64;
         
+        let mut x_0 = pt_0.x;
+        let mut y_0 = pt_0.y;
+        let mut x_1 = pt_1.x;
+        let mut y_1 = pt_1.y;
         
         loop {
-            if !(outcode_0 | outcode_1 > 0) {
+            if outcode_0 | outcode_1 <= 0 {
                 // bitwise OR is 0: both points inside window; trivially accept and exit loop
                 accept = true;
                 break;
@@ -278,23 +270,23 @@ pub mod clipping {
                 // outcode bit being tested guarantees the denominator is non-zero
                 if outcode_out & TOP > 0 { 
                     // point is above the clip window
-                    let x = x_0 + (x_1 - x_0) * (Y_MAX - y_0) / (y_1 - y_0); 
-                    let y = Y_MIN;
+                    x = x_0 + (x_1 - x_0) * (y_max - y_0) / (y_1 - y_0); 
+                    y = y_max;
                 }
                 else if outcode_out & BOTTOM > 0 { 
                     // point is below the clip window
-                    let x = x_0 + (x_1 - x_0) * (Y_MIN - y_0) / (y_1 - y_0); 
-                    let y = Y_MIN;
-                }
-                else if outcode_out & LEFT > 0 { 
-                    // point is to the right of the clip window
-                    let y = y_0 + (y_1 - y_0) * (X_MAX - x_0) / (x_1 - x_0); 
-                    let x = X_MAX;
+                    x = x_0 + (x_1 - x_0) * (y_min - y_0) / (y_1 - y_0); 
+                    y = y_min;
                 }
                 else if outcode_out & RIGHT > 0 { 
+                    // point is to the right of the clip window
+                    y = y_0 + (y_1 - y_0) * (x_max - x_0) / (x_1 - x_0); 
+                    x = x_max;
+                }
+                else {
                     // point is to the left of the clip window
-                    let y = y_0 + (y_1 - y_0) * (X_MIN - x_0) / (x_1 - x_0); 
-                    let x = X_MIN;
+                    y = y_0 + (y_1 - y_0) * (x_min - x_0) / (x_1 - x_0); 
+                    x = x_min;
                 }
 
                 // Now we move outside point to intersection point to clip
@@ -302,11 +294,11 @@ pub mod clipping {
                 if outcode_out == outcode_0 {
                     x_0 = x;
                     y_0 = y;
-                    outcode_0 = compute_outcode(Pt2D {x: x_0, y: y_0});
+                    outcode_0 = compute_outcode(&Pt2D {x: x_0, y: y_0}, x_min, x_max, y_min, y_max);
                 } else {
                     x_1 = x;
                     y_1 = y;
-                    outcode_1 = compute_outcode(Pt2D {x: x_1, y: y_1})
+                    outcode_1 = compute_outcode(&Pt2D {x: x_1, y: y_1}, x_min, x_max, y_min, y_max);
                 }
             }
         }
@@ -314,21 +306,20 @@ pub mod clipping {
         // If we've accepted, return the full line.  If rejected, return the
         // clipped line. 
         if accept {
-            return (pt_0, pt_1);
+            (Pt2D {x: pt_0.x, y: pt_0.y}, Pt2D {x: pt_1.x, y: pt_0.y})
         }
         else {
-            return (Pt {x: x_0, y: y_0}, Pt {x: x_1, y: y_1})
+            (Pt2D {x: x_0, y: y_0}, Pt2D {x: x_1, y: y_1})
         }
     }
-
 }
 
-pub fn project_shapes(shapes: &Vec<Shape>, camera: &Camera, R: Array2<f64>, canvas_size: (f64, f64)) -> Vec<Shape> {
+pub fn project_shapes(shapes: &[Shape], camera: &Camera, R: &Array2<f64>, canvas_size: (f64, f64)) -> Vec<Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     let mut projected_shapes: Vec<Shape> = vec![];
         for shape in shapes.iter() {
             let projected_nodes: Vec<Node> = (&shape.nodes).into_iter()
-                .map(|node| project_3d(camera, &R, &node, canvas_size)).collect();
+                .map(|node| project_3d(camera, R, &node, canvas_size)).collect();
 
             projected_shapes.push(Shape {
                 nodes: projected_nodes,
@@ -345,6 +336,16 @@ mod tests {
 
     #[test]
     fn clip_1() {
+        let pt_0 = (32., -11.);
+        let pt_1 = (0., -1.2);
+
+        let expected = 0;
+
+        assert_eq!(clipping::clip_and_draw(pt_0[0], pt_0[1], pt_1[0], pt_1[1]), expected);
+    }
+
+        #[test]
+    fn outcodes() {
         let pt_0 = (32., -11.);
         let pt_1 = (0., -1.2);
 

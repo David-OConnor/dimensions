@@ -35,9 +35,20 @@ pub struct Camera {
     // we adjust with move keys.
     pub position: Array1<f64>,
 
-    // theta is in tait-bryan angles. Note that using the θ
+    // θ is in tait-bryan angles. Note that using the θ
     // character is currently unsupported.
-    pub theta: Array1<f64>,
+    pub θ: Array1<f64>,
 
-    pub fov: f64,  // radians.
+    pub fov: f64,  // field of view in radians.
+    // near and far clipping planes
+    pub n: f64,
+    pub f: f64,    
+}
+
+impl Camera {
+    // For now, we create a square window.
+    pub fn width(&self) -> f64{
+        // Calculate the projected window width, using basic trig.
+        2. * self.n * (self.fov / 2.).tan()
+    }
 }

@@ -17,16 +17,18 @@ use ggez::timer;
 use transforms;
 use types::{Node, Shape, Camera, Pt2D};
 
-const CANVAS_SIZE: (u32, u32) = (1024, 768);
+const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
-const TAU: f64 = 2. * PI;
+const τ: f64 = 2. * PI;
 
 fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
         position: array![0., 2.0, -5.],
-        theta: array![0., TAU / 16., 0.],
-        fov: TAU / 5., 
+        θ: array![0., τ / 16., 0.],
+        fov: τ / 5.,
+        f: 30.,
+        n: 0.9,
     }
 }
 
@@ -39,7 +41,7 @@ struct MainState {
 impl MainState {
     fn new(_ctx: &mut Context, shapes: Vec<Shape>) -> GameResult<MainState> {  
         let s = MainState {
-            shapes: shapes,
+            shapes,
             zoomlevel: 1.0,
             camera: DEFAULT_CAMERA(),
         };
@@ -48,42 +50,51 @@ impl MainState {
     }
 }
 
-fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>) -> GameResult<graphics::Mesh> {
+fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
     let mb = &mut graphics::MeshBuilder::new();
 
-    const SCALER: f32 = 100.;
+    // const SCALER: f32 = 100.;
     const OFFSET_X: f32 = (CANVAS_SIZE.0 / 2) as f32;
     const OFFSET_Y: f32 = (CANVAS_SIZE.1 / 2) as f32;
 
     // Scale to window.
+    // Assume the points projected to 0 are at the center of the
+    // screen, and that we've projected onto a square window.
+    let x_max = width / 2.;
+    let y_max = x_max;
+    let x_min = -x_max;
+    let y_min = x_min;
+
+    let scaler = (CANVAS_SIZE.0 as f64 / width) as f32;
 
     for shape in projected_shapes {
         // create a map of projected_nodes we can query from edges.  Perhaps this extra
         // data structure is unecessary, or that hashmaps should be the primary
         // way of storing projected_nodes.
         let mut node_map = HashMap::new();
-        for node in shape.nodes.iter() {
+        for node in &shape.nodes{
             node_map.insert(node.id, node.clone());
         }
 
-        for edge in shape.edges.iter() {
-            let start: &Node = node_map.get(&edge.node1).unwrap();
-            let end: &Node = node_map.get(&edge.node2).unwrap();
+        for edge in &shape.edges {
+            let start: &Node = node_map[&edge.node1];
+            let end: &Node = node_map[&edge.node2];
 
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
 
-            let (start_clipped, end_clipped) = transforms::clipping::clip(start_pt, end_pt);
+            let (start_clipped, end_clipped) = transforms::clipping::clip(
+                &start_pt, &end_pt, x_min, x_max, y_min, y_max);
 
             let points = &[
                 Point2::new(
-                    OFFSET_X + start_clipped.x as f32 * SCALER, 
-                    OFFSET_Y + start_clipped.y as f32 * SCALER
+                    OFFSET_X + start_clipped.x as f32 * scaler, 
+                    OFFSET_Y + start_clipped.y as f32 * scaler,
                 ),
                 Point2::new(
-                    OFFSET_X + end_clipped.x as f32 * SCALER, 
-                    OFFSET_Y + end_clipped.y as f32 * SCALER
+                    OFFSET_X + end_clipped.x as f32 * scaler, 
+                    OFFSET_Y + end_clipped.y as f32 * scaler,
                 ),
             ];
 
@@ -106,7 +117,7 @@ enum MoveDirection{
     Down,
 }
 
-fn move_camera(direction: MoveDirection, theta: &Array1<f64>) -> Array1<f64> {
+fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     // Move the camera to a new position, based on where it's pointing.
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
@@ -117,17 +128,13 @@ fn move_camera(direction: MoveDirection, theta: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Down => array![0., -1., 0.],
     };
 
-    transforms::rotate_3d(theta).dot(&unit_vec)
+    transforms::rotate_3d(θ).dot(&unit_vec)
 }
 
-// fn _clip_to_screen(points: Vec<Point2>) -> Vec<Shape> {
-//     // Examine each point; if it 
-// }w
-
 fn normalized_add_angle(angle: f64, amount: f64) -> f64 {
-    let mut new_angle = (angle + amount) % TAU;
+    let mut new_angle = (angle + amount) % τ;
     if new_angle < 0. {
-        new_angle += TAU;
+        new_angle += τ;
     }
     new_angle
 }
@@ -151,23 +158,23 @@ impl event::EventHandler for MainState {
 
         // Compute R here; we don't need to compute it for each node.
 
-        // Invert theta, since we're treating the camera as static, rotating
+        // Invert θ, since we're treating the camera as static, rotating
         // the world around it.
         // Same reason we invert the position transforms in transforms.rs.
-        let neg_theta = array![
-            -self.camera.theta[0],
-            -self.camera.theta[1],
-            -self.camera.theta[2],
+        let neg_θ = array![
+            -self.camera.θ[0],
+            -self.camera.θ[1],
+            -self.camera.θ[2],
         ];
 
-        let R = transforms::rotate_3d(&neg_theta);
+        let R = transforms::rotate_3d(&neg_θ);
         let projected_shapes = transforms::project_shapes(
-            &self.shapes, &self.camera, R, (640., 480.)
+            &self.shapes, &self.camera, &R, (640., 480.)
         );
 
         // todo clip here??
 
-        let mesh = build_mesh(ctx, projected_shapes)?;
+        let mesh = build_mesh(ctx, projected_shapes, self.camera.width())?;
         graphics::set_color(ctx, (0, 255, 255).into())?;
         graphics::draw_ex(ctx, &mesh, Default::default())?;
 
@@ -184,60 +191,67 @@ impl event::EventHandler for MainState {
         // understand yet.
         match keycode {
             Keycode::W => {
-                let move_vec = move_camera(MoveDirection::Forward, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Forward, &self.camera.θ);
                 self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
                 // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
                 println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
-                println!("theta {}", &self.camera.theta);
+                println!("θ {}", &self.camera.θ);
+                println!("width: {}", &self.camera.width());
             },
             Keycode::S => {
-                let move_vec = move_camera(MoveDirection::Back, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Back, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::A => {
-                let move_vec = move_camera(MoveDirection::Left, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Left, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::D => {
-                let move_vec = move_camera(MoveDirection::Right, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Right, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::C => {
-                let move_vec = move_camera(MoveDirection::Down, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::LCtrl => {
-                let move_vec = move_camera(MoveDirection::Down, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::Space => {
-                let move_vec = move_camera(MoveDirection::Up, &self.camera.theta);
+                let move_vec = move_camera(MoveDirection::Up, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
-            Keycode::Left => self.camera.theta[1] = normalized_add_angle(self.camera.theta[1], -TURN_SENSITIVITY),
-            Keycode::Right => self.camera.theta[1] = normalized_add_angle(self.camera.theta[1], TURN_SENSITIVITY),
+            Keycode::Left => self.camera.θ[1] = normalized_add_angle(self.camera.θ[1], -TURN_SENSITIVITY),
+            Keycode::Right => self.camera.θ[1] = normalized_add_angle(self.camera.θ[1], TURN_SENSITIVITY),
             // Don't allow us to look greater than τ/4 up or down.
             Keycode::Down => {
-                self.camera.theta[0] -= TURN_SENSITIVITY;
-                if self.camera.theta[0] <= -TAU / 4. {
-                    self.camera.theta[0] = -TAU / 4.
+                self.camera.θ[0] -= TURN_SENSITIVITY;
+                if self.camera.θ[0] <= -τ / 4. {
+                    self.camera.θ[0] = -τ / 4.
                 }
             },
             Keycode::Up => {
-                self.camera.theta[0] += TURN_SENSITIVITY;
-                if self.camera.theta[0] >= TAU / 4. {
-                    self.camera.theta[0] = TAU / 4.
+                self.camera.θ[0] += TURN_SENSITIVITY;
+                if self.camera.θ[0] >= τ / 4. {
+                    self.camera.θ[0] = τ / 4.
                 }
             },
             
-            Keycode::Q => self.camera.theta[2] = normalized_add_angle(self.camera.theta[2], -TURN_SENSITIVITY),
-            Keycode::E => self.camera.theta[2] = normalized_add_angle(self.camera.theta[2], TURN_SENSITIVITY),
+            Keycode::Q => self.camera.θ[2] = normalized_add_angle(self.camera.θ[2], -TURN_SENSITIVITY),
+            Keycode::E => self.camera.θ[2] = normalized_add_angle(self.camera.θ[2], TURN_SENSITIVITY),
             
-            Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
-            Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
+            Keycode::F => self.camera.n -= 1. * ZOOM_SENSITIVITY,
+            Keycode::R => self.camera.n += 1. * ZOOM_SENSITIVITY,
+
+            Keycode::G => self.camera.f -= 1. * ZOOM_SENSITIVITY,
+            Keycode::T => self.camera.f += 1. * ZOOM_SENSITIVITY,
+
+            Keycode::Minus => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
+            Keycode::Equals => self.camera.fov += 1. * ZOOM_SENSITIVITY,
 
             // reset
             Keycode::Backspace => self.camera = DEFAULT_CAMERA(),

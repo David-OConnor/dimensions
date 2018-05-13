@@ -5,8 +5,8 @@ use types::{Node, Edge, Shape};
 // todo you're going to get duplicate node ids here unless you deal with it!
 // We'll define y as vertical, and z as forward/back.
 
-pub fn make_box(center: Array1<f64>, x_len: f64, 
-                 y_len: f64, z_len: f64, id: i32) -> Shape {
+pub fn make_box(center: &Array1<f64>, x_len: f64, 
+                y_len: f64, z_len: f64, id: i32) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -43,10 +43,10 @@ pub fn make_box(center: Array1<f64>, x_len: f64,
         Edge {node1: 3, node2: 7},
     ];
 
-    Shape {nodes: nodes, edges: edges, id}
+    Shape {nodes, edges, id}
 }
 
-pub fn make_rectangular_pyramid(center: Array1<f64>, x_len: f64, 
+pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64, 
                                 z_len: f64, height: f64, id: i32) -> Shape {
 
     let nodes = vec![
@@ -75,15 +75,15 @@ pub fn make_rectangular_pyramid(center: Array1<f64>, x_len: f64,
         Edge {node1: 3, node2: 4},
     ];
 
-    Shape {nodes: nodes, edges: edges, id}
+    Shape {nodes, edges, id}
 }
 
-pub fn make_house(center: Array1<f64>, x_len: f64, 
+pub fn make_house(center: &Array1<f64>, x_len: f64, 
                   y_len: f64, z_len: f64, id: i32) -> Shape {
-    let mut base = make_box(array![center[0], center[1], center[2]], x_len, y_len, z_len, id);
+    let mut base = make_box(&array![center[0], center[1], center[2]], x_len, y_len, z_len, id);
     let mut roof = make_rectangular_pyramid(
         // Let the roof overhang the base by a little.
-        array![center[0] - x_len * 0.1, center[1] + y_len, center[2] - x_len * 0.1],
+        &array![center[0] - x_len * 0.1, center[1] + y_len, center[2] - x_len * 0.1],
         x_len * 1.2, 
         z_len * 1.2, 
         y_len / 3.,  // Make the roof height a portion of the base height. 
@@ -93,10 +93,10 @@ pub fn make_house(center: Array1<f64>, x_len: f64,
     // Now that we've made the shapes, recompose them to be one shape.
     // todo make this a separate, (reusable) func?
     let id_addition = base.nodes.len() as i32;
-    for node in roof.nodes.iter_mut() {
+    for node in &mut roof.nodes {
         node.id += id_addition;  // There are 8 nodes in the base.
     }
-    for edge in roof.edges.iter_mut() {
+    for edge in &mut roof.edges {
         edge.node1 += id_addition;
         edge.node2 += id_addition;
     }
@@ -106,13 +106,12 @@ pub fn make_house(center: Array1<f64>, x_len: f64,
     base
 }
 
-
-pub fn make_cube(center: Array1<f64>, side_len: f64, id: i32) -> Shape {
+pub fn make_cube(center: &Array1<f64>, side_len: f64, id: i32) -> Shape {
     // Convenience function.
     make_box(center, side_len, side_len, side_len, id)
 }
 
-pub fn make_origin(center: Array1<f64>, len: f64, id: i32) -> Shape {
+pub fn make_origin(center: &Array1<f64>, len: f64, id: i32) -> Shape {
     // A 3-dimensional cross, for marking the origin.
     let nodes = vec![
         Node {a: array![center[0] - len / 2., center[1], center[2]], id: 0},
@@ -129,10 +128,10 @@ pub fn make_origin(center: Array1<f64>, len: f64, id: i32) -> Shape {
         Edge {node1: 4, node2: 5},
     ];
 
-    Shape {nodes: nodes, edges: edges, id}
+    Shape {nodes, edges, id}
 }
 
-pub fn make_street(center: Array1<f64>, _direction: Array1<f64>, 
+pub fn make_street(center: &Array1<f64>, _direction: &Array1<f64>, 
                    width: f64, id: i32) -> Shape {
     // Make a street extending very far into the distance in both directions.
     // Direction is the vector the street points.
@@ -153,7 +152,7 @@ pub fn make_street(center: Array1<f64>, _direction: Array1<f64>,
         Edge {node1: 2, node2: 3},
     ];
 
-    Shape {nodes: nodes, edges: edges, id}
+    Shape {nodes, edges, id}
 }
 
 // pub fn make_hypercube(center: Array1<f64>, side_len: f64, id: i32) -> Shape {
