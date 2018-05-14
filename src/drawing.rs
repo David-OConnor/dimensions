@@ -61,7 +61,7 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
     // Scale to window.
     // Assume the points projected to 0 are at the center of the
     // screen, and that we've projected onto a square window.
-    let x_max = width / 2.;
+    let x_max = width / 2.2;
     let y_max = x_max;
     let x_min = -x_max;
     let y_min = x_min;
@@ -84,9 +84,20 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
 
-            let (start_clipped, end_clipped) = transforms::clipping::clip(
+            let clipped_pt = transforms::clipping::clip(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max);
+            
+            let start_clipped: Pt2D;
+            let end_clipped: Pt2D;
 
+            match clipped_pt {
+                Some(pt) => {
+                    start_clipped = pt.0;
+                    end_clipped = pt.1;
+                }
+                None => continue,
+            };
+          
             let points = &[
                 Point2::new(
                     OFFSET_X + start_clipped.x as f32 * scaler, 
