@@ -6,5 +6,5 @@ build = "build.rs"
 
 [dependencies]
 ndarray = "0.11.2"
-ggez = "0.4"
+ggez = "0.4.2"
 # ndarray-linalg = { version = "0.9.0", features = ["openblas"] }

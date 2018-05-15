@@ -14,8 +14,9 @@ use ggez::graphics;
 use ggez::graphics::{Point2};
 use ggez::timer;
 
+use clipping;
 use transforms;
-use types::{Node, Shape, Camera, Pt2D};
+use types::{Shape, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
@@ -36,14 +37,16 @@ struct MainState {
     shapes: Vec<Shape>,
     zoomlevel: f32,
     camera: Camera,
+    is_4d: bool,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context, shapes: Vec<Shape>) -> GameResult<MainState> {  
+    fn new(_ctx: &mut Context, shapes: Vec<Shape>, is_4d: bool) -> GameResult<MainState> {  
         let s = MainState {
             shapes,
             zoomlevel: 1.0,
             camera: DEFAULT_CAMERA(),
+            is_4d: is_4d,
         };
 
         Ok(s)
@@ -54,7 +57,6 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
     // Draw a set of of connected lines, given projected nodes and edges.
     let mb = &mut graphics::MeshBuilder::new();
 
-    // const SCALER: f32 = 100.;
     const OFFSET_X: f32 = (CANVAS_SIZE.0 / 2) as f32;
     const OFFSET_Y: f32 = (CANVAS_SIZE.1 / 2) as f32;
 
@@ -78,13 +80,13 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
         }
 
         for edge in &shape.edges {
-            let start: &Node = node_map[&edge.node1];
-            let end: &Node = node_map[&edge.node2];
+            let start = node_map[&edge.node1];
+            let end = node_map[&edge.node2];
 
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
 
-            let clipped_pt = transforms::clipping::clip(
+            let clipped_pt = clipping::clip(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max);
             
             let start_clipped: Pt2D;
@@ -169,21 +171,23 @@ impl event::EventHandler for MainState {
 
         // Compute R here; we don't need to compute it for each node.
 
-        // Invert θ, since we're treating the camera as static, rotating
-        // the world around it.
-        // Same reason we invert the position transforms in transforms.rs.
-        let neg_θ = array![
-            -self.camera.θ[0],
-            -self.camera.θ[1],
-            -self.camera.θ[2],
-        ];
+        let projected_shapes;
 
-        let R = transforms::rotate_3d(&neg_θ);
-        let projected_shapes = transforms::project_shapes(
-            &self.shapes, &self.camera, &R, (640., 480.)
-        );
+        if self.is_4d {
+            // Invert θ, since we're treating the camera as static, rotating
+            // the world around it.
+            // Same reason we invert the position transforms in transforms.rs.
 
-        // todo clip here??
+            let R = transforms::rotate_4d(&-&self.camera.θ);
+            projected_shapes = transforms::project_shapes_4d(
+                &self.shapes, &self.camera, &R
+            );
+        } else {
+            let R = transforms::rotate_3d(&-&self.camera.θ);
+            projected_shapes = transforms::project_shapes_3d(
+                &self.shapes, &self.camera, &R
+            );
+        }
 
         let mesh = build_mesh(ctx, projected_shapes, self.camera.width())?;
         graphics::set_color(ctx, (0, 255, 255).into())?;
@@ -261,8 +265,8 @@ impl event::EventHandler for MainState {
             Keycode::G => self.camera.f -= 1. * ZOOM_SENSITIVITY,
             Keycode::T => self.camera.f += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::Minus => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
-            Keycode::Equals => self.camera.fov += 1. * ZOOM_SENSITIVITY,
+            Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
+            Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
 
             // reset
             Keycode::Backspace => self.camera = DEFAULT_CAMERA(),
@@ -271,7 +275,7 @@ impl event::EventHandler for MainState {
     }
 }
 
-pub fn run(shapes: Vec<Shape>) {
+pub fn run(shapes: Vec<Shape>, is_4d: bool) {
     // Render lines using ggez.
     let c = conf::Conf {
         window_mode: conf::WindowMode {
@@ -302,7 +306,7 @@ pub fn run(shapes: Vec<Shape>) {
     
     println!("{}", graphics::get_renderer_info(ctx).unwrap());
 
-    let state = &mut MainState::new(ctx, shapes).unwrap();
+    let state = &mut MainState::new(ctx, shapes, is_4d).unwrap();
     
     if let Err(e) = event::run(ctx, state) {
         println!("Error encountered: {}", e);

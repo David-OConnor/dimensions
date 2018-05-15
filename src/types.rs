@@ -12,6 +12,14 @@ pub struct Node {
     pub id: i32,
 }
 
+impl Node {
+    pub fn make_4d(&self) -> Node {
+        assert!(self.a.len() == 3);
+
+        Node {a: stack![Axis(1), array![0.]], id: self.id}
+    }
+}
+
 // We derive clone on edge for when copying it, unchanged, into a new shape
 // when transforming.
 #[derive(Debug, Clone)]

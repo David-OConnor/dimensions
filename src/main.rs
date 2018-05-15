@@ -1,22 +1,22 @@
-// We use mathematical conventions that may direct upper-case var names, or lower-
-// case constants.
+// We use mathematical conventions that may direct upper-case var names, 
+// or lower-case constants.
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 #![feature(non_ascii_idents)]
 
 #[macro_use(array)]
+#[macro_use(stack)]
+
 extern crate ndarray;
-// extern crate ndarray_linalg;
 extern crate ggez;
 
 mod types;
 mod drawing;
 mod transforms;
 mod shape_maker;
+mod clipping;
 
 fn main() {
-    const _FOV: f64 = 80.;  // Degrees.
-    
     let shapes = vec![
         shape_maker::make_cube(&array![-1.5, 0., -1.5], 1., 0),
         shape_maker::make_box(&array![2., 0., 0.], 1.5, 0.5, 2.5, 1),
@@ -27,7 +27,7 @@ fn main() {
         // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1., 5),
     ];
 
-    drawing::run(shapes);
+    drawing::run(shapes, false);
 }
 
 #[cfg(test)]
