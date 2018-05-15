@@ -25,8 +25,10 @@ const τ: f64 = 2. * PI;
 fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
-        position: array![0., 2.0, -5.],
-        θ: array![0., τ / 16., 0.],
+        // If 3d, the 4th items for position isn't used.
+        position: array![0., 2.0, -5., 0.],
+        θ_3d: array![0., τ / 16., 0.],
+        θ_4d: array![0., τ / 16., 0., 0., 0., 0.],
         fov: τ / 5.,
         f: 30.,
         n: 0.9,
@@ -128,10 +130,14 @@ enum MoveDirection{
     Right,
     Up,
     Down,
+    Fourup,
+    Fourdown,
 }
 
-fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
+fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     // Move the camera to a new position, based on where it's pointing.
+    assert!(θ.len() == 3);
+
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
         MoveDirection::Back => array![0., 0., -1.],
@@ -139,12 +145,33 @@ fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Right => array![1., 0., 0.],
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
+        // For 4d move inputs, don't do anything.
+        MoveDirection::Fourup => array![0., 0., 0.],
+        MoveDirection::Fourdown => array![0., 0., 0.],
     };
 
     transforms::rotate_3d(θ).dot(&unit_vec)
 }
 
-fn normalized_add_angle(angle: f64, amount: f64) -> f64 {
+fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
+    // Move the camera to a new position, based on where it's pointing.
+    assert!(θ.len() == 6);
+
+    let unit_vec = match direction {
+        MoveDirection::Forward => array![0., 0., 1., 0.],
+        MoveDirection::Back => array![0., 0., -1., 0.],
+        MoveDirection::Left => array![-1., 0., 0., 0.],
+        MoveDirection::Right => array![1., 0., 0., 0.],
+        MoveDirection::Up => array![0., 1., 0., 0.],
+        MoveDirection::Down => array![0., -1., 0., 0.],
+        MoveDirection::Fourup => array![0., 0., 0., 1.],
+        MoveDirection::Fourdown => array![0., 0., 0., -1.],
+    };
+
+    transforms::rotate_4d(θ).dot(&unit_vec)
+}
+
+fn add_ang_norm(angle: f64, amount: f64) -> f64 {
     let mut new_angle = (angle + amount) % τ;
     if new_angle < 0. {
         new_angle += τ;
@@ -178,12 +205,13 @@ impl event::EventHandler for MainState {
             // the world around it.
             // Same reason we invert the position transforms in transforms.rs.
 
-            let R = transforms::rotate_4d(&-&self.camera.θ);
+            let R_4d = transforms::rotate_4d(&-&self.camera.θ_4d);
+            let R_3d = transforms::rotate_3d(&-&self.camera.θ_3d);
             projected_shapes = transforms::project_shapes_4d(
-                &self.shapes, &self.camera, &R
+                &self.shapes, &self.camera, &R_4d, &R_3d
             );
         } else {
-            let R = transforms::rotate_3d(&-&self.camera.θ);
+            let R = transforms::rotate_3d(&-&self.camera.θ_3d);
             projected_shapes = transforms::project_shapes_3d(
                 &self.shapes, &self.camera, &R
             );
@@ -202,63 +230,103 @@ impl event::EventHandler for MainState {
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
 
+        let move_func = match self.is_4d {
+            true => move_camera_4d,
+            false => move_camera_3d,
+        };
+
+        let move_θ = &match self.is_4d {
+            true => self.camera.θ_4d.clone(),
+            false => self.camera.θ_3d.clone(),
+        };
+
         // Some of the entries appear for reversed, for reasons I don't
         // understand yet.
         match keycode {
             Keycode::W => {
-                let move_vec = move_camera(MoveDirection::Forward, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Forward, move_θ);
                 self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
                 // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
                 println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
-                println!("θ {}", &self.camera.θ);
+                println!("θ {}", &self.camera.θ_3d);
                 println!("width: {}", &self.camera.width());
             },
             Keycode::S => {
-                let move_vec = move_camera(MoveDirection::Back, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Back, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::A => {
-                let move_vec = move_camera(MoveDirection::Left, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Left, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::D => {
-                let move_vec = move_camera(MoveDirection::Right, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Right, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::C => {
-                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Down, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::LCtrl => {
-                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Down, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::Space => {
-                let move_vec = move_camera(MoveDirection::Up, &self.camera.θ);
+                let move_vec = move_func(MoveDirection::Up, move_θ);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::A => {
+                let move_vec = move_func(MoveDirection::Left, move_θ);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::D => {
+                let move_vec = move_func(MoveDirection::Right, move_θ);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::F => {
+                let move_vec = move_func(MoveDirection::Fourdown, &self.camera.θ_4d);
+                self.camera.position -= &(move_vec * MOVE_SENSITIVITY);
+            },
+            Keycode::R => {
+                let move_vec = move_func(MoveDirection::Fourup, &self.camera.θ_4d);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
-            Keycode::Left => self.camera.θ[1] = normalized_add_angle(self.camera.θ[1], -TURN_SENSITIVITY),
-            Keycode::Right => self.camera.θ[1] = normalized_add_angle(self.camera.θ[1], TURN_SENSITIVITY),
+            Keycode::Left => self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], -TURN_SENSITIVITY),
+            Keycode::Right => self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], TURN_SENSITIVITY),
             // Don't allow us to look greater than τ/4 up or down.
             Keycode::Down => {
-                self.camera.θ[0] -= TURN_SENSITIVITY;
-                if self.camera.θ[0] <= -τ / 4. {
-                    self.camera.θ[0] = -τ / 4.
+                self.camera.θ_3d[0] -= TURN_SENSITIVITY;
+                if self.camera.θ_3d[0] <= -τ / 4. {
+                    self.camera.θ_3d[0] = -τ / 4.
                 }
             },
             Keycode::Up => {
-                self.camera.θ[0] += TURN_SENSITIVITY;
-                if self.camera.θ[0] >= τ / 4. {
-                    self.camera.θ[0] = τ / 4.
+                self.camera.θ_3d[0] += TURN_SENSITIVITY;
+                if self.camera.θ_3d[0] >= τ / 4. {
+                    self.camera.θ_3d[0] = τ / 4.
                 }
             },
             
-            Keycode::Q => self.camera.θ[2] = normalized_add_angle(self.camera.θ[2], -TURN_SENSITIVITY),
-            Keycode::E => self.camera.θ[2] = normalized_add_angle(self.camera.θ[2], TURN_SENSITIVITY),
+            Keycode::Q => self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], -TURN_SENSITIVITY),
+            Keycode::E => self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], TURN_SENSITIVITY),
             
+            // 4d rotations
+            Keycode::T => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], TURN_SENSITIVITY),
+            Keycode::G => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], -TURN_SENSITIVITY),
+            Keycode::Y => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], TURN_SENSITIVITY),
+            Keycode::H => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], -TURN_SENSITIVITY),
+            Keycode::U => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], TURN_SENSITIVITY),
+            Keycode::J => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], -TURN_SENSITIVITY),
+            Keycode::I => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], TURN_SENSITIVITY),
+            Keycode::K => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], -TURN_SENSITIVITY),
+            Keycode::O => self.camera.θ_4d[4] = add_ang_norm(self.camera.θ_4d[4], TURN_SENSITIVITY),
+            Keycode::L => self.camera.θ_4d[4] = add_ang_norm(self.camera.θ_4d[4], -TURN_SENSITIVITY),
+            Keycode::P => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], TURN_SENSITIVITY),
+            Keycode::Semicolon => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], -TURN_SENSITIVITY),
+
             Keycode::F => self.camera.n -= 1. * ZOOM_SENSITIVITY,
             Keycode::R => self.camera.n += 1. * ZOOM_SENSITIVITY,
 

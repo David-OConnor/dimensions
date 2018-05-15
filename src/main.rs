@@ -18,12 +18,12 @@ mod clipping;
 
 fn main() {
     let shapes = vec![
-        shape_maker::make_cube(&array![-1.5, 0., -1.5], 1., 0),
-        shape_maker::make_box(&array![2., 0., 0.], 1.5, 0.5, 2.5, 1),
-        shape_maker::make_rectangular_pyramid(&array![-2., -0., 2.0], 2., 1.5, 0.5, 2),
-        shape_maker::make_house(&array![-3., 0., -3.], 1., 1., 1., 3),
+        shape_maker::make_cube(&array![-1.5, 0., -1.5, 0.], 1., 0),
+        shape_maker::make_box(&array![2., 0., 0., 0.], 1.5, 0.5, 2.5, 1),
+        shape_maker::make_rectangular_pyramid(&array![-2., -0., 2.0, 0.], 2., 1.5, 0.5, 2),
+        shape_maker::make_house(&array![-3., 0., -3., 0.], 1., 1., 1., 3),
 
-        shape_maker::make_origin(&array![0., 0., 0.], 1., 4),
+        shape_maker::make_origin(&array![0., 0., 0., 0.], 1., 4),
         // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1., 5),
     ];
 

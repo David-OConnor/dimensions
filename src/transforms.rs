@@ -6,7 +6,8 @@ pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
-    
+    assert![θ.len() == 6];
+
     // We rotation around each of six planes; the combinations of the 4
     // dimensions. 
 
@@ -19,10 +20,10 @@ pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
     let sin_xz = θ[2].sin();
     let cos_xu = θ[3].cos();
     let sin_xu = θ[3].sin();
-    let cos_yu = θ[2].cos();
-    let sin_yu = θ[2].sin();
-    let cos_zu = θ[3].cos();
-    let sin_zu = θ[3].sin();
+    let cos_yu = θ[4].cos();
+    let sin_yu = θ[4].sin();
+    let cos_zu = θ[5].cos();
+    let sin_zu = θ[5].sin();
 
     // Potentially there exist 4 hyperrotations as well? ie combinations of 
     // 3 axes ?  xyz  yzu  zux  uxy
@@ -82,6 +83,7 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // into a 2d projection for display on the screen, using project_3d.
     // Ref project_3d for more details and links.  Most of this is a simple
     // extension.
+    assert![R.rows() == 4 && R.cols() == 4];
 
     // http://eusebeia.dyndns.org/4d/vis/01-intro
 
@@ -124,7 +126,8 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
 pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    
+    assert![θ.len() == 3];
+
     // cache trig computations
     let cos_x = θ[0].cos();
     let sin_x = θ[0].sin();
@@ -159,6 +162,7 @@ pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
 fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
+    assert![R.rows() == 3 && R.cols() == 3];
 
     // Perform a camera transform; define a vector rotated_shifted_point as the position
     // of point A with respect to the coordinate system defined by 
@@ -207,6 +211,8 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
 pub fn project_shapes_3d(shapes: &[Shape], camera: &Camera,
                          R: &Array2<f64>) -> Vec<Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
+    assert![R.rows() == 3 && R.cols() == 3];
+
     let mut projected_shapes: Vec<Shape> = vec![];
 
     for shape in shapes.iter() {
@@ -224,24 +230,21 @@ pub fn project_shapes_3d(shapes: &[Shape], camera: &Camera,
 }
 
 pub fn project_shapes_4d(shapes: &[Shape], camera: &Camera, 
-                         R: &Array2<f64>) -> Vec<Shape> {
+                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> Vec<Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
+    assert![R_4d.rows() == 4 && R_4d.cols() == 4];
+    assert![R_3d.rows() == 3 && R_3d.cols() == 3];
+
     let mut projected_shapes: Vec<Shape> = vec![];
 
     for shape in shapes.iter() {  
-        let mut projected_nodes_3d = Vec::new();
-
-        for node in &shape.nodes {
-            match node.a.len() {
-                3 => projected_nodes_3d.push(project_4d(camera, R, &node.make_4d())),
-                4 => projected_nodes_3d.push(project_4d(camera, R, node)),
-                _ => panic!("Node must be 3 or 4d."),
-            }
-        }
+        // Project from 4d space to 3d.
+        let mut projected_nodes_3d: Vec<Node> = (&shape.nodes).into_iter()
+            .map(|node| project_4d(camera, R_4d, &node)).collect();
 
         // Now that we've projected the 4d shapes into 3d, project into 2d.
         let projected_nodes_2d: Vec<Node> = (&projected_nodes_3d).into_iter()
-            .map(|node| project_3d(camera, R, &node)).collect();
+            .map(|node| project_3d(camera, R_3d, &node)).collect();
         
         projected_shapes.push(Shape {
             nodes: projected_nodes_2d,

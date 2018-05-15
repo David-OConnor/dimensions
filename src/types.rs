@@ -12,14 +12,6 @@ pub struct Node {
     pub id: i32,
 }
 
-impl Node {
-    pub fn make_4d(&self) -> Node {
-        assert!(self.a.len() == 3);
-
-        Node {a: stack![Axis(1), array![0.]], id: self.id}
-    }
-}
-
 // We derive clone on edge for when copying it, unchanged, into a new shape
 // when transforming.
 #[derive(Debug, Clone)]
@@ -43,9 +35,9 @@ pub struct Camera {
     // we adjust with move keys.
     pub position: Array1<f64>,
 
-    // θ is in tait-bryan angles. Note that using the θ
-    // character is currently unsupported.
-    pub θ: Array1<f64>,
+    // θ_3d is in tait-bryan angles. 3 entries for 3d, 6 for 4d.
+    pub θ_3d: Array1<f64>,
+    pub θ_4d: Array1<f64>,
 
     pub fov: f64,  // field of view in radians.
     // near and far clipping planes

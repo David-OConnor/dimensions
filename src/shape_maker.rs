@@ -2,8 +2,8 @@ use ndarray::prelude::*;
 
 use types::{Node, Edge, Shape};
 
-// todo you're going to get duplicate node ids here unless you deal with it!
-// We'll define y as vertical, and z as forward/back.
+// We'll define y as vertical, and z as forward/back.  All shapes are given
+// four coordinates. Leave 
 
 pub fn make_box(center: &Array1<f64>, x_len: f64, 
                 y_len: f64, z_len: f64, id: i32) -> Shape {
@@ -12,15 +12,15 @@ pub fn make_box(center: &Array1<f64>, x_len: f64,
 
     let nodes = vec![
         // Front
-        Node{a: array![center[0], center[1], center[2]], id: 0},
-        Node{a: array![center[0] + x_len, center[1], center[2]], id: 1},
-        Node{a: array![center[0] + x_len, center[1] + y_len, center[2]], id: 2},
-        Node{a: array![center[0], center[1] + y_len, center[2]], id: 3},
+        Node{a: center.clone(), id: 0},
+        Node{a: array![center[0] + x_len, center[1], center[2], center[3]], id: 1},
+        Node{a: array![center[0] + x_len, center[1] + y_len, center[2], center[3]], id: 2},
+        Node{a: array![center[0], center[1] + y_len, center[2], center[3]], id: 3},
 
-        Node{a: array![center[0], center[1], center[2] + z_len], id: 4},
-        Node{a: array![center[0] + x_len, center[1], center[2] + z_len], id: 5},
-        Node{a: array![center[0] + x_len, center[1] + y_len, center[2] + z_len], id: 6},
-        Node{a: array![center[0], center[1] + y_len, center[2] + z_len], id: 7},
+        Node{a: array![center[0], center[1], center[2] + z_len, center[3]], id: 4},
+        Node{a: array![center[0] + x_len, center[1], center[2] + z_len, center[3]], id: 5},
+        Node{a: array![center[0] + x_len, center[1] + y_len, center[2] + z_len, center[3]], id: 6},
+        Node{a: array![center[0], center[1] + y_len, center[2] + z_len, center[3]], id: 7},
     ];
 
     let edges = vec![
@@ -51,13 +51,13 @@ pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64,
 
     let nodes = vec![
         // Base
-        Node{a: array![center[0], center[1], center[2]], id: 0},
-        Node{a: array![center[0] + x_len, center[1], center[2]], id: 1},
-        Node{a: array![center[0] + x_len, center[1], center[2] + z_len], id: 2},
-        Node{a: array![center[0], center[1], center[2] + z_len], id: 3},
+        Node{a: center.clone(), id: 0},
+        Node{a: array![center[0] + x_len, center[1], center[2], center[3]], id: 1},
+        Node{a: array![center[0] + x_len, center[1], center[2] + z_len, center[3]], id: 2},
+        Node{a: array![center[0], center[1], center[2] + z_len, center[3]], id: 3},
 
         // Top
-        Node{a: array![center[0] + x_len / 2., center[1] + height, center[2] + z_len / 2.], id: 4},
+        Node{a: array![center[0] + x_len / 2., center[1] + height, center[2] + z_len / 2., center[3]], id: 4},
 
     ];
 
@@ -80,10 +80,12 @@ pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64,
 
 pub fn make_house(center: &Array1<f64>, x_len: f64, 
                   y_len: f64, z_len: f64, id: i32) -> Shape {
-    let mut base = make_box(&array![center[0], center[1], center[2]], x_len, y_len, z_len, id);
+    let mut base = make_box(
+        &array![center[0], center[1], center[2], center[3]], x_len, y_len, z_len, id
+    );
     let mut roof = make_rectangular_pyramid(
         // Let the roof overhang the base by a little.
-        &array![center[0] - x_len * 0.1, center[1] + y_len, center[2] - x_len * 0.1],
+        &array![center[0] - x_len * 0.1, center[1] + y_len, center[2] - x_len * 0.1, center[3]],
         x_len * 1.2, 
         z_len * 1.2, 
         y_len / 3.,  // Make the roof height a portion of the base height. 
@@ -114,12 +116,12 @@ pub fn make_cube(center: &Array1<f64>, side_len: f64, id: i32) -> Shape {
 pub fn make_origin(center: &Array1<f64>, len: f64, id: i32) -> Shape {
     // A 3-dimensional cross, for marking the origin.
     let nodes = vec![
-        Node {a: array![center[0] - len / 2., center[1], center[2]], id: 0},
-        Node {a: array![center[0] + len / 2., center[1], center[2]], id: 1},
-        Node {a: array![center[0], center[1] - len / 2., center[2]], id: 2},
-        Node {a: array![center[0], center[1] + len / 2., center[2]], id: 3},
-        Node {a: array![center[0], center[1], center[2] - len / 2.], id: 4},
-        Node {a: array![center[0], center[1], center[2] + len / 2.], id: 5},
+        Node {a: array![center[0] - len / 2., center[1], center[2], center[3]], id: 0},
+        Node {a: array![center[0] + len / 2., center[1], center[2], center[3]], id: 1},
+        Node {a: array![center[0], center[1] - len / 2., center[2], center[3]], id: 2},
+        Node {a: array![center[0], center[1] + len / 2., center[2], center[3]], id: 3},
+        Node {a: array![center[0], center[1], center[2] - len / 2., center[3]], id: 4},
+        Node {a: array![center[0], center[1], center[2] + len / 2., center[3]], id: 5},
     ];
 
     let edges = vec![
@@ -155,33 +157,34 @@ pub fn make_street(center: &Array1<f64>, _direction: &Array1<f64>,
     Shape {nodes, edges, id}
 }
 
-pub fn make_hypercube(center: Array1<f64>, side_len: f64, id: i32) -> Shape {
+pub fn make_hyperrect(center: Array1<f64>, x_len: f64, y_len: f64, z_len: f64,
+                      u_len: f64, id: i32) -> Shape {
     // Make a 4d hypercube.
 
      let nodes = vec![
         // Front inner
-        Node {a: array![0., 0., 0., 0.], id: 0},
-        Node {a: array![0., 1., 0., 0.], id: 1},
-        Node {a: array![1., 1., 0., 0.], id: 2},
-        Node {a: array![1., 0., 0., 0.], id: 3},
+        Node {a: array![center[0], center[1], center[2], center[3]], id: 0},
+        Node {a: array![center[0], center[1] + y_len, center[2], center[3]], id: 1},
+        Node {a: array![center[0] + x_len, center[1] + y_len, center[2], center[3]], id: 2},
+        Node {a: array![center[0] + x_len, center[1], center[2], center[3]], id: 3},
         
         // Back inner
-        Node {a: array![0., 0., 1., 0.], id: 4},
-        Node {a: array![0., 1., 1., 0.], id: 5},
-        Node {a: array![1., 1., 1., 0.], id: 6},
-        Node {a: array![1., 0., 1., 0.], id: 7},
+        Node {a: array![center[0], center[1], center[2] + z_len, center[3]], id: 4},
+        Node {a: array![center[0], center[1] + y_len, center[2] + z_len, center[3]], id: 5},
+        Node {a: array![center[0] + x_len, center[1] + y_len, center[2] + z_len, 0.], id: 6},
+        Node {a: array![center[0] + x_len, center[1], center[2] + z_len, center[3]], id: 7},
         
         // Front outer
-        Node {a: array![0., 0., 0., 1.], id: 8},
-        Node {a: array![0., 1., 0., 2.], id: 9},
-        Node {a: array![1., 1., 0., 3.], id: 10},
-        Node {a: array![1., 0., 0., 4.], id: 11},
+        Node {a: array![center[0], center[1], center[2], center[3] + u_len], id: 8},
+        Node {a: array![center[0], center[1] + y_len, center[2], center[3] + u_len], id: 9},
+        Node {a: array![center[0] + x_len, center[1] + y_len, center[2], center[3] + u_len], id: 10},
+        Node {a: array![center[0] + x_len, center[1], center[2], center[3] + u_len], id: 11},
         
         // Back outer
-        Node {a: array![0., 0., 1., 5.], id: 12},
-        Node {a: array![0., 1., 1., 6.], id: 13},
-        Node {a: array![1., 1., 1., 7.], id: 14},
-        Node {a: array![1., 0., 1., 8.], id: 15}
+        Node {a: array![center[0], center[1], center[2] + z_len, center[3] + u_len], id: 12},
+        Node {a: array![center[0], center[1] + y_len, center[2] + z_len, 6.], id: 13},
+        Node {a: array![center[0] + x_len, center[1] + y_len, center[2] + z_len, center[3] + u_len], id: 14},
+        Node {a: array![center[0] + x_len, 0., center[2] + z_len, center[3] + u_len], id: 15}
     ];
 
     let edges = vec![
