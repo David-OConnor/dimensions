@@ -7,4 +7,6 @@ build = "build.rs"
 [dependencies]
 ndarray = "0.11.2"
 ggez = "0.4.2"
-# ndarray-linalg = { version = "0.9.0", features = ["openblas"] }
+gfx = "0.17.1"
+glutin = "0.12"
+gfx_window_glutin = "0.20"

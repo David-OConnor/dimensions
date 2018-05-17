@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ndarray::prelude::*;
 
 use types::{Node, Shape, Camera};
@@ -112,15 +114,21 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
         [0., 0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
     ];
 
+    // let perspective_projection = array![
+    //     [s, 0., 0., 0.],
+    //     [0., s, 0., 0.],
+    //     [0., 0., -cam.f / (cam.f-cam.n), -1.],
+    //     [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
+    // ];
+
+
     let f = perspective_projection.dot(
         &array![rotated_shifted_pt[0], rotated_shifted_pt[1], 
                 rotated_shifted_pt[2], rotated_shifted_pt[3], 1.]    
     );
 
     // Divide by w to find the 2d projected coords.
-    let b = array![f[0] / f[4], f[1] / f[4], f[2] / f[4]];
-
-    Node {a: b, id: node.id}
+    Node {a: array![f[0] / f[4], f[1] / f[4], f[2] / f[4]]}
 }
 
 pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
@@ -202,58 +210,50 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     );
 
     // Divide by w to find the 2d projected coords.
-    let b = array![f[0] / f[3], f[1] / f[3]];
-
-    // Keep the original node's id, but transform its position to 2d space.
-    Node {a: b, id: node.id}
+    Node {a: array![f[0] / f[3], f[1] / f[3]]}
 }
 
-pub fn project_shapes_3d(shapes: &[Shape], camera: &Camera,
-                         R: &Array2<f64>) -> Vec<Shape> {
+pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
+                         R: &Array2<f64>) -> HashMap<i32, Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     assert![R.rows() == 3 && R.cols() == 3];
 
-    let mut projected_shapes: Vec<Shape> = vec![];
+    let mut projected_shapes = HashMap::new();
 
-    for shape in shapes.iter() {
-        let projected_nodes: Vec<Node> = (&shape.nodes).into_iter()
-            .map(|node| project_3d(camera, R, &node)).collect();
-
-        projected_shapes.push(Shape {
-            nodes: projected_nodes,
-            edges: shape.edges.clone(),
-            id: shape.id
-        })
+    for (shape_id, shape) in &shapes {
+        let projected_nodes = HashMap::new();
+        for (node_id, node) in &shape.nodes {
+            projected_nodes.insert(node_id, project_3d(camera, R, &node));
+        }
+        projected_shapes.insert(
+            shape_id, Shape {nodes: projected_nodes, edges: shape.edges}
+        );
     }
     
     projected_shapes
 }
 
-pub fn project_shapes_4d(shapes: &[Shape], camera: &Camera, 
-                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> Vec<Shape> {
+pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, camera: &Camera, 
+                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> HashMap<i32, Shape> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     assert![R_4d.rows() == 4 && R_4d.cols() == 4];
     assert![R_3d.rows() == 3 && R_3d.cols() == 3];
 
-    let mut projected_shapes: Vec<Shape> = vec![];
+    let projected_shapes_3d = project_shapes_3d(shapes, camera, R_3d);
+    let mut projected_shapes_4d = HashMap::new();
 
-    for shape in shapes.iter() {  
-        // Project from 4d space to 3d.
-        let mut projected_nodes_3d: Vec<Node> = (&shape.nodes).into_iter()
-            .map(|node| project_4d(camera, R_4d, &node)).collect();
-
-        // Now that we've projected the 4d shapes into 3d, project into 2d.
-        let projected_nodes_2d: Vec<Node> = (&projected_nodes_3d).into_iter()
-            .map(|node| project_3d(camera, R_3d, &node)).collect();
-        
-        projected_shapes.push(Shape {
-            nodes: projected_nodes_2d,
-            edges: shape.edges.clone(),
-            id: shape.id
-        })
+    // todo DRY between here and project_shapes_3d.
+    for (shape_id, shape) in &projected_shapes_3d {
+        let projected_nodes = HashMap::new();
+        for (node_id, node) in &shape.nodes {
+            projected_nodes.insert(node_id, project_4d(camera, R_4d, &node));
+        }
+        projected_shapes_4d.insert(
+            shape_id, Shape {nodes: projected_nodes, edges: shape.edges}
+        );
     }
     
-    projected_shapes
+    projected_shapes_4d
 }
 
 #[cfg(test)]

@@ -10,22 +10,50 @@
 extern crate ndarray;
 extern crate ggez;
 
+#[macro_use]
+extern crate gfx;
+extern crate gfx_window_glutin;
+extern crate glutin;
+
 mod types;
 mod drawing;
 mod transforms;
 mod shape_maker;
 mod clipping;
+mod gfx_render;
+
+use std::collections::HashMap;
 
 fn main() {
-    let shapes = vec![
-        shape_maker::make_cube(&array![-1.5, 0., -1.5, 0.], 1., 0),
-        shape_maker::make_box(&array![2., 0., 0., 0.], 1.5, 0.5, 2.5, 1),
-        shape_maker::make_rectangular_pyramid(&array![-2., -0., 2.0, 0.], 2., 1.5, 0.5, 2),
-        shape_maker::make_house(&array![-3., 0., -3., 0.], 1., 1., 1., 3),
+    let shape_vec = vec![
+        shape_maker::make_cube(&array![-1.5, 0., -1.5, 0.], 1.),
+        shape_maker::make_box(&array![2., 0., 0., 0.], 1.5, 0.5, 2.5),
+        shape_maker::make_rectangular_pyramid(&array![-2., -0., 2.0, 0.], 2., 1.5, 0.5),
+        shape_maker::make_house(&array![-3., 0., -3., 0.], 1., 1., 1.),
 
-        shape_maker::make_origin(&array![0., 0., 0., 0.], 1., 4),
-        // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1., 5),
+        // Marker rectangles: FL, TR, BR, BL
+        shape_maker::make_box(&array![-4., 0., 4., 0.], 2., 0.2, 1.),
+        shape_maker::make_box(&array![-4., 0., 3., 0.], 1., 2., 1.),
+
+        shape_maker::make_box(&array![4., 0., 4., 0.], 2., 0.2, 1.),
+        shape_maker::make_box(&array![4., 0., 3., 0.], 1., 1., 1.),
+
+        shape_maker::make_box(&array![4., 0., -4., 0.], 2., 0.2, 1.),
+        shape_maker::make_box(&array![4., 0., -3., 0.], 1., 0.5, 1.),
+
+        shape_maker::make_box(&array![-4., 0., -4., 0.], 2., 0.2, 1.),
+        shape_maker::make_box(&array![-4., 0., -3., 0.], 1., 0.2, 1.),
+
+        // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1.),
+
+        shape_maker::make_origin(&array![0., 0., 0., 0.], 1.),
+        shape_maker::make_hypercube(&array![1.5, 0., -2.0, 0.], 1.),
     ];
+
+    let shapes = HashMap::new();
+    for (id, shape) in shape_vec.into_iter().enumerate() {
+        shapes.insert(id, shape);
+    }
 
     drawing::run(shapes, false);
 }

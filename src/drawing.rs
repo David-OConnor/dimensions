@@ -16,7 +16,7 @@ use ggez::timer;
 
 use clipping;
 use transforms;
-use types::{Shape, Camera, Pt2D};
+use types::{Shape, Edge, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
@@ -26,24 +26,35 @@ fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
         // If 3d, the 4th items for position isn't used.
-        position: array![0., 2.0, -5., 0.],
+        position: array![0., 2.0, -5., -5.],
         θ_3d: array![0., τ / 16., 0.],
-        θ_4d: array![0., τ / 16., 0., 0., 0., 0.],
+        θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov: τ / 5.,
         f: 30.,
         n: 0.9,
     }
 }
 
+enum MoveDirection{
+    Forward,
+    Back,
+    Left,
+    Right,
+    Up,
+    Down,
+    Fourup,
+    Fourdown,
+}
+
 struct MainState {
-    shapes: Vec<Shape>,
+    shapes: HashMap<i32, Shape>,
     zoomlevel: f32,
     camera: Camera,
     is_4d: bool,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context, shapes: Vec<Shape>, is_4d: bool) -> GameResult<MainState> {  
+    fn new(_ctx: &mut Context, shapes: HashMap<i32, Shape>, is_4d: bool) -> GameResult<MainState> {  
         let s = MainState {
             shapes,
             zoomlevel: 1.0,
@@ -55,8 +66,46 @@ impl MainState {
     }
 }
 
-fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> GameResult<graphics::Mesh> {
+fn dist_from_edge(pt_0: &Array1<f64>, pt_1: &Array1<f64>, 
+                  cam_posit: &Array1<f64>) -> f64 {
+    // Find an edge's average distance from the camera, using only
+    // the first three dimensions.
+    assert![pt_0.len() == 4 && pt_1.len() == 4 && cam_posit.len() == 4];
+
+    let avg_coord = (pt_1 - pt_0) / 2.;
+    
+    (
+        (cam_posit[0] - avg_coord[0]).powi(2) + 
+        (cam_posit[1] - avg_coord[1]).powi(2) + 
+        (cam_posit[2] - avg_coord[2]).powi(2)
+    ).sqrt()
+}
+
+fn find_thickness(min_width: f32, max_width: f32,
+                  min_dist: f32, max_dist: f32, dist: f64) -> f32 {
+    // Edges closer to the user (Z axis) are thicker.
+    let mut portion_through = (dist as f32 - min_dist) / (max_dist - min_dist);
+
+    if portion_through > 1. {
+        portion_through = 1.
+    } else if portion_through < 0. {
+        portion_through = 0.
+    }
+    max_width - portion_through * (max_width - min_width)
+}
+
+// fn set_color(start_color: f32, end_color: f32,
+//              min_dist: f32, max_dist: f32, dist: f64) -> f32 {
+//     // Edges vary in color, depending on fourth-dimension (U axis) distance.
+//     let portion_through = (dist as f32 - min_dist) / (max_dist - min_dist);
+//     min_width + portion_through * (max_width - min_width)
+// }
+
+fn build_mesh(ctx: &mut Context, projected_shapes: HashMap<i32, Shape>,
+              raw_shapes: &HashMap<i32, Shape>,
+              cam_posit: &Array1<f64>, width: f64) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
+
     let mb = &mut graphics::MeshBuilder::new();
 
     const OFFSET_X: f32 = (CANVAS_SIZE.0 / 2) as f32;
@@ -65,31 +114,24 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
     // Scale to window.
     // Assume the points projected to 0 are at the center of the
     // screen, and that we've projected onto a square window.
-    let x_max = width / 2.2;
+    let x_max = width / 2.;
     let y_max = x_max;
     let x_min = -x_max;
     let y_min = x_min;
 
     let scaler = (CANVAS_SIZE.0 as f64 / width) as f32;
 
-    for shape in projected_shapes {
-        // create a map of projected_nodes we can query from edges.  Perhaps this extra
-        // data structure is unecessary, or that hashmaps should be the primary
-        // way of storing projected_nodes.
-        let mut node_map = HashMap::new();
-        for node in &shape.nodes{
-            node_map.insert(node.id, node.clone());
-        }
-
+    for (shape_id, shape) in projected_shapes {
         for edge in &shape.edges {
-            let start = node_map[&edge.node1];
-            let end = node_map[&edge.node2];
+            let start = shape.nodes[&edge.node1];
+            let end = shape.nodes[&edge.node2];
 
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
 
             let clipped_pt = clipping::clip(
-                &start_pt, &end_pt, x_min, x_max, y_min, y_max);
+                &start_pt, &end_pt, x_min, x_max, y_min, y_max
+            );
             
             let start_clipped: Pt2D;
             let end_clipped: Pt2D;
@@ -113,25 +155,22 @@ fn build_mesh(ctx: &mut Context, projected_shapes: Vec<Shape>, width: f64) -> Ga
                 ),
             ];
 
+            let dist = dist_from_edge(
+                &raw_shapes[shape_id].nodes[&edge.node1].a,
+                &raw_shapes[shape_id].nodes[&edge.node2].a,
+                cam_posit
+            );
+
+            println!("THICK: {}", find_thickness(0.1, 10.0, 0.5, 5., dist));
+
             mb.line(
                 points,
-                2.0,  // line width.
+                find_thickness(0.1, 10.0, 0.5, 5., dist)  // line width.
             );
         }
     }
 
     mb.build(ctx)
-}
-
-enum MoveDirection{
-    Forward,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down,
-    Fourup,
-    Fourdown,
 }
 
 fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
@@ -150,7 +189,9 @@ fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Fourdown => array![0., 0., 0.],
     };
 
-    transforms::rotate_3d(θ).dot(&unit_vec)
+    // Position always uses 3d vectors, with an unused fourth element.
+    // stack![Axis(0), transforms::rotate_3d(θ).dot(&unit_vec), array![0.]]
+    stack![Axis(0), unit_vec, array![0.]]
 }
 
 fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
@@ -168,7 +209,8 @@ fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Fourdown => array![0., 0., 0., -1.],
     };
 
-    transforms::rotate_4d(θ).dot(&unit_vec)
+    unit_vec
+    // transforms::rotate_4d(θ).dot(&unit_vec)
 }
 
 fn add_ang_norm(angle: f64, amount: f64) -> f64 {
@@ -217,7 +259,13 @@ impl event::EventHandler for MainState {
             );
         }
 
-        let mesh = build_mesh(ctx, projected_shapes, self.camera.width())?;
+        let mesh = build_mesh(ctx, 
+                              projected_shapes, 
+                              &self.shapes,
+                              &self.camera.position,
+                              self.camera.width()
+        )?;
+
         graphics::set_color(ctx, (0, 255, 255).into())?;
         graphics::draw_ex(ctx, &mesh, Default::default())?;
 
@@ -248,6 +296,7 @@ impl event::EventHandler for MainState {
                 self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
                 // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
                 println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
+                println!("Posit: {}", &self.camera.position);
                 println!("θ {}", &self.camera.θ_3d);
                 println!("width: {}", &self.camera.width());
             },
@@ -285,7 +334,7 @@ impl event::EventHandler for MainState {
             },
             Keycode::F => {
                 let move_vec = move_func(MoveDirection::Fourdown, &self.camera.θ_4d);
-                self.camera.position -= &(move_vec * MOVE_SENSITIVITY);
+                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::R => {
                 let move_vec = move_func(MoveDirection::Fourup, &self.camera.θ_4d);
@@ -343,7 +392,7 @@ impl event::EventHandler for MainState {
     }
 }
 
-pub fn run(shapes: Vec<Shape>, is_4d: bool) {
+pub fn run(shapes: HashMap<i32, Shape>, is_4d: bool) {
     // Render lines using ggez.
     let c = conf::Conf {
         window_mode: conf::WindowMode {

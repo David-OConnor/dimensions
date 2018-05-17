@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ndarray::prelude::*;
 
 #[derive(Debug)]
@@ -9,7 +11,6 @@ pub struct Pt2D {
 #[derive(Debug)]
 pub struct Node {
     pub a: Array1<f64>,
-    pub id: i32,
 }
 
 // We derive clone on edge for when copying it, unchanged, into a new shape
@@ -24,9 +25,8 @@ pub struct Edge {
 pub struct Shape {
     // Currently, the main use of this is to allow node ids to remain local,
     // preventing duplicates when generating shapes independently.
-    pub nodes: Vec<Node>,
+    pub nodes: HashMap<i32, Node>,
     pub edges: Vec<Edge>,
-    pub id: i32,
 }
 
 #[derive(Debug)]
