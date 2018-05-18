@@ -11,7 +11,6 @@
 extern crate ndarray;
 extern crate ggez;
 
-
 // GFX crate imports here.
 // #[macro_use]
 // // extern crate gfx;
@@ -28,14 +27,12 @@ extern crate ggez;
 // extern crate winit;
 // extern crate image;
 
-
 mod types;
 mod render_ggez;
 mod transforms;
 mod shape_maker;
 mod clipping;
 // mod render_gfx;
-mod render_webgl;
 
 use std::collections::HashMap;
 
