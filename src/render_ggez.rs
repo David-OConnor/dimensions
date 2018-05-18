@@ -26,10 +26,11 @@ fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
         // If 3d, the 4th items for position isn't used.
-        position: array![0., 2.0, -5., -5.],
-        θ_3d: array![0., τ / 16., 0.],
+        position: array![0., 3., -6., -2.],
+        θ_3d: array![0., 0., 0.],
         θ_4d: array![0., 0., 0., 0., 0., 0.],
-        fov: τ / 5.,
+        fov_hor: τ / 5.,
+        fov_vert: τ / 5.,
         f: 30.,
         n: 0.9,
     }
@@ -101,9 +102,12 @@ fn find_thickness(min_width: f32, max_width: f32,
 //     min_width + portion_through * (max_width - min_width)
 // }
 
-fn build_mesh(ctx: &mut Context, projected_shapes: HashMap<i32, Shape>,
+fn build_mesh(ctx: &mut Context, 
+              projected_shapes: HashMap<i32, Shape>,
               raw_shapes: &HashMap<i32, Shape>,
-              cam_posit: &Array1<f64>, width: f64) -> GameResult<graphics::Mesh> {
+              cam_posit: &Array1<f64>, 
+              width: f64
+    ) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
 
     let mb = &mut graphics::MeshBuilder::new();
@@ -123,8 +127,8 @@ fn build_mesh(ctx: &mut Context, projected_shapes: HashMap<i32, Shape>,
 
     for (shape_id, shape) in projected_shapes {
         for edge in &shape.edges {
-            let start = shape.nodes[&edge.node1];
-            let end = shape.nodes[&edge.node2];
+            let start = &shape.nodes[&edge.node1];
+            let end = &shape.nodes[&edge.node2];
 
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
@@ -156,16 +160,16 @@ fn build_mesh(ctx: &mut Context, projected_shapes: HashMap<i32, Shape>,
             ];
 
             let dist = dist_from_edge(
-                &raw_shapes[shape_id].nodes[&edge.node1].a,
-                &raw_shapes[shape_id].nodes[&edge.node2].a,
+                &raw_shapes[&shape_id].nodes[&edge.node1].a,
+                &raw_shapes[&shape_id].nodes[&edge.node2].a,
                 cam_posit
             );
 
-            println!("THICK: {}", find_thickness(0.1, 10.0, 0.5, 5., dist));
+            println!("THICK: {}", find_thickness(0.1, 10.0, 1.0, 10., dist));
 
             mb.line(
                 points,
-                find_thickness(0.1, 10.0, 0.5, 5., dist)  // line width.
+                find_thickness(0.3, 10.0, 0.5, 5., dist)  // line width.
             );
         }
     }
@@ -180,8 +184,11 @@ fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
         MoveDirection::Back => array![0., 0., -1.],
-        MoveDirection::Left => array![-1., 0., 0.],
-        MoveDirection::Right => array![1., 0., 0.],
+
+        // Reversed for mirror effect
+        MoveDirection::Left => -array![-1., 0., 0.],
+        MoveDirection::Right => -array![1., 0., 0.],
+
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
         // For 4d move inputs, don't do anything.
@@ -190,7 +197,7 @@ fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     };
 
     // Position always uses 3d vectors, with an unused fourth element.
-    // stack![Axis(0), transforms::rotate_3d(θ).dot(&unit_vec), array![0.]]
+    // stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
     stack![Axis(0), unit_vec, array![0.]]
 }
 
@@ -201,8 +208,10 @@ fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1., 0.],
         MoveDirection::Back => array![0., 0., -1., 0.],
-        MoveDirection::Left => array![-1., 0., 0., 0.],
-        MoveDirection::Right => array![1., 0., 0., 0.],
+        // todo not sure why I negatee left/Righ tmovement to flip world... mirror effect?
+        MoveDirection::Left => -array![-1., 0., 0., 0.],
+        MoveDirection::Right => -array![1., 0., 0., 0.],
+        
         MoveDirection::Up => array![0., 1., 0., 0.],
         MoveDirection::Down => array![0., -1., 0., 0.],
         MoveDirection::Fourup => array![0., 0., 0., 1.],
@@ -253,7 +262,8 @@ impl event::EventHandler for MainState {
                 &self.shapes, &self.camera, &R_4d, &R_3d
             );
         } else {
-            let R = transforms::rotate_3d(&-&self.camera.θ_3d);
+            // let R = transforms::rotate_3d(&-&self.camera.θ_3d);
+            let R = transforms::rotate_3d(&self.camera.θ_3d);
             projected_shapes = transforms::project_shapes_3d(
                 &self.shapes, &self.camera, &R
             );
@@ -304,6 +314,7 @@ impl event::EventHandler for MainState {
                 let move_vec = move_func(MoveDirection::Back, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
+
             Keycode::A => {
                 let move_vec = move_func(MoveDirection::Left, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
@@ -382,8 +393,8 @@ impl event::EventHandler for MainState {
             Keycode::G => self.camera.f -= 1. * ZOOM_SENSITIVITY,
             Keycode::T => self.camera.f += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
-            Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
+            Keycode::Minus => self.camera.fov_hor += 1. * ZOOM_SENSITIVITY,
+            Keycode::Equals => self.camera.fov_hor -= 1. * ZOOM_SENSITIVITY,
 
             // reset
             Keycode::Backspace => self.camera = DEFAULT_CAMERA(),

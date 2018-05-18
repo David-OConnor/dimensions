@@ -96,15 +96,17 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
         [0., 0., 0., 1., -cam.position[3]],
         [0., 0., 0., 0., 1.],
     ];
+ 
     let shifted_pt = translation_matrix.dot(
         &array![node.a[0], node.a[1], node.a[2], node.a[3], 1.]
     );
 
+    // todo not sure why I negated [0] to flip world... mirror effect?
     let rotated_shifted_pt = R.dot(
-        &array![shifted_pt[0], shifted_pt[1], shifted_pt[2], shifted_pt[3]]
+        &array![-shifted_pt[0], shifted_pt[1], shifted_pt[2], shifted_pt[3]]
     );
 
-    let s = 1. / (cam.fov / 2. as f64).tan();
+    let s = 1. / (cam.fov_hor / 2. as f64).tan();
 
     let perspective_projection = array![
         [s, 0., 0., 0., 0.],
@@ -147,6 +149,42 @@ pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // R matrices rotate a vector around a single axis.
     let R_x = array![
         [1., 0., 0.],
+        [0., cos_x, -sin_x],
+        [0., sin_x, cos_x],
+    ];
+
+    let R_y = array![
+        [cos_y, 0., sin_y],
+        [0., 1., 0.],
+        [-sin_y, 0., cos_y]
+    ];
+
+    let R_z = array![
+        [cos_z, sin_z, 0.],
+        [-sin_z, cos_z, 0.],
+        [0., 0., 1.]
+    ];
+
+    // Combine the three rotations.
+    R_x.dot(&(R_y.dot(&R_z)))
+}
+
+pub fn rotate_3d_2(θ: &Array1<f64>) -> Array2<f64> {
+    // Compute a 3-dimensional rotation matrix.
+    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
+    assert![θ.len() == 3];
+
+    // cache trig computations
+    let cos_x = θ[0].cos();
+    let sin_x = θ[0].sin();
+    let cos_y = θ[1].cos();
+    let sin_y = θ[1].sin();
+    let cos_z = θ[2].cos();
+    let sin_z = θ[2].sin();
+
+    // R matrices rotate a vector around a single axis.
+    let R_x = array![
+        [1., 0., 0.],
         [0., cos_x, sin_x],
         [0., -sin_x, cos_x],
     ];
@@ -158,8 +196,8 @@ pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     ];
 
     let R_z = array![
-        [cos_z, sin_z, 0.],
-        [-sin_z, cos_z, 0.],
+        [cos_z, -sin_z, 0.],
+        [sin_z, cos_z, 0.],
         [0., 0., 1.]
     ];
 
@@ -185,8 +223,9 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
         [0., 0., 1., -cam.position[2]],
         [0., 0., 0., 1.],
     ];
+    // todo not sure why I negated [0] to flip world... mirror effect?
     let shifted_pt = translation_matrix.dot(
-        &array![node.a[0], node.a[1], node.a[2], 1.]
+        &array![-node.a[0], node.a[1], node.a[2], 1.]
     );
 
     let rotated_shifted_pt = R.dot(
@@ -195,11 +234,12 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
 
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
     // projection-matrix/building-basic-perspective-projection-matrix
-    let s = 1. / (cam.fov / 2. as f64).tan();
+    let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
+    let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
 
     let perspective_projection = array![
-        [s, 0., 0., 0.],
-        [0., s, 0., 0.],
+        [s_h, 0., 0., 0.],
+        [0., s_v, 0., 0.],
         [0., 0., -cam.f / (cam.f-cam.n), -1.],
         [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
     ];
@@ -220,13 +260,13 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
 
     let mut projected_shapes = HashMap::new();
 
-    for (shape_id, shape) in &shapes {
-        let projected_nodes = HashMap::new();
+    for (shape_id, shape) in shapes {
+        let mut projected_nodes = HashMap::new();
         for (node_id, node) in &shape.nodes {
-            projected_nodes.insert(node_id, project_3d(camera, R, &node));
+            projected_nodes.insert(*node_id, project_3d(camera, R, &node));
         }
         projected_shapes.insert(
-            shape_id, Shape {nodes: projected_nodes, edges: shape.edges}
+            *shape_id, Shape {nodes: projected_nodes, edges: shape.edges.clone()}
         );
     }
     
@@ -239,21 +279,22 @@ pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, camera: &Camera,
     assert![R_4d.rows() == 4 && R_4d.cols() == 4];
     assert![R_3d.rows() == 3 && R_3d.cols() == 3];
 
-    let projected_shapes_3d = project_shapes_3d(shapes, camera, R_3d);
-    let mut projected_shapes_4d = HashMap::new();
-
+    // First project from 4d to 3d
+    let mut projected_shapes_3d = HashMap::new();
+    
     // todo DRY between here and project_shapes_3d.
-    for (shape_id, shape) in &projected_shapes_3d {
-        let projected_nodes = HashMap::new();
+    for (shape_id, shape) in shapes {
+        let mut projected_nodes = HashMap::new();
         for (node_id, node) in &shape.nodes {
-            projected_nodes.insert(node_id, project_4d(camera, R_4d, &node));
+            projected_nodes.insert(*node_id, project_4d(camera, R_4d, &node));
         }
-        projected_shapes_4d.insert(
-            shape_id, Shape {nodes: projected_nodes, edges: shape.edges}
+        projected_shapes_3d.insert(
+            *shape_id, Shape {nodes: projected_nodes, edges: shape.edges.clone()}
         );
     }
-    
-    projected_shapes_4d
+
+    // Now project from 3d to 2d.
+    project_shapes_3d(&projected_shapes_3d, camera, R_3d)
 }
 
 #[cfg(test)]

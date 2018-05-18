@@ -12,6 +12,24 @@ pub type DepthFormat = gfx::format::DepthStencil;
 
 const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
+// Put this code above your main function
+gfx_defines!{
+    vertex Vertex {
+        pos: [f32; 4] = "a_Pos",
+        color: [f32; 3] = "a_Color",
+    }
+
+    constant Transform {
+        transform: [[f32; 4];4] = "u_Transform",
+    }
+
+    pipeline pipe {
+        vbuf: gfx::VertexBuffer<Vertex> = (),
+        transform: gfx::ConstantBuffer<Transform> = "Transform",
+        out: gfx::RenderTarget<ColorFormat> = "Target0",
+    }
+}
+
 pub fn main() {
     let mut events_loop = glutin::EventsLoop::new();
     let windowbuilder = glutin::WindowBuilder::new()

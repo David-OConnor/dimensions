@@ -3,7 +3,9 @@
 
 // This algorithm clips post-projection, ie on the 2d screen.
 
-use types::Pt2D;
+use ndarray::prelude::*;
+
+use types::{Pt2D, Camera, Node};
 
 const INSIDE: i8 = 0;
 const LEFT: i8 = 1;
@@ -102,6 +104,44 @@ pub fn clip(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
         }
     }
 }
+
+struct Frustrum {
+    // 3d frustrum.
+    // eg FUL for Far Up Left. Front means high z coord.
+    FUL: Array1<f64>,
+    FUR: Array1<f64>,
+    FDL: Array1<f64>,
+    FDR: Array1<f64>,
+     
+    NUL: Array1<f64>,
+    NUR: Array1<f64>,
+    NDL: Array1<f64>,
+    NDR: Array1<f64>,
+}
+
+fn make_frustrum(cam: &Camera) -> Frustrum {
+    // todo as method for camera?
+    let (far_width, far_height) = cam.view_size(true);
+    let (near_width, near_height) = cam.view_size(false);
+    
+    let FUL = array![-far_width / 2., far_height / 2., cam.f];
+    let FUR = array![far_width / 2., far_height / 2., cam.f];
+    let FDL = array![-far_width / 2., -far_height / 2., cam.f];
+    let FDR = array![far_width / 2., -far_height / 2., cam.f];
+
+    let NUL = array![-near_width / 2., near_height / 2., cam.n];
+    let NUR = array![near_width / 2., near_height / 2., cam.n];
+    let NDL = array![-near_width / 2., -near_height / 2., cam.n];
+    let NDR = array![near_width / 2., -near_height / 2., cam.n];
+
+    Frustrum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
+}
+
+fn normalize_to_frustrum(shifted_node: Node) {
+    // Using the frustrum's slope, calculate a simulated point location, along
+    // with simulated min and max values for clipping.
+}
+
 
 #[cfg(test)]
 mod tests {
