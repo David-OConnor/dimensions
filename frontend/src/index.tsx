@@ -9,10 +9,12 @@ import {Provider, connect, Dispatch} from 'react-redux'
 import createHistory from 'history/createBrowserHistory'
 
 import {Main} from './main'
-import {MainState} from './interfaces'
+import {MainState, Shape} from './interfaces'
+
+const shapes = new Map()
 
 const initialState: MainState = {
-
+    shapes: shapes
 }
 
 const mainReducer = (state: MainState=initialState, action: any) => {

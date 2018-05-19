@@ -96,9 +96,10 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
         [0., 0., 0., 1., -cam.position[3]],
         [0., 0., 0., 0., 1.],
     ];
- 
+
+    // Reverse x position due to mirror effect.
     let shifted_pt = translation_matrix.dot(
-        &array![node.a[0], node.a[1], node.a[2], node.a[3], 1.]
+        &array![-node.a[0], node.a[1], node.a[2], node.a[3], 1.]
     );
 
     // todo not sure why I negated [0] to flip world... mirror effect?
@@ -136,7 +137,7 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
 pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    assert![θ.len() == 3];
+    assert_eq![θ.len(), 3];
 
     // cache trig computations
     let cos_x = θ[0].cos();
@@ -172,7 +173,7 @@ pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
 pub fn rotate_3d_2(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    assert![θ.len() == 3];
+    assert_eq![θ.len(),  3];
 
     // cache trig computations
     let cos_x = θ[0].cos();
@@ -196,8 +197,8 @@ pub fn rotate_3d_2(θ: &Array1<f64>) -> Array2<f64> {
     ];
 
     let R_z = array![
-        [cos_z, -sin_z, 0.],
-        [sin_z, cos_z, 0.],
+        [cos_z, sin_z, 0.],
+        [-sin_z, cos_z, 0.],
         [0., 0., 1.]
     ];
 
@@ -223,7 +224,7 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
         [0., 0., 1., -cam.position[2]],
         [0., 0., 0., 1.],
     ];
-    // todo not sure why I negated [0] to flip world... mirror effect?
+    // Negate x position due to mirror effect.
     let shifted_pt = translation_matrix.dot(
         &array![-node.a[0], node.a[1], node.a[2], 1.]
     );

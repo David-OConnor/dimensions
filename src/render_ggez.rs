@@ -73,11 +73,10 @@ fn dist_from_edge(pt_0: &Array1<f64>, pt_1: &Array1<f64>,
     // the first three dimensions.
     assert![pt_0.len() == 4 && pt_1.len() == 4 && cam_posit.len() == 4];
 
-    let avg_coord = (pt_1 - pt_0) / 2.;
-    
+    let avg_coord = (pt_1 + pt_0) / 2.;
     (
-        (cam_posit[0] - avg_coord[0]).powi(2) + 
-        (cam_posit[1] - avg_coord[1]).powi(2) + 
+        (cam_posit[0] - -avg_coord[0]).powi(2) +
+        (cam_posit[1] - avg_coord[1]).powi(2) +
         (cam_posit[2] - avg_coord[2]).powi(2)
     ).sqrt()
 }
@@ -165,11 +164,9 @@ fn build_mesh(ctx: &mut Context,
                 cam_posit
             );
 
-            println!("THICK: {}", find_thickness(0.1, 10.0, 1.0, 10., dist));
-
             mb.line(
                 points,
-                find_thickness(0.3, 10.0, 0.5, 5., dist)  // line width.
+                find_thickness(0.3, 12.0, 0.1, 10., dist)  // line width.
             );
         }
     }
@@ -179,36 +176,38 @@ fn build_mesh(ctx: &mut Context,
 
 fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     // Move the camera to a new position, based on where it's pointing.
-    assert!(θ.len() == 3);
+    assert_eq!(θ.len(),  3);
 
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
         MoveDirection::Back => array![0., 0., -1.],
 
-        // Reversed for mirror effect
+        // Reverse x-direction movement for mirror effect.
         MoveDirection::Left => -array![-1., 0., 0.],
         MoveDirection::Right => -array![1., 0., 0.],
 
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
+
         // For 4d move inputs, don't do anything.
         MoveDirection::Fourup => array![0., 0., 0.],
         MoveDirection::Fourdown => array![0., 0., 0.],
     };
 
     // Position always uses 3d vectors, with an unused fourth element.
-    // stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
-    stack![Axis(0), unit_vec, array![0.]]
+     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
+//    stack![Axis(0), unit_vec, array![0.]]
 }
 
 fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     // Move the camera to a new position, based on where it's pointing.
-    assert!(θ.len() == 6);
+    assert_eq!(θ.len(), 6);
 
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1., 0.],
         MoveDirection::Back => array![0., 0., -1., 0.],
-        // todo not sure why I negatee left/Righ tmovement to flip world... mirror effect?
+
+        // Reverse x-direction movement for mirror effect.
         MoveDirection::Left => -array![-1., 0., 0., 0.],
         MoveDirection::Right => -array![1., 0., 0., 0.],
         
