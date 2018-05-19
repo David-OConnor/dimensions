@@ -206,6 +206,23 @@ pub fn rotate_3d_2(θ: &Array1<f64>) -> Array2<f64> {
     R_x.dot(&(R_y.dot(&R_z)))
 }
 
+fn translate(pt: &Array1<f64>, cam_position: &Array1<f64>) -> Array1<f64> {
+    // Translate a node.  Use this for 3d and 4d translations.
+    assert![pt.len() == 4 && cam_position.len == 4];
+
+    let translation_matrix = array![
+        [1., 0., 0., 0., cam_position[0]],
+        [0., 1., 0., 0., cam_position[1]],
+        [0., 0., 1., 0., cam_position[2]],
+        [0., 0., 1., 0., cam_position[3]],
+        [0., 0., 0., 0., 1.],
+    ];
+    // Negate x position due to mirror effect.
+    translation_matrix.dot(
+        &array![-pt.a[0], pt.a[1], pt.a[2], pt.a[3], 1.]
+    )
+}
+
 fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
@@ -216,18 +233,7 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // the camera, with origin in C and rotated by θ with respect
     // to the initial coordinate system.
 
-    // World transform matrix, translation only. Shift first, since we're
-    // rotating around the camera as the origin.
-    let translation_matrix = array![
-        [1., 0., 0., -cam.position[0]],
-        [0., 1., 0., -cam.position[1]],
-        [0., 0., 1., -cam.position[2]],
-        [0., 0., 0., 1.],
-    ];
-    // Negate x position due to mirror effect.
-    let shifted_pt = translation_matrix.dot(
-        &array![-node.a[0], node.a[1], node.a[2], 1.]
-    );
+    let translated_pt = translate(&node.a, &-cam.position);
 
     let rotated_shifted_pt = R.dot(
         &array![shifted_pt[0], shifted_pt[1], shifted_pt[2]]
@@ -254,48 +260,69 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     Node {a: array![f[0] / f[3], f[1] / f[3]]}
 }
 
-pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
-                         R: &Array2<f64>) -> HashMap<i32, Shape> {
-    // Project shapes; modify their nodes to be projected on a 2d surface.
+fn rotate_shape_3d(shape: Shape, R: &Array2<f64>) -> Shape {
     assert![R.rows() == 3 && R.cols() == 3];
+    let center =
 
-    let mut projected_shapes = HashMap::new();
-
-    for (shape_id, shape) in shapes {
-        let mut projected_nodes = HashMap::new();
-        for (node_id, node) in &shape.nodes {
-            projected_nodes.insert(*node_id, project_3d(camera, R, &node));
-        }
-        projected_shapes.insert(
-            *shape_id, Shape {nodes: projected_nodes, edges: shape.edges.clone()}
-        );
-    }
-    
-    projected_shapes
 }
 
-pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, camera: &Camera, 
-                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> HashMap<i32, Shape> {
+fn position_shape(shape: &Shape, is_4d: bool) -> HashMap<i32, Node> {
+    // Position a shape's nodes in 3 or 4d space, based on its position
+    // and rotation parameters.
+
+    // First, rotation around the shape's origin.
+    let R = match is_4d {
+        true => rotate_4d(&shape.rotation),
+        false => rotate_3d(&shape.rotation),
+    };
+    let mut rotated_nodes = HashMap::new();
+    for (id, node) in &shape.nodes {
+        rotated_nodes.insert(id, R.dot(&node.a));
+    }
+
+    let mut positioned_nodes = HashMap::new();
+    for (id, node) in &rotated_nodes {
+        positioned_nodes.insert(id, translate(&node.a, &shape.position))
+    }
+    positioned_nodes
+}
+
+pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
+                         R: &Array2<f64>) -> HashMap<(i32, i32), Node> {
+    // Project shapes; modify their nodes to be projected on a 2d surface.
+    // The HashMap key is (shape_index, node_index), so we can tie back to the
+    // original shapes later.
+    assert![R.rows() == 3 && R.cols() == 3];
+
+    let mut projected_nodes = HashMap::new();
+
+    for (shape_id, shape) in shapes {
+        for (node_id, node) in &shape.nodes {
+            projected_nodes.insert((*shape_id, *node_id), project_3d(camera, R, &node));
+        }
+    }
+    
+    projected_nodes
+}
+
+pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, camera: &Camera,
+                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> HashMap<(i32, i32), Node> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     assert![R_4d.rows() == 4 && R_4d.cols() == 4];
     assert![R_3d.rows() == 3 && R_3d.cols() == 3];
 
     // First project from 4d to 3d
-    let mut projected_shapes_3d = HashMap::new();
-    
+    let mut projected_nodes_3d = HashMap::new();
+
     // todo DRY between here and project_shapes_3d.
     for (shape_id, shape) in shapes {
-        let mut projected_nodes = HashMap::new();
         for (node_id, node) in &shape.nodes {
-            projected_nodes.insert(*node_id, project_4d(camera, R_4d, &node));
+            projected_nodes.insert((*shape_id, *node_id), project_4d(camera, R_4d, &node));
         }
-        projected_shapes_3d.insert(
-            *shape_id, Shape {nodes: projected_nodes, edges: shape.edges.clone()}
-        );
     }
 
     // Now project from 3d to 2d.
-    project_shapes_3d(&projected_shapes_3d, camera, R_3d)
+    project_shapes_3d(&projected_nodes_3d, camera, R_3d)
 }
 
 #[cfg(test)]

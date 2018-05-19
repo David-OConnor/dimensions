@@ -10,6 +10,7 @@ pub struct Pt2D {
 
 #[derive(Debug)]
 pub struct Node {
+    // a may be relative or absolute.
     pub a: Array1<f64>,
 }
 
@@ -23,10 +24,12 @@ pub struct Edge {
 
 #[derive(Debug)]
 pub struct Shape {
-    // Currently, the main use of this is to allow node ids to remain local,
-    // preventing duplicates when generating shapes independently.
+    // Shape nodes and rotation are relative to an origin of 0.
     pub nodes: HashMap<i32, Node>,
     pub edges: Vec<Edge>,
+    pub position: Array1<f64>,
+    pub rotation: Array1<f64>,  // Rotation has 6 items; one for each of the 4d hyperplanes.
+    pub rotation_speed: Array1<f64>,  // 6 items, as with rotation.  Radians/s ?
 }
 
 #[derive(Debug)]

@@ -195,8 +195,8 @@ fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     };
 
     // Position always uses 3d vectors, with an unused fourth element.
-     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
-//    stack![Axis(0), unit_vec, array![0.]]
+//     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
+    stack![Axis(0), unit_vec, array![0.]]
 }
 
 fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {

@@ -5,34 +5,36 @@ use ndarray::prelude::*;
 use types::{Node, Edge, Shape};
 
 // We'll define y as vertical, and z as forward/back.  All shapes are given
-// four coordinates. Leave 
+// four coordinates. Leave
 
-pub fn make_box(center: &Array1<f64>, x_len: f64, y_len: f64, z_len: f64) -> Shape {
+// Nodes are set up here so that 0 is at their center; this is used for scaling,
+// rotation, and positioning in the world.
+
+pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
+                position: Array1<f64>, rotation: Array1<f64>,
+                rotation_speed: Array1<f64>) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
     let coords = [
         // Front
-        [0., 0., 0., 0.],
-        [1., 0., 0., 0.],
-        [1., 1., 0., 0.],
-        [0., 1., 0., 0.],
+        [-1., -1., -1., 0.],
+        [1., -1., -1., 0.],
+        [1., 1., -1., 0.],
+        [-1., 1., -1., 0.],
         
         // Back
-        [0., 0., 1., 0.],
-        [1., 0., 1., 0.],
+        [-1., -1., 1., 0.],
+        [1., -1., 1., 0.],
         [1., 1., 1., 0.],
-        [0., 1., 1., 0.],
+        [-1., 1., 1., 0.],
     ];
 
     let mut nodes = HashMap::new();
-    for (id, coord) in coords.into_iter().enumerate() {
-        nodes.insert(id as i32, Node {a: array![
-            center[0] + coord[0] * x_len,
-            center[1] + coord[1] * y_len,
-            center[2] + coord[2] * z_len,
-            center[3],
-        ]});
+    for (id, coord) in coords.iter().enumerate() {
+        nodes.insert(id as i32, Node {
+            a: array![coord[0] * x_len, coord[1] * y_len, coord[2].z_len, coord[3]]
+        });
     }
 
     let edges = vec![
@@ -55,22 +57,30 @@ pub fn make_box(center: &Array1<f64>, x_len: f64, y_len: f64, z_len: f64) -> Sha
         Edge {node1: 3, node2: 7},
     ];
 
-    Shape {nodes, edges}
+    Shape {nodes, edges, position, rotation, rotation_speed}
 }
 
-pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64, 
-                                z_len: f64, height: f64) -> Shape {
+pub fn make_rectangular_pyramid(x_len: f64,
+                                z_len: f64, height: f64,
+                                position: Array1<f64>, rotation: Array1<f64>,
+                                rotation_speed: Array1<f64>) -> Shape {
+    let coords = [
+        // Base
+        [-1., -1., 0., 0.],
+        [1., -1., 0., 0.],
+        [1., 1., 0., 0.],
+        [-1., 1., 0., 0.],
+
+        // Top
+        [0., 0., 1., 0.],
+    ];
 
     let mut nodes = HashMap::new();
-    
-    // Base
-    nodes.insert(0, Node {a: center.clone()});
-    nodes.insert(1, Node {a: array![center[0] + x_len, center[1], center[2], center[3]]});
-    nodes.insert(2, Node {a: array![center[0] + x_len, center[1], center[2] + z_len, center[3]]});
-    nodes.insert(3, Node {a: array![center[0], center[1], center[2] + z_len, center[3]]});
-
-    // Top
-    nodes.insert(4, Node{a: array![center[0] + x_len / 2., center[1] + height, center[2] + z_len / 2., center[3]]});
+    for (id, coord) in coords.iter().enumerate() {
+        nodes.insert(id as i32, Node {
+            a: array![coord[0] * x_len, coord[1] * y_len, coord[2].height, coord[4]]
+        });
+    }
 
     let edges = vec![
         // Front
@@ -86,11 +96,12 @@ pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64,
         Edge {node1: 3, node2: 4},
     ];
 
-    Shape {nodes, edges}
+    Shape {nodes, edges, position, rotation, rotation_speed}
 }
 
-// pub fn make_house(center: &Array1<f64>, x_len: f64, 
-//                   y_len: f64, z_len: f64) -> Shape {
+// pub fn make_house(x_len: f64,
+//                   y_len: f64, z_len: f64, position: Array1<f64>, rotation: Array1<f64>,
+//                                rotation_speed: Array1<f64>) -> Shape {
 //     let mut base = make_box(&(center.clone()), x_len, y_len, z_len);
 
 //     let mut roof = make_rectangular_pyramid(
@@ -125,38 +136,38 @@ pub fn make_rectangular_pyramid(center: &Array1<f64>, x_len: f64,
 //         });
 //     }
 
-//     Shape {nodes: combined_nodes, edges: combined_edges}
+//     Shape {nodes, edges, position, rotation, rotation_speed}
 // }
 
-pub fn make_cube(center: &Array1<f64>, side_len: f64) -> Shape {
+pub fn make_cube(side_len: f64,
+                 position: Array1<f64>, rotation: Array1<f64>,
+                 rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
-    make_box(center, side_len, side_len, side_len)
+    make_box(side_len, side_len, side_len, position, rotation, rotation_speed)
 }
 
-pub fn make_origin(center: &Array1<f64>, len: f64) -> Shape {
+pub fn make_origin(len: f64, position: Array1<f64>, rotation: Array1<f64>,
+                 rotation_speed: Array1<f64>) -> Shape {
     // A 4-dimensional cross, for marking the origin.
-    assert![center.len() == 4];
+    assert_eq![center.len(), 4];
 
     let coords = [
-        [-0.5, 0., 0., 0.],
-        [0.5, 0., 0., 0.],
-        [0., -0.5, 0., 0.],
-        [0., 0.5, 0., 0.],
+        [-1., 0., 0., 0.],
+        [1., 0., 0., 0.],
+        [0., -1., 0., 0.],
+        [0., 1., 0., 0.],
         
-        [0., 0., 0.5, 0.],
-        [0., 0., -0.5, 0.],
-        [0., 0., 0., -0.5],
-        [0., 0., 0., 0.5],
+        [0., 0., 1., 0.],
+        [0., 0., -1., 0.],
+        [0., 0., 0., -1.],
+        [0., 0., 0., 1.],
     ];
 
     let mut nodes = HashMap::new();
-    for (id, coord) in coords.into_iter().enumerate() {
-        nodes.insert(id as i32, Node {a: array![
-            center[0] + coord[0] * len,
-            center[1] + coord[1] * len,
-            center[2] + coord[2] * len,
-            center[3] + coord[3] * len,
-        ]});
+    for (id, coord) in coords.iter().enumerate() {
+        nodes.insert(id as i32, Node {
+            a: Array::from_vec(coord) * len
+        });
     }
 
     let edges = vec![
@@ -166,16 +177,14 @@ pub fn make_origin(center: &Array1<f64>, len: f64) -> Shape {
         Edge {node1: 6, node2: 7},
     ];
 
-    Shape {nodes, edges}
+    Shape {nodes, edges, position, rotation, rotation_speed}
 }
 
-
-pub fn make_street(center: &Array1<f64>, _direction: &Array1<f64>, 
-                   width: f64, id: i32) -> Shape {
+pub fn make_street(width: f64, position: Array1<f64>, rotation: Array1<f64>,
+                   rotation_speed: Array1<f64>) -> Shape {
     // Make a street extending very far into the distance in both directions.
     // Direction is the vector the street points.
 
-    // todo implement direction.
     let mut nodes = HashMap::new();
 
     // Left
@@ -191,47 +200,45 @@ pub fn make_street(center: &Array1<f64>, _direction: &Array1<f64>,
         Edge {node1: 2, node2: 3},
     ];
 
-    Shape {nodes, edges}
+    Shape {nodes, edges, position, rotation, rotation_speed}
 }
 
-pub fn make_hyperrect(center: &Array1<f64>, x_len: f64, y_len: f64, z_len: f64,
-                      u_len: f64) -> Shape {
+pub fn make_hyperrect(x_len: f64, y_len: f64, z_len: f64,
+                      u_len: f64, position: Array1<f64>, rotation: Array1<f64>,
+                      rotation_speed: Array1<f64>) -> Shape {
     // Make a 4d hypercube.
 
     let coords = [
         // Front inner
-        [0., 0., 0., 0.],
-        [1., 0., 0., 0.],
-        [1., 1., 0., 0.],
-        [0., 1., 0., 0.],
+        [-1., -1., -1., -1.],
+        [1., -1., -1., -1.],
+        [1., 1., -1., -1.],
+        [-1., 1., -1., -1.],
         
         // Back inner
-        [0., 0., 1., 0.],
-        [1., 0., 1., 0.],
-        [1., 1., 1., 0.],
-        [0., 1., 1., 0.],
+        [-1., -1., 1., -1.],
+        [1., -1., 1., -1.],
+        [1., 1., 1., -1.],
+        [-1., 1., 1., -1.],
 
         // Front outer
-        [0., 0., 0., 1.],
-        [1., 0., 0., 1.],
-        [1., 1., 0., 1.],
-        [0., 1., 0., 1.],
+        [-1., -1., -1., 1.],
+        [1., -1., -1., 1.],
+        [1., 1., -1., 1.],
+        [-1., 1., -1., 1.],
         
         // Back outer
-        [0., 0., 1., 1.],
-        [1., 0., 1., 1.],
+        [-1., -1., 1., 1.],
+        [1., -1., 1., 1.],
         [1., 1., 1., 1.],
-        [0., 1., 1., 1.],
+        [-1., 1., 1., 1.],
     ];
 
     let mut nodes = HashMap::new();
-    for (id, coord) in coords.into_iter().enumerate() {
-        nodes.insert(id as i32, Node {a: array![
-            center[0] + coord[0] * x_len,
-            center[1] + coord[1] * y_len,
-            center[2] + coord[2] * z_len,
-            center[3] + coord[3] * u_len,
-        ]});
+    for (id, coord) in coords.iter().enumerate() {
+        nodes.insert(id as i32, Node {
+            a: array![coord[0] * x_len, coord[1] * y_len, coord[2].z_len, coord[3].u_len]
+        });
     }
 
     let edges = vec![
@@ -284,12 +291,15 @@ pub fn make_hyperrect(center: &Array1<f64>, x_len: f64, y_len: f64, z_len: f64,
         Edge {node1: 7, node2: 15},
     ];
 
-    Shape {nodes, edges}
+    Shape {nodes, edges, position, rotation, rotation_speed}
 }
 
-pub fn make_hypercube(center: &Array1<f64>, side_len: f64) -> Shape {
+pub fn make_hypercube(side_len: f64,
+                      position: Array1<f64>, rotation: Array1<f64>,
+                      rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
-    make_hyperrect(center, side_len, side_len, side_len, side_len)
+    make_hyperrect(center, side_len, side_len, side_len, side_len,
+                   position, rotation, rotation_speed)
 }
 
 #[cfg(test)]
