@@ -24,10 +24,12 @@ pub struct Edge {
 
 #[derive(Debug)]
 pub struct Shape {
+    // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
     pub nodes: HashMap<i32, Node>,
     pub edges: Vec<Edge>,
     pub position: Array1<f64>,
+    pub scale: f64,
     pub rotation: Array1<f64>,  // Rotation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f64>,  // 6 items, as with rotation.  Radians/s ?
 }

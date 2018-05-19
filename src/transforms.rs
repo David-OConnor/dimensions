@@ -32,46 +32,52 @@ pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
 
     // Rotations around the xy, yz, and xz planes should appear normal.
     let R_xy = array![
-        [cos_xy, sin_xy, 0., 0.],
-        [-sin_xy, cos_xy, 0., 0.],
-        [0., 0., 1., 0.],
-        [0., 0., 0., 1.]
+        [cos_xy, sin_xy, 0., 0., 0.],
+        [-sin_xy, cos_xy, 0., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     let R_yz = array![
-        [1., 0., 0., 0.],
-        [0., cos_yz, sin_yz, 0.],
-        [0., -sin_yz, cos_yz, 0.],
-        [0., 0., 0., 1.]
+        [1., 0., 0., 0., 0.],
+        [0., cos_yz, sin_yz, 0., 0.],
+        [0., -sin_yz, cos_yz, 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     let R_xz = array![
-        [cos_xz, 0., -sin_xz, 0.],
-        [0., 1., 0., 0.], 
-        [sin_xz, 0., cos_xz, 0.],
-        [0., 0., 0., 1.]
+        [cos_xz, 0., -sin_xz, 0., 0.],
+        [0., 1., 0., 0., 0.],
+        [sin_xz, 0., cos_xz, 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     // Rotations involving u, the fourth dimension, should distort 3d objects.
     let R_xu = array![
-        [cos_xu, 0., 0., sin_xu],
-        [0., 1., 0., 0.],
-        [0., 0., 1., 0.],
-        [-sin_xu, 0., 0., cos_xu]
+        [cos_xu, 0., 0., sin_xu, 0.],
+        [0., 1., 0., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [-sin_xu, 0., 0., cos_xu, 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     let R_yu = array![
-        [1., 0., 0., 0.],
-        [0., cos_yu, 0., -sin_yu],
-        [0., 0., 1., 0.],
-        [0., sin_yu, 0., cos_yu]
+        [1., 0., 0., 0., 0.],
+        [0., cos_yu, 0., -sin_yu, 0.],
+        [0., 0., 1., 0., 0.],
+        [0., sin_yu, 0., cos_yu, 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     let R_zu = array![
-        [1., 0., 0., 0.],
-        [0., 1., 0., 0.], 
-        [0., 0., cos_zu, -sin_zu],
-        [0., 0., sin_zu, cos_zu]
+        [1., 0., 0., 0., 0.],
+        [0., 1., 0., 0., 0.],
+        [0., 0., cos_zu, -sin_zu, 0.],
+        [0., 0., sin_zu, cos_zu, 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     // Combine the rotations.
@@ -85,50 +91,31 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // into a 2d projection for display on the screen, using project_3d.
     // Ref project_3d for more details and links.  Most of this is a simple
     // extension.
-    assert![R.rows() == 4 && R.cols() == 4];
+    assert![R.rows() == 5 && R.cols() == 5];
 
     // http://eusebeia.dyndns.org/4d/vis/01-intro
 
-    let translation_matrix = array![
-        [1., 0., 0., 0., -cam.position[0]],
-        [0., 1., 0., 0., -cam.position[1]],
-        [0., 0., 1., 0., -cam.position[2]],
-        [0., 0., 0., 1., -cam.position[3]],
-        [0., 0., 0., 0., 1.],
+    // todo lots of DRY between this and project_3d.
+    let augmented_pt = array![&node.a[0], &node.a[1], &node.a[2], &node.a[3], 1.];
+
+    // Matrices and pts here are all len 5.
+    let T = translate(&cam.position);
+
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
+    // projection-matrix/building-basic-perspective-projection-matrix
+    let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
+    let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
+    let P = array![
+        [s_h, 0., 0., 0., 0.],
+        [0., s_v, 0., 0., 0.],
+        [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
+        [s_h, 0., 0., 0., 0.],  // unused row for u.
+        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 0.],
     ];
 
-    // Reverse x position due to mirror effect.
-    let shifted_pt = translation_matrix.dot(
-        &array![-node.a[0], node.a[1], node.a[2], node.a[3], 1.]
-    );
-
-    // todo not sure why I negated [0] to flip world... mirror effect?
-    let rotated_shifted_pt = R.dot(
-        &array![-shifted_pt[0], shifted_pt[1], shifted_pt[2], shifted_pt[3]]
-    );
-
-    let s = 1. / (cam.fov_hor / 2. as f64).tan();
-
-    let perspective_projection = array![
-        [s, 0., 0., 0., 0.],
-        [0., s, 0., 0., 0.],
-        [0., 0., s, 0., 0.],
-        [0., 0., 0., -cam.f / (cam.f-cam.n), -1.],
-        [0., 0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
-    ];
-
-    // let perspective_projection = array![
-    //     [s, 0., 0., 0.],
-    //     [0., s, 0., 0.],
-    //     [0., 0., -cam.f / (cam.f-cam.n), -1.],
-    //     [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
-    // ];
-
-
-    let f = perspective_projection.dot(
-        &array![rotated_shifted_pt[0], rotated_shifted_pt[1], 
-                rotated_shifted_pt[2], rotated_shifted_pt[3], 1.]    
-    );
+    // Translate first, since we rotate around the origin. Then rotate.
+    // Then project.
+    let f = R.dot(&(T.dot(&(P.dot(&augmented_pt)))));
 
     // Divide by w to find the 2d projected coords.
     Node {a: array![f[0] / f[4], f[1] / f[4], f[2] / f[4]]}
@@ -137,6 +124,8 @@ fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
 pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
+    // We return 5x5 matrices for compatibility with other transforms, and to
+    // reduce repetition between 4d and 3d vectors.
     assert_eq![θ.len(), 3];
 
     // cache trig computations
@@ -149,141 +138,118 @@ pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
 
     // R matrices rotate a vector around a single axis.
     let R_x = array![
-        [1., 0., 0.],
-        [0., cos_x, -sin_x],
-        [0., sin_x, cos_x],
+        [1., 0., 0., 0., 0.],
+        [0., cos_x, -sin_x, 0., 0.],
+        [0., sin_x, cos_x, 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
+
     ];
 
     let R_y = array![
-        [cos_y, 0., sin_y],
-        [0., 1., 0.],
-        [-sin_y, 0., cos_y]
+        [cos_y, 0., sin_y, 0., 0.],
+        [0., 1., 0., 0., 0.],
+        [-sin_y, 0., cos_y, 0., 0.]
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
-    let R_z = array![
-        [cos_z, sin_z, 0.],
-        [-sin_z, cos_z, 0.],
-        [0., 0., 1.]
+    let R_z = array![  // Official OpenGl docs list this as reversed -sins.
+        [cos_z, sin_z, 0., 0., 0.],
+        [-sin_z, cos_z, 0., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 1.]
     ];
 
     // Combine the three rotations.
     R_x.dot(&(R_y.dot(&R_z)))
 }
 
-pub fn rotate_3d_2(θ: &Array1<f64>) -> Array2<f64> {
-    // Compute a 3-dimensional rotation matrix.
-    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    assert_eq![θ.len(),  3];
+fn translate(cam_position: &Array1<f64>) -> Array2<f64> {
+    // Return a translation matrix; the pt must have 1 appended to its end.
+    // We do this augmentation so we can add a constant term.  Scale and
+    // rotation matrices may have this as well for matrix compatibility.
+    assert_eq![cam_position.len, 4];
 
-    // cache trig computations
-    let cos_x = θ[0].cos();
-    let sin_x = θ[0].sin();
-    let cos_y = θ[1].cos();
-    let sin_y = θ[1].sin();
-    let cos_z = θ[2].cos();
-    let sin_z = θ[2].sin();
-
-    // R matrices rotate a vector around a single axis.
-    let R_x = array![
-        [1., 0., 0.],
-        [0., cos_x, sin_x],
-        [0., -sin_x, cos_x],
-    ];
-
-    let R_y = array![
-        [cos_y, 0., -sin_y],
-        [0., 1., 0.],
-        [sin_y, 0., cos_y]
-    ];
-
-    let R_z = array![
-        [cos_z, sin_z, 0.],
-        [-sin_z, cos_z, 0.],
-        [0., 0., 1.]
-    ];
-
-    // Combine the three rotations.
-    R_x.dot(&(R_y.dot(&R_z)))
-}
-
-fn translate(pt: &Array1<f64>, cam_position: &Array1<f64>) -> Array1<f64> {
-    // Translate a node.  Use this for 3d and 4d translations.
-    assert![pt.len() == 4 && cam_position.len == 4];
-
-    let translation_matrix = array![
+    array![
         [1., 0., 0., 0., cam_position[0]],
         [0., 1., 0., 0., cam_position[1]],
         [0., 0., 1., 0., cam_position[2]],
-        [0., 0., 1., 0., cam_position[3]],
+        [0., 0., 0., 1., cam_position[3]],
         [0., 0., 0., 0., 1.],
-    ];
-    // Negate x position due to mirror effect.
-    translation_matrix.dot(
-        &array![-pt.a[0], pt.a[1], pt.a[2], pt.a[3], 1.]
-    )
+    ]
+}
+
+fn scale(scale: Array1<f64>) -> Array2<f64> {
+    // Return a scale matrix; the pt must have 1 appended to its end.
+    assert_eq![scale.len, 4];
+
+    array![
+        [scale[0], 0., 0., 0., 0.],
+        [0., scale[1]., 0., 0., 0.],
+        [0., 0., scale[2]., 0., 0.],
+        [0., 0., 0., scale[3]., 0.],
+        [0., 0., 0., 0., 1.],
+    ]
 }
 
 fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // Project a 3d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
-    assert![R.rows() == 3 && R.cols() == 3];
+    assert![R.rows() == 5 && R.cols() == 5];
 
     // Perform a camera transform; define a vector rotated_shifted_point as the position
     // of point A with respect to the coordinate system defined by 
     // the camera, with origin in C and rotated by θ with respect
     // to the initial coordinate system.
 
-    let translated_pt = translate(&node.a, &-cam.position);
+    // Matrices and pts here are all len 5.
+    let augmented_pt = array![&node.a[0], &node.a[1], &node.a[2], &node.a[3], 1.];
 
-    let rotated_shifted_pt = R.dot(
-        &array![shifted_pt[0], shifted_pt[1], shifted_pt[2]]
-    );
+    let T = translate(&cam.position);
 
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
     // projection-matrix/building-basic-perspective-projection-matrix
     let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
     let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
-
-    let perspective_projection = array![
-        [s_h, 0., 0., 0.],
-        [0., s_v, 0., 0.],
-        [0., 0., -cam.f / (cam.f-cam.n), -1.],
-        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0.]
+    let P = array![
+        [s_h, 0., 0., 0., 0.],
+        [0., s_v, 0., 0., 0.],
+        [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
+        [s_h, 0., 0., 0., 0.],  // unused row for u.
+        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 0.],
     ];
 
-    let f = perspective_projection.dot(
-        &array![rotated_shifted_pt[0], rotated_shifted_pt[1], 
-                rotated_shifted_pt[2], 1.]
-    );
+    // Translate first, since we rotate around the origin. Then rotate.
+    // Then project.
+    let f = R.dot(&(T.dot(&(P.dot(&augmented_pt)))));
+
 
     // Divide by w to find the 2d projected coords.
     Node {a: array![f[0] / f[3], f[1] / f[3]]}
-}
-
-fn rotate_shape_3d(shape: Shape, R: &Array2<f64>) -> Shape {
-    assert![R.rows() == 3 && R.cols() == 3];
-    let center =
-
 }
 
 fn position_shape(shape: &Shape, is_4d: bool) -> HashMap<i32, Node> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    // First, rotation around the shape's origin.
+    // T must be done last, since we scale and rotate with respect to the orgin,
+    // defined in the shape's initial nodes.
     let R = match is_4d {
         true => rotate_4d(&shape.rotation),
         false => rotate_3d(&shape.rotation),
     };
-    let mut rotated_nodes = HashMap::new();
-    for (id, node) in &shape.nodes {
-        rotated_nodes.insert(id, R.dot(&node.a));
-    }
+    let S = scale(array![shape.scale, shape.scale, shape.scale, shape.scale]);
+    let T = translate(&shape.position);
 
     let mut positioned_nodes = HashMap::new();
-    for (id, node) in &rotated_nodes {
-        positioned_nodes.insert(id, translate(&node.a, &shape.position))
+    for (id, node) in &shape.nodes {
+        let augmented_pt = array![&node.a[0], &node.a[1], &node.a[2], &node.a[3], 1.];
+        let new_pt = T.dot(&(S.dot(&(R.dot(&augmented_pt)))));
+        positioned_nodes.insert(id, Node {a: new_pt});
     }
+
     positioned_nodes
 }
 
@@ -292,7 +258,7 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
     // Project shapes; modify their nodes to be projected on a 2d surface.
     // The HashMap key is (shape_index, node_index), so we can tie back to the
     // original shapes later.
-    assert![R.rows() == 3 && R.cols() == 3];
+    assert![R.rows() == 5 && R.cols() == 5];
 
     let mut projected_nodes = HashMap::new();
 

@@ -11,7 +11,7 @@ use types::{Node, Edge, Shape};
 // rotation, and positioning in the world.
 
 pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
-                position: Array1<f64>, rotation: Array1<f64>,
+                position: Array1<f64>, scale: f64, rotation: Array1<f64>,
                 rotation_speed: Array1<f64>) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
@@ -57,12 +57,12 @@ pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
         Edge {node1: 3, node2: 7},
     ];
 
-    Shape {nodes, edges, position, rotation, rotation_speed}
+    Shape {nodes, edges, position, scale, rotation, rotation_speed}
 }
 
 pub fn make_rectangular_pyramid(x_len: f64,
                                 z_len: f64, height: f64,
-                                position: Array1<f64>, rotation: Array1<f64>,
+                                position: Array1<f64>, scale: f64, rotation: Array1<f64>,
                                 rotation_speed: Array1<f64>) -> Shape {
     let coords = [
         // Base
@@ -96,7 +96,7 @@ pub fn make_rectangular_pyramid(x_len: f64,
         Edge {node1: 3, node2: 4},
     ];
 
-    Shape {nodes, edges, position, rotation, rotation_speed}
+    Shape {nodes, edges, position, scale, rotation, rotation_speed}
 }
 
 // pub fn make_house(x_len: f64,
@@ -136,14 +136,14 @@ pub fn make_rectangular_pyramid(x_len: f64,
 //         });
 //     }
 
-//     Shape {nodes, edges, position, rotation, rotation_speed}
+//     Shape {nodes, edges, position, scale, rotation, rotation_speed}
 // }
 
 pub fn make_cube(side_len: f64,
                  position: Array1<f64>, rotation: Array1<f64>,
                  rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
-    make_box(side_len, side_len, side_len, position, rotation, rotation_speed)
+    make_box(side_len, side_len, side_len, position, scale: f64, rotation, rotation_speed)
 }
 
 pub fn make_origin(len: f64, position: Array1<f64>, rotation: Array1<f64>,
@@ -177,10 +177,10 @@ pub fn make_origin(len: f64, position: Array1<f64>, rotation: Array1<f64>,
         Edge {node1: 6, node2: 7},
     ];
 
-    Shape {nodes, edges, position, rotation, rotation_speed}
+    Shape {nodes, edges, position, scale, rotation, rotation_speed}
 }
 
-pub fn make_street(width: f64, position: Array1<f64>, rotation: Array1<f64>,
+pub fn make_street(width: f64, position: Array1<f64>, scale: f64, rotation: Array1<f64>,
                    rotation_speed: Array1<f64>) -> Shape {
     // Make a street extending very far into the distance in both directions.
     // Direction is the vector the street points.
@@ -200,11 +200,11 @@ pub fn make_street(width: f64, position: Array1<f64>, rotation: Array1<f64>,
         Edge {node1: 2, node2: 3},
     ];
 
-    Shape {nodes, edges, position, rotation, rotation_speed}
+    Shape {nodes, edges, position, scale, rotation, rotation_speed}
 }
 
 pub fn make_hyperrect(x_len: f64, y_len: f64, z_len: f64,
-                      u_len: f64, position: Array1<f64>, rotation: Array1<f64>,
+                      u_len: f64, position: Array1<f64>, scale: f64, rotation: Array1<f64>,
                       rotation_speed: Array1<f64>) -> Shape {
     // Make a 4d hypercube.
 
@@ -291,7 +291,7 @@ pub fn make_hyperrect(x_len: f64, y_len: f64, z_len: f64,
         Edge {node1: 7, node2: 15},
     ];
 
-    Shape {nodes, edges, position, rotation, rotation_speed}
+    Shape {nodes, edges, position, scale, rotation, rotation_speed}
 }
 
 pub fn make_hypercube(side_len: f64,
