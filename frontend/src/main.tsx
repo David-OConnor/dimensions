@@ -184,7 +184,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any, deltaTime: n
     }
 
     // Update the rotation for the next draw
-    cubeRotation += deltaTime;
+    cubeRotation += deltaTime
 }
 
 function initBuffers(gl: any) {

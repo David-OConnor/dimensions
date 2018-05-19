@@ -105,7 +105,7 @@ pub fn clip(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
     }
 }
 
-struct Frustrum {
+struct _Frustrum {
     // 3d frustrum.
     // eg FUL for Far Up Left. Front means high z coord.
     FUL: Array1<f64>,
@@ -119,7 +119,7 @@ struct Frustrum {
     NDR: Array1<f64>,
 }
 
-fn make_frustrum(cam: &Camera) -> Frustrum {
+fn _make_frustrum(cam: &Camera) -> _Frustrum {
     // todo as method for camera?
     let (far_width, far_height) = cam.view_size(true);
     let (near_width, near_height) = cam.view_size(false);
@@ -134,10 +134,10 @@ fn make_frustrum(cam: &Camera) -> Frustrum {
     let NDL = array![-near_width / 2., -near_height / 2., cam.n];
     let NDR = array![near_width / 2., -near_height / 2., cam.n];
 
-    Frustrum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
+    _Frustrum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
 }
 
-fn normalize_to_frustrum(shifted_node: Node) {
+fn _normalize_to_frustrum(shifted_node: Node) {
     // Using the frustrum's slope, calculate a simulated point location, along
     // with simulated min and max values for clipping.
 }

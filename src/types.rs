@@ -14,13 +14,28 @@ pub struct Node {
     pub a: Array1<f64>,
 }
 
-// We derive clone on edge for when copying it, unchanged, into a new shape
-// when transforming.
+impl Node {
+    pub fn augmented(&self) -> Array1<f64> {
+        // For use with translation matrices, and others that have
+        // the same dimension.
+        array![self.a[0], self.a[1], self.a[2], self.a[3], 1.]
+    }
+}
+
+// We derive clone, so we can clone edges when creating faces.
 #[derive(Debug, Clone)]
 pub struct Edge {
-    pub node1: i32,  // The node's id
-    pub node2: i32,
+    pub node0: i32,  // The node's id
+    pub node1: i32,
 }
+
+#[derive(Debug)]
+pub struct Face {
+    // Edges should lie in a plane, and be in an order that links them together.
+    pub edges: Vec<Edge>
+}
+
+
 
 #[derive(Debug)]
 pub struct Shape {
@@ -28,9 +43,10 @@ pub struct Shape {
     // Shape nodes and rotation are relative to an origin of 0.
     pub nodes: HashMap<i32, Node>,
     pub edges: Vec<Edge>,
+    pub faces: Vec<Face>,
     pub position: Array1<f64>,
     pub scale: f64,
-    pub rotation: Array1<f64>,  // Rotation has 6 items; one for each of the 4d hyperplanes.
+    pub orientation: Array1<f64>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f64>,  // 6 items, as with rotation.  Radians/s ?
 }
 

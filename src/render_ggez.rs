@@ -16,7 +16,8 @@ use ggez::timer;
 
 use clipping;
 use transforms;
-use types::{Shape, Edge, Camera, Pt2D};
+use transforms::{MoveDirection, move_camera_3d, move_camera_4d};
+use types::{Shape, Node, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
@@ -36,17 +37,6 @@ fn DEFAULT_CAMERA() -> Camera {
     }
 }
 
-enum MoveDirection{
-    Forward,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down,
-    Fourup,
-    Fourdown,
-}
-
 struct MainState {
     shapes: HashMap<i32, Shape>,
     zoomlevel: f32,
@@ -60,7 +50,7 @@ impl MainState {
             shapes,
             zoomlevel: 1.0,
             camera: DEFAULT_CAMERA(),
-            is_4d: is_4d,
+            is_4d,
         };
 
         Ok(s)
@@ -102,8 +92,8 @@ fn find_thickness(min_width: f32, max_width: f32,
 // }
 
 fn build_mesh(ctx: &mut Context, 
-              projected_shapes: HashMap<i32, Shape>,
-              raw_shapes: &HashMap<i32, Shape>,
+              projected_nodes: HashMap<(i32, i32), Node>,
+              shapes: &HashMap<i32, Shape>,
               cam_posit: &Array1<f64>, 
               width: f64
     ) -> GameResult<graphics::Mesh> {
@@ -124,10 +114,10 @@ fn build_mesh(ctx: &mut Context,
 
     let scaler = (CANVAS_SIZE.0 as f64 / width) as f32;
 
-    for (shape_id, shape) in projected_shapes {
+    for (shape_id, shape) in shapes {
         for edge in &shape.edges {
-            let start = &shape.nodes[&edge.node1];
-            let end = &shape.nodes[&edge.node2];
+            let start = &projected_nodes[&(*shape_id, edge.node0)];
+            let end = &projected_nodes[&(*shape_id, edge.node1)];
 
             let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
             let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
@@ -135,7 +125,7 @@ fn build_mesh(ctx: &mut Context,
             let clipped_pt = clipping::clip(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max
             );
-            
+
             let start_clipped: Pt2D;
             let end_clipped: Pt2D;
 
@@ -149,18 +139,18 @@ fn build_mesh(ctx: &mut Context,
           
             let points = &[
                 Point2::new(
-                    OFFSET_X + start_clipped.x as f32 * scaler, 
+                    OFFSET_X + start_clipped.x as f32 * scaler,
                     OFFSET_Y + start_clipped.y as f32 * scaler,
                 ),
                 Point2::new(
-                    OFFSET_X + end_clipped.x as f32 * scaler, 
+                    OFFSET_X + end_clipped.x as f32 * scaler,
                     OFFSET_Y + end_clipped.y as f32 * scaler,
                 ),
             ];
 
             let dist = dist_from_edge(
-                &raw_shapes[&shape_id].nodes[&edge.node1].a,
-                &raw_shapes[&shape_id].nodes[&edge.node2].a,
+                &shape.nodes[&edge.node0].a,
+                &shape.nodes[&edge.node1].a,
                 cam_posit
             );
 
@@ -172,53 +162,6 @@ fn build_mesh(ctx: &mut Context,
     }
 
     mb.build(ctx)
-}
-
-fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
-    // Move the camera to a new position, based on where it's pointing.
-    assert_eq!(θ.len(),  3);
-
-    let unit_vec = match direction {
-        MoveDirection::Forward => array![0., 0., 1.],
-        MoveDirection::Back => array![0., 0., -1.],
-
-        // Reverse x-direction movement for mirror effect.
-        MoveDirection::Left => -array![-1., 0., 0.],
-        MoveDirection::Right => -array![1., 0., 0.],
-
-        MoveDirection::Up => array![0., 1., 0.],
-        MoveDirection::Down => array![0., -1., 0.],
-
-        // For 4d move inputs, don't do anything.
-        MoveDirection::Fourup => array![0., 0., 0.],
-        MoveDirection::Fourdown => array![0., 0., 0.],
-    };
-
-    // Position always uses 3d vectors, with an unused fourth element.
-//     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
-    stack![Axis(0), unit_vec, array![0.]]
-}
-
-fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
-    // Move the camera to a new position, based on where it's pointing.
-    assert_eq!(θ.len(), 6);
-
-    let unit_vec = match direction {
-        MoveDirection::Forward => array![0., 0., 1., 0.],
-        MoveDirection::Back => array![0., 0., -1., 0.],
-
-        // Reverse x-direction movement for mirror effect.
-        MoveDirection::Left => -array![-1., 0., 0., 0.],
-        MoveDirection::Right => -array![1., 0., 0., 0.],
-        
-        MoveDirection::Up => array![0., 1., 0., 0.],
-        MoveDirection::Down => array![0., -1., 0., 0.],
-        MoveDirection::Fourup => array![0., 0., 0., 1.],
-        MoveDirection::Fourdown => array![0., 0., 0., -1.],
-    };
-
-    unit_vec
-    // transforms::rotate_4d(θ).dot(&unit_vec)
 }
 
 fn add_ang_norm(angle: f64, amount: f64) -> f64 {
@@ -248,28 +191,28 @@ impl event::EventHandler for MainState {
 
         // Compute R here; we don't need to compute it for each node.
 
-        let projected_shapes;
+        let projected_nodes;
 
         if self.is_4d {
             // Invert θ, since we're treating the camera as static, rotating
             // the world around it.
             // Same reason we invert the position transforms in transforms.rs.
 
-            let R_4d = transforms::rotate_4d(&-&self.camera.θ_4d);
-            let R_3d = transforms::rotate_3d(&-&self.camera.θ_3d);
-            projected_shapes = transforms::project_shapes_4d(
+            let R_4d = transforms::rotate_4d(&self.camera.θ_4d);
+            let R_3d = transforms::rotate_3d(&self.camera.θ_3d);
+            projected_nodes = transforms::project_shapes_4d(
                 &self.shapes, &self.camera, &R_4d, &R_3d
             );
         } else {
             // let R = transforms::rotate_3d(&-&self.camera.θ_3d);
             let R = transforms::rotate_3d(&self.camera.θ_3d);
-            projected_shapes = transforms::project_shapes_3d(
+            projected_nodes = transforms::project_shapes_3d(
                 &self.shapes, &self.camera, &R
             );
         }
 
-        let mesh = build_mesh(ctx, 
-                              projected_shapes, 
+        let mesh = build_mesh(ctx,
+                              projected_nodes,
                               &self.shapes,
                               &self.camera.position,
                               self.camera.width()
