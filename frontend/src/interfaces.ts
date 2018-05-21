@@ -14,12 +14,29 @@ export class Edge {
     }
 }
 
+export class Face {
+    edges: Edge[]
+}
+
 export class Shape {
     nodes: Map<number, Node2>
     edges: Edge[]
-    constructor(nodes: Map<number, Node2>, edges: Edge[]) {
+    faces: Face[]
+    position: number[]
+    scale: number
+    orientation: number[]
+    rotationSpeed: number[]
+
+    constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
+                position: number[], scale: number, orientation: number[],
+                rotationSpeed: number[]) {
         this.nodes = nodes
         this.edges = edges
+        this.faces = faces
+        this.position = position
+        this.scale = scale
+        this.orientation = orientation
+        this.rotationSpeed = rotationSpeed
     }
 }
 

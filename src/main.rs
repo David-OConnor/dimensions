@@ -23,29 +23,31 @@ fn main() {
     let empty_6 = array![0., 0., 0., 0., 0., 0.];
 
     let shape_vec = vec![
-        shape_maker::make_cube(1., array![-1.5, 0., -1.5, 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_box(1.5, 0.5, 2.5, array![2., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_rectangular_pyramid(2., 1.5, 0.5, array![-2., -0., 2.0, 0.], 1.,
-//                                              empty_6.clone(), empty_6.clone()),
+        shape_maker::make_cube(1., array![-1.5, 0., -1.5, 0.], 1., empty_6.clone(), array![0.001, 0., 0., 0., 0., 0.]),
+        shape_maker::make_box(1.5, 0.5, 2.5, array![2., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
+        shape_maker::make_rectangular_pyramid(2., 1.5, 0.5, array![-2., -0., 5.0, 0.], 1.,
+                                              empty_6.clone(), array![0.001, -0.002, 0., 0., 0., 0.]),
         // shape_maker::make_house(&array![-3., 0., -3., 0.], 1., 1., 1.),
 
 //        // Marker rectangles: FL, FR, BR, BL
-//        shape_maker::make_box(2., 0.2, 1., array![-4., 0., 4., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(2., 0.2, 1., array![-5., 0., 5., 0.], 1., empty_6.clone(), empty_6.clone()),
 //        shape_maker::make_box(1., 2., 1., array![-4., 0., 3., 0.], 1., empty_6.clone(), empty_6.clone()),
 //
-//        shape_maker::make_box(2., 0.2, 1., array![4., 0., 4., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_box(1., 1., 1., array![5., 0., 3., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(2., 0.2, 1., array![5., 0., 5., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(1., 1., 1., array![6., 0., 3., 0.], 1., empty_6.clone(), empty_6.clone()),
 //
-//        shape_maker::make_box(2., 0.2, 1., array![4., 0., -4., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_box(1., 0.5, 1., array![5., 0., -3., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(2., 0.2, 1., array![5., 0., -5., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(1., 0.5, 1., array![6., 0., -3., 0.], 1., empty_6.clone(), empty_6.clone()),
 //
-//        shape_maker::make_box(1., 0.5, 1., array![-4., 0., -4., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_box(1., 0.2, 1., array![-4., 0., -3., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(1., 0.5, 1., array![-5., 0., -5., 0.], 1., empty_6.clone(), empty_6.clone()),
+//        shape_maker::make_box(1., 0.2, 1., array![-6., 0., -3., 0.], 1., empty_6.clone(), empty_6.clone()),
 
         // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1.),
 
-//        shape_maker::make_origin(1., array![0., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_hypercube(1., array![1.5, 0., -2.0, 0.], 1., empty_6.clone(), empty_6.clone()),
+        shape_maker::make_origin(1., array![0., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
+        shape_maker::make_hypercube(1., array![1.5, 0., -2.0, 0.], 1.,
+                                    empty_6.clone(),
+                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
     ];
 
     let mut shapes = HashMap::new();
@@ -53,7 +55,7 @@ fn main() {
         shapes.insert(id as i32, shape);
     }
 
-    render_ggez::run(shapes, false);
+    render_ggez::run(shapes, true);
     // gfx_render::main();
 }
 

@@ -92,7 +92,7 @@ fn find_thickness(min_width: f32, max_width: f32,
 // }
 
 fn build_mesh(ctx: &mut Context, 
-              projected_nodes: HashMap<(i32, i32), Node>,
+              projected: HashMap<(i32, i32), Array1<f64>>,
               shapes: &HashMap<i32, Shape>,
               cam_posit: &Array1<f64>, 
               width: f64
@@ -116,11 +116,11 @@ fn build_mesh(ctx: &mut Context,
 
     for (shape_id, shape) in shapes {
         for edge in &shape.edges {
-            let start = &projected_nodes[&(*shape_id, edge.node0)];
-            let end = &projected_nodes[&(*shape_id, edge.node1)];
+            let start = &projected[&(*shape_id, edge.node0)];
+            let end = &projected[&(*shape_id, edge.node1)];
 
-            let start_pt = Pt2D {x: start.a[0], y: start.a[1]};
-            let end_pt = Pt2D {x: end.a[0], y: end.a[1]};
+            let start_pt = Pt2D {x: start[0], y: start[1]};
+            let end_pt = Pt2D {x: end[0], y: end[1]};
 
             let clipped_pt = clipping::clip(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max
@@ -191,7 +191,13 @@ impl event::EventHandler for MainState {
 
         // Compute R here; we don't need to compute it for each node.
 
-        let projected_nodes;
+        // todo for now, try time-based (FPS-based?) rotations here.
+        for (id, shape) in &mut self.shapes {
+            // += syntax appears not to work with ndarray, at least here.
+            shape.orientation = &shape.orientation + &shape.rotation_speed;
+        }
+
+        let projected;
 
         if self.is_4d {
             // Invert θ, since we're treating the camera as static, rotating
@@ -200,19 +206,19 @@ impl event::EventHandler for MainState {
 
             let R_4d = transforms::rotate_4d(&self.camera.θ_4d);
             let R_3d = transforms::rotate_3d(&self.camera.θ_3d);
-            projected_nodes = transforms::project_shapes_4d(
+            projected = transforms::project_shapes_4d(
                 &self.shapes, &self.camera, &R_4d, &R_3d
             );
         } else {
             // let R = transforms::rotate_3d(&-&self.camera.θ_3d);
             let R = transforms::rotate_3d(&self.camera.θ_3d);
-            projected_nodes = transforms::project_shapes_3d(
+            projected = transforms::project_shapes_3d(
                 &self.shapes, &self.camera, &R
             );
         }
 
         let mesh = build_mesh(ctx,
-                              projected_nodes,
+                              projected,
                               &self.shapes,
                               &self.camera.position,
                               self.camera.width()
@@ -230,15 +236,20 @@ impl event::EventHandler for MainState {
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
 
-        let move_func = match self.is_4d {
-            true => move_camera_4d,
-            false => move_camera_3d,
-        };
+//        let move_func = match self.is_4d {
+//            true => move_camera_4d,
+//            false => move_camera_3d,
+//        };
 
         let move_θ = &match self.is_4d {
             true => self.camera.θ_4d.clone(),
             false => self.camera.θ_3d.clone(),
         };
+
+        // todo for now we've removed FPS controls; make the move simply modify
+        // todo our position in abs coords. move_θ is unused, in this case.
+        let move_func = move_camera_4d;
+
 
         // Some of the entries appear for reversed, for reasons I don't
         // understand yet.

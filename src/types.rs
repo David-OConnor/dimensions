@@ -35,6 +35,13 @@ pub struct Face {
     pub edges: Vec<Edge>
 }
 
+impl Face {
+    pub fn surface_normal(&self) -> Array1<f64> {
+        assert![self.edges.len() >= 3];
+
+        array![]
+    }
+}
 
 
 #[derive(Debug)]
@@ -64,7 +71,7 @@ pub struct Camera {
     pub fov_vert: f64, // vertical FOV. Unused currently.
     // near and far clipping planes
     pub n: f64,
-    pub f: f64,    
+    pub f: f64,
 }
 
 impl Camera {
@@ -88,3 +95,34 @@ impl Camera {
         (width, height)
     }
 }
+
+pub struct Quaternion {
+    // Borrowed heavily from cgmath.
+    // Ref: https://github.com/brendanzab/cgmath/blob/master/src/quaternion.rs
+    // https://en.wikipedia.org/wiki/Quaternion
+    // Perhaps this should be called a Quinternion ?
+
+    // Should we represent this as separate scalar and vector parts, or a single 4(5?)
+    // vector?
+
+    // The scalar (real) part of the quaternion.
+    pub s: f64,
+    // The vector (imaginary) part of the quaternion.
+    pub v: Array1<f64>,
+}
+
+impl Quaternion {
+    pub fn conjugate(self) -> Quaternion {
+        Quaternion { s: self.s, v: -self.v }
+    }
+
+    pub fn product(&self, other: &Quaternion) -> Quaternion {
+        let a = self.s * other.s - self.v[0] * other.v[0] - self.v[1] * other.v[1] - self.v[2] * other.v[2];
+        let i = self.s * other.v[0] + self.v[0] * other.s + self.v[1] * other.v[2] - self.v[2] * other.v[1];
+        let j = self.s * other.v[1] - self.v[0] * other.v[2] + self.v[1] * other.s + self.v[2] * other.v[0];
+        let k = self.s * other.v[2] + self.v[0] * other.v[1] - self.v[1] * other.v[0] + self.v[2] * other.s;
+
+        Quaternion { s: a, v: array![i, j, k] }
+    }
+}
+

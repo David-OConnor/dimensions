@@ -93,7 +93,7 @@ pub fn make_rectangular_pyramid(x_len: f64,
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * x_len, coord[1] * z_len, coord[2] * height, coord[3]]
+            a: array![coord[0] * x_len, coord[1] * height, coord[2] * z_len, coord[3]]
         });
     }
 
@@ -115,13 +115,13 @@ pub fn make_rectangular_pyramid(x_len: f64,
         // Base
         Face {edges: vec![edges[0].clone(), edges[1].clone(), edges[2].clone(), edges[3].clone()]},
         // Front
-        Face {edges: vec![edges[0].clone(), edges[5].clone(), edges[6].clone()]},
+        Face {edges: vec![edges[0].clone(), edges[4].clone(), edges[5].clone()]},
         // Right
-        Face {edges: vec![edges[1].clone(), edges[6].clone(), edges[7].clone()]},
+        Face {edges: vec![edges[1].clone(), edges[5].clone(), edges[6].clone()]},
         // Back
-        Face {edges: vec![edges[2].clone(), edges[7].clone(), edges[8].clone()]},
+        Face {edges: vec![edges[2].clone(), edges[6].clone(), edges[7].clone()]},
         // Left
-        Face {edges: vec![edges[3].clone(), edges[8].clone(), edges[5].clone()]},
+        Face {edges: vec![edges[3].clone(), edges[7].clone(), edges[4].clone()]},
     ];
 
     Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
@@ -183,8 +183,8 @@ pub fn make_origin(len: f64, position: Array1<f64>, scale: f64, orientation: Arr
         [0., -1., 0., 0.],
         [0., 1., 0., 0.],
 
-        [0., 0., 1., 0.],
         [0., 0., -1., 0.],
+        [0., 0., 1., 0.],
         [0., 0., 0., -1.],
         [0., 0., 0., 1.],
     ];

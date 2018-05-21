@@ -15,18 +15,5 @@ ggez = "0.4.2"
 gl = "0.6.0"
 gl_generator = "0.5.0"
 wasm-bindgen = "0.2"
-
-
-# GFX dependencies here.
-# gfx = "0.17.1"
-# glutin = "0.12"
-# gfx_window_glutin = "0.20"
-# cgmath = "0.16.1"
-
-# env_logger = "0.5"
-# # glutin = { version = "0.15", optional = true }
-# image = "0.18"
-# log = "0.4"
-# winit = "0.13"
-# gfx-hal = { path = "./gfx_libs/hal", version = "0.1" }
-# gfx-render = { path = "./gfx_libs/render", version = "0.1" }
+cgmath = "0.16.1"
+quaternion = "0.3.0"

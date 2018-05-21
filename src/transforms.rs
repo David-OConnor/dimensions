@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use ndarray::prelude::*;
-
-use types::{Node, Shape, Camera};
+use std::collections::HashMap;
+use types::{Camera, Node, Shape};
 
 pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -200,8 +198,8 @@ fn scale(scale: Array1<f64>) -> Array2<f64> {
     ]
 }
 
-fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
-    // Project a 3d node onto a 2d plane.
+fn project(cam: &Camera, R: &Array2<f64>, node: &Node, is_4d: bool) -> Array1<f64> {
+    // Project a 3d node onto a 2d plane, or a 4d node onto a 2d plane.
     // https://en.wikipedia.org/wiki/3D_projection
     assert![R.rows() == 5 && R.cols() == 5];
     assert_eq![node.a.len(), 5];
@@ -211,35 +209,63 @@ fn project_3d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
     // the camera, with origin in C and rotated by θ with respect
     // to the initial coordinate system.
 
-     let T = translate(&-&(cam.position));
+    let T = translate(&-&(cam.position));
 
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
     // projection-matrix/building-basic-perspective-projection-matrix
     let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
     let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
-    let P = array![
-        [s_h, 0., 0., 0., 0.],
-        [0., s_v, 0., 0., 0.],
-        [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
-        [0., 0., 0., 1., 0.],  // unused row for u.
-        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 1.],
-    ];
+    let s_d = s_h;  // depth for 4d?
 
-    // Translate first, since we rotate around the origin. Then rotate.
+    // todo 4d probly uses an additional bound like f and n to define the 4d frustrum.
+
+    let P = match is_4d {
+        true => array![
+            [s_h, 0., 0., 0., 0.],
+            [0., s_v, 0., 0., 0.],
+            [0., 0., s_d, 0., 0.],
+            [0., 0., 0., -cam.f / (cam.f-cam.n), -1.,],
+            [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 1.],
+        ],
+
+        false => array![
+            [s_h, 0., 0., 0., 0.],
+            [0., s_v, 0., 0., 0.],
+            [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
+            [0., 0., 0., 1., 0.],  // unused row for u.
+            [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 1.],
+        ]
+    };
+
+    // Translate first, since we're rotating the world around our first-person camera.
+    // If we want to rotate around the origin, we can rotate first.
     // Then project. We're calculating what OpenGl calls the 'View matrix',
     // then dotting it with our point.
     let f = P.dot(&(R.dot(&(T.dot(&node.augmented())))));
 
-    // Divide by w to find the 2d projected coords.
-    Node {a: array![f[0] / f[3], f[1] / f[3]]}
+    if is_4d {
+        // Divide by w to find the 3d projected coords.
+       array![f[0] / f[4], f[1] / f[4], f[2] / f[4]]
+    }
+    else {
+        // Divide by w to find the 2d projected coords.
+        array![f[0] / f[4], f[1] / f[4]]
+    }
 }
 
-fn position_shape(shape: &Shape, is_4d: bool) -> HashMap<i32, Node> {
-    // Position a shape's nodes in 3 or 4d space, based on its position
-    // and rotation parameters.
+fn position_shape(shape: &Shape) -> HashMap<i32, Node> {
+// Position a shape's nodes in 3 or 4d space, based on its position
+// and rotation parameters.
 
-    // T must be done last, since we scale and rotate with respect to the orgin,
-    // defined in the shape's initial nodes.
+    let mut is_4d = false;
+    // todo Need more checks than rotation speed... temp.
+    if shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
+        shape.rotation_speed[5].abs() > 0. {
+        is_4d = true;
+    }
+
+// T must be done last, since we scale and rotate with respect to the orgin,
+// defined in the shape's initial nodes.
     let R = match is_4d {
         true => rotate_4d(&shape.orientation),
         false => rotate_3d(&shape.orientation),
@@ -249,8 +275,8 @@ fn position_shape(shape: &Shape, is_4d: bool) -> HashMap<i32, Node> {
 
     let mut positioned_nodes = HashMap::new();
     for (id, node) in &shape.nodes {
-        // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
-        // then rotate, then translate.
+// We dot what OpenGL calls the 'Model matrix' with our point. Scale,
+// then rotate, then translate.
         let new_pt = T.dot(&(R.dot(&(S.dot(&node.augmented())))));
         positioned_nodes.insert(*id, Node {a: new_pt});
     }
@@ -259,46 +285,49 @@ fn position_shape(shape: &Shape, is_4d: bool) -> HashMap<i32, Node> {
 }
 
 pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, camera: &Camera,
-                         R: &Array2<f64>) -> HashMap<(i32, i32), Node> {
+                         R: &Array2<f64>) -> HashMap<(i32, i32), Array1<f64>> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     // The HashMap key is (shape_index, node_index), so we can tie back to the
     // original shapes later.
     assert![R.rows() == 5 && R.cols() == 5];
-    let mut projected_nodes = HashMap::new();
+    let mut projected = HashMap::new();
 
     for (shape_id, shape) in shapes {
-        let positioned_nodes = position_shape(shape, false);
+        let positioned_nodes = position_shape(shape);
         for (node_id, node) in &positioned_nodes {
-            projected_nodes.insert((*shape_id, *node_id), project_3d(camera, R, &node));
+            projected.insert((*shape_id, *node_id), project(camera, R, &node, false));
         }
     }
 
-    projected_nodes
+    projected
 }
 
 pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, camera: &Camera,
-                         R_4d: &Array2<f64>, R_3d: &Array2<f64>) -> HashMap<(i32, i32), Node> {
+                         R_4d: &Array2<f64>, R_3d: &Array2<f64>)
+                         -> HashMap<(i32, i32), Array1<f64>> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     assert![R_4d.rows() == 5 && R_4d.cols() == 5];
     assert![R_3d.rows() == 5 && R_3d.cols() == 5];
 
     // First position the nodes, and project from 4d to 3d
-    let mut projected_nodes_3d = HashMap::new();
+    let mut projected_3d = HashMap::new();
 
     // todo DRY between here and project_shapes_3d.
     for (shape_id, shape) in shapes {
-        let positioned_nodes = position_shape(shape, false);
+        let positioned_nodes = position_shape(shape);
         for (node_id, node) in &positioned_nodes {
-            projected_nodes_3d.insert((*shape_id, *node_id), project_4d(camera, R_4d, &node));
+            projected_3d.insert((*shape_id, *node_id), project(camera, R_4d, &node, true));
         }
     }
 
-    let mut projected_nodes_2d = HashMap::new();
+    let mut projected_2d = HashMap::new();
     // Now project from 3d to 2d.  We don't need to position
-    for (ids, node) in projected_nodes_3d {
-        projected_nodes_2d.insert(ids, project_3d(camera, R_3d, &node));
+    for (ids, pt) in projected_3d {
+        // Re-agument our 3d nodes to len 5, in preparation for projecting to 2d.
+        let aug = Node {a: array![pt[0], pt[1], pt[2], 0., 1.]};
+        projected_2d.insert(ids, project(camera, R_3d, &aug, false));
     }
-    projected_nodes_2d
+    projected_2d
 
 }
 
@@ -320,21 +349,17 @@ pub fn move_camera_3d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64>
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1.],
         MoveDirection::Back => array![0., 0., -1.],
-
-        // Reverse x-direction movement for mirror effect.
         MoveDirection::Left => -array![-1., 0., 0.],
         MoveDirection::Right => -array![1., 0., 0.],
-
         MoveDirection::Up => array![0., 1., 0.],
         MoveDirection::Down => array![0., -1., 0.],
-
         // For 4d move inputs, don't do anything.
         MoveDirection::Fourup => array![0., 0., 0.],
         MoveDirection::Fourdown => array![0., 0., 0.],
     };
 
     // Position always uses 3d vectors, with an unused fourth element.
-//     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
+    //     stack![Axis(0), transforms::rotate_3d_2(θ).dot(&unit_vec), array![0.]]
     stack![Axis(0), unit_vec, array![0.]]
 }
 
@@ -345,11 +370,8 @@ pub fn move_camera_4d(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64>
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1., 0.],
         MoveDirection::Back => array![0., 0., -1., 0.],
-
-        // Reverse x-direction movement for mirror effect.
         MoveDirection::Left => -array![-1., 0., 0., 0.],
         MoveDirection::Right => -array![1., 0., 0., 0.],
-
         MoveDirection::Up => array![0., 1., 0., 0.],
         MoveDirection::Down => array![0., -1., 0., 0.],
         MoveDirection::Fourup => array![0., 0., 0., 1.],
