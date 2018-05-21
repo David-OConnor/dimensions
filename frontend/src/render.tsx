@@ -12,12 +12,10 @@ import {ProgramInfo, Shape} from './interfaces'
 
 let cubeRotation = 0.0;
 
-
-function glVerticesFromShape(shapes: Map<number, Shape>): number[]{
-    // WebGL needs us to define a vertex for each face edge; this involves
-    // duplicating vertices from shapes.
-}
-
+// function glVerticesFromShape(shapes: Map<number, Shape>): number[]{
+//     // WebGL needs us to define a vertex for each face edge; this involves
+//     // duplicating vertices from shapes.
+// }
 
 function initShaderProgram(gl: any, vsSource: any, fsSource: any) {
     // Initialize a shader program, so WebGL knows how to draw our data
@@ -291,7 +289,7 @@ function initBuffers(gl: any) {
     }
 }
 
-export function gl_main() {
+export function gl_main(shapes: Map<number, Shape>) {
     // Initialize WebGL rendering.
 
     let canvas = document.getElementById("glCanvas")

@@ -32,8 +32,9 @@ fn DEFAULT_CAMERA() -> Camera {
         θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov_hor: τ / 5.,
         fov_vert: τ / 5.,
-        f: 30.,
-        n: 0.9,
+        clip_far: 30.,
+        clip_near: 0.9,
+        clip_strange: 1.0,
     }
 }
 
@@ -95,7 +96,7 @@ fn build_mesh(ctx: &mut Context,
               projected: HashMap<(i32, i32), Array1<f64>>,
               shapes: &HashMap<i32, Shape>,
               cam_posit: &Array1<f64>, 
-              width: f64
+              view_size: (f64, f64)
     ) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
 
@@ -107,12 +108,12 @@ fn build_mesh(ctx: &mut Context,
     // Scale to window.
     // Assume the points projected to 0 are at the center of the
     // screen, and that we've projected onto a square window.
-    let x_max = width / 2.;
-    let y_max = x_max;
+    let x_max = view_size.0 / 2.;
+    let y_max = view_size.1;
     let x_min = -x_max;
     let y_min = x_min;
 
-    let scaler = (CANVAS_SIZE.0 as f64 / width) as f32;
+    let scaler = (CANVAS_SIZE.0 as f64 / view_size.0) as f32;
 
     for (shape_id, shape) in shapes {
         for edge in &shape.edges {
@@ -221,7 +222,7 @@ impl event::EventHandler for MainState {
                               projected,
                               &self.shapes,
                               &self.camera.position,
-                              self.camera.width()
+                              self.camera.view_size(false)
         )?;
 
         graphics::set_color(ctx, (0, 255, 255).into())?;
@@ -340,11 +341,11 @@ impl event::EventHandler for MainState {
             Keycode::P => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], TURN_SENSITIVITY),
             Keycode::Semicolon => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], -TURN_SENSITIVITY),
 
-            Keycode::F => self.camera.n -= 1. * ZOOM_SENSITIVITY,
-            Keycode::R => self.camera.n += 1. * ZOOM_SENSITIVITY,
+            Keycode::V => self.camera.clip_near -= 1. * ZOOM_SENSITIVITY,
+            Keycode::B => self.camera.clip_near += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::G => self.camera.f -= 1. * ZOOM_SENSITIVITY,
-            Keycode::T => self.camera.f += 1. * ZOOM_SENSITIVITY,
+            Keycode::N => self.camera.clip_far -= 1. * ZOOM_SENSITIVITY,
+            Keycode::M => self.camera.clip_far += 1. * ZOOM_SENSITIVITY,
 
             Keycode::Minus => self.camera.fov_hor += 1. * ZOOM_SENSITIVITY,
             Keycode::Equals => self.camera.fov_hor -= 1. * ZOOM_SENSITIVITY,

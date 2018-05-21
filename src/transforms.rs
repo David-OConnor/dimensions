@@ -84,46 +84,6 @@ pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
     R_1.dot(&R_2)
 }
 
-fn project_4d(cam: &Camera, R: &Array2<f64>, node: &Node) -> Node {
-    // Project a 4d node onto a 3d space. We'll then need to transform this
-    // into a 2d projection for display on the screen, using project_3d.
-    // Ref project_3d for more details and links.  Most of this is a simple
-    // extension.
-    assert![R.rows() == 5 && R.cols() == 5];
-    assert_eq![node.a.len(), 5];
-
-
-    // http://eusebeia.dyndns.org/4d/vis/01-intro
-
-    // todo lots of DRY between this and project_3d.
-    // Matrices and pts here are all len 5.
-    let T = translate(&cam.position);
-
-    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
-    // projection-matrix/building-basic-perspective-projection-matrix
-    let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
-    let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
-    let P = array![
-        [s_h, 0., 0., 0., 0.],
-        [0., s_v, 0., 0., 0.],
-        [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
-        [s_h, 0., 0., 0., 0.],  // unused row for u.
-        [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 0.],
-    ];
-
-    // Translate first, since we rotate around the origin. Then rotate.
-    // Then project. We're calculating what OpenGl calls the 'View matrix',
-    // then dotting it with our point.
-    let f = P.dot(&(R.dot(&(T.dot(&node.augmented())))));
-
-    // Divide by w to find the 2d projected coords.
-    Node {a: array![f[0] / f[4], f[1] / f[4], f[2] / f[4]]}
-}
-
-fn quaternion_3d(θ: &Array1<f64>) -> Array1<f64> {
-    array![1.]
-}
-
 pub fn rotate_3d(θ: &Array1<f64>) -> Array2<f64> {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -224,16 +184,16 @@ fn project(cam: &Camera, R: &Array2<f64>, node: &Node, is_4d: bool) -> Array1<f6
             [s_h, 0., 0., 0., 0.],
             [0., s_v, 0., 0., 0.],
             [0., 0., s_d, 0., 0.],
-            [0., 0., 0., -cam.f / (cam.f-cam.n), -1.,],
-            [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 1.],
+            [0., 0., 0., -cam.clip_far / (cam.clip_far-cam.clip_near), -1.,],
+            [0., 0., -cam.clip_far*cam.clip_near / (cam.clip_far-cam.clip_near), 0., 1.],
         ],
 
         false => array![
             [s_h, 0., 0., 0., 0.],
             [0., s_v, 0., 0., 0.],
-            [0., 0., -cam.f / (cam.f-cam.n), -1., 0.],
+            [0., 0., -cam.clip_far / (cam.clip_far-cam.clip_near), -1., 0.],
             [0., 0., 0., 1., 0.],  // unused row for u.
-            [0., 0., -cam.f*cam.n / (cam.f-cam.n), 0., 1.],
+            [0., 0., -cam.clip_far*cam.clip_near / (cam.clip_far-cam.clip_near), 0., 1.],
         ]
     };
 
