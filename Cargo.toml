@@ -2,12 +2,18 @@
 name = "dimensions"
 version = "0.1.0"
 authors = ["David O'Connor <david.alan.oconnor@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/David-OConnor/dimensions"
+hoempage = "https://github.com/David-OConnor/dimensions"
+readme = "README.md"
 build = "build.rs"
 
 [lib]
 path = "src/lib.rs"
 crate-type = ["cdylib"]
-# cargo build --target wasm32-unknown-unknown --lib --release
+
+# cargo build --target wasm32-unknown-unknown --lib
+# wasm-bindgen target/wasm32-unknown-unknown/debug/dimensions.wasm --out-dir .
 
 [[bin]]
 name = "dimensions"
@@ -15,6 +21,7 @@ path = "src/bin.rs"
 
 [dependencies]
 ndarray = "^0.11.2"
+wasm-bindgen = "^0.2"
 
 # I want something more like this:
 #[target.cfg(not(wasm32-unknown-unknown)).dependencies]

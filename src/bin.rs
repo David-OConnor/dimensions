@@ -1,11 +1,10 @@
-// We use mathematical conventions that may direct upper-case var names, 
+// This file is the entry point for the standalone Rust renderer.
+
+// We use mathematical conventions that may direct upper-case var names,
 // or lower-case constants.
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 #![feature(non_ascii_idents)]
-
-// #[macro_use(array)]
-// #[macro_use(stack)]
 
 #[macro_use]
 extern crate ndarray;
@@ -45,9 +44,9 @@ fn main() {
         // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1.),
 
         shape_maker::make_origin(1., array![0., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
-        shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.], 1.,
-                                    empty_6.clone(),
-                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
+//        shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.], 1.,
+//                                    empty_6.clone(),
+//                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
 
         shape_maker::make_hypercube(1., array![0., 0., 0.0, 0.], 1.,
                                     empty_6.clone(),

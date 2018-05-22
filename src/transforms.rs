@@ -1,5 +1,7 @@
-use ndarray::prelude::*;
 use std::collections::HashMap;
+
+use ndarray::prelude::*;
+
 use types::{Camera, Node, Shape};
 
 pub fn rotate_4d(θ: &Array1<f64>) -> Array2<f64> {
@@ -158,8 +160,8 @@ fn scale(scale: Array1<f64>) -> Array2<f64> {
     ]
 }
 
-fn project(cam: &Camera, R: &Array2<f64>, node: &Node, is_4d: bool) -> Array1<f64> {
-    // Project a 3d node onto a 2d plane, or a 4d node onto a 2d plane.
+pub fn project(cam: &Camera, R: &Array2<f64>, node: &Node, is_4d: bool) -> Array1<f64> {
+    // Project a 3d node onto a 2d plane, or a 4d node onto a 3d volume.
     // https://en.wikipedia.org/wiki/3D_projection
     assert![R.rows() == 5 && R.cols() == 5];
     assert_eq![node.a.len(), 5];
@@ -213,7 +215,7 @@ fn project(cam: &Camera, R: &Array2<f64>, node: &Node, is_4d: bool) -> Array1<f6
     }
 }
 
-fn position_shape(shape: &Shape) -> HashMap<i32, Node> {
+pub fn position_shape(shape: &Shape) -> HashMap<i32, Node> {
 // Position a shape's nodes in 3 or 4d space, based on its position
 // and rotation parameters.
 
@@ -224,8 +226,8 @@ fn position_shape(shape: &Shape) -> HashMap<i32, Node> {
         is_4d = true;
     }
 
-// T must be done last, since we scale and rotate with respect to the orgin,
-// defined in the shape's initial nodes.
+    // T must be done last, since we scale and rotate with respect to the orgin,
+    // defined in the shape's initial nodes.
     let R = match is_4d {
         true => rotate_4d(&shape.orientation),
         false => rotate_3d(&shape.orientation),

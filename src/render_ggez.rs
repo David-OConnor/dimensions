@@ -32,6 +32,7 @@ fn DEFAULT_CAMERA() -> Camera {
         θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov_hor: τ / 5.,
         fov_vert: τ / 5.,
+        fov_strange: τ / 5.,
         clip_far: 30.,
         clip_near: 0.9,
         clip_strange: 1.0,

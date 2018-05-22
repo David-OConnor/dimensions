@@ -43,7 +43,6 @@ impl Face {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
@@ -69,11 +68,12 @@ pub struct Camera {
 
     pub fov_hor: f64,  // field of view in radians.
     pub fov_vert: f64, // vertical FOV. Unused currently.
+    pub fov_strange: f64,
     // near, far, and strange for our 3d and 4d frustrums.  Strange is an
     // experimental extension into the 4th dimension.
     pub clip_near: f64,
     pub clip_far: f64,
-    pub clip_strange : f64
+    pub clip_strange: f64
 }
 
 impl Camera {
@@ -82,9 +82,7 @@ impl Camera {
         // Calculate the projected window width, using basic trig.
         2. * self.clip_near * (self.fov_hor / 2.).tan()
     }
-}
 
-impl Camera {
     pub fn view_size(&self, far: bool) -> (f64, f64){
         // Calculate the projected window width and height, using basic trig.
         let dist = match far {
