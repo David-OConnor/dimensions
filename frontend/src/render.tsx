@@ -289,7 +289,7 @@ function initBuffers(gl: any) {
     }
 }
 
-export function gl_main(shapes: Map<number, Shape>) {
+export function gl_main(projected: any) {
     // Initialize WebGL rendering.
 
     let canvas = document.getElementById("glCanvas")

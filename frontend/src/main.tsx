@@ -10,11 +10,13 @@ import * as React from 'react'
 
 import {Shape, Camera, ShapeArgs} from './interfaces'
 import * as render from './render'
+//
+// import * as test from './dimensions'
+// const js = import ("./dimensions")
 
 // Not sure how to get TS to accept WebAssembly.
 declare const WebAssembly: any
 const τ = 2 * Math.PI
-
 
 export const Main = ({state, dispatch}: {state: any, dispatch: Function}) => {
 
@@ -31,6 +33,7 @@ export const Main = ({state, dispatch}: {state: any, dispatch: Function}) => {
             name: 'origin',
             lens: [1],
             position: [0, 0, 0, 0],
+            scale: 1,
             orientation: [0, 0, 0, 0, 0, 0],
             rotation_speed: [0, 0, 0, 0, 0, 0],
         },
@@ -48,21 +51,16 @@ export const Main = ({state, dispatch}: {state: any, dispatch: Function}) => {
         clip_strange: 1.0,
     }
 
-
     // fetch('../../target/wasm32-unknown-unknown/release/dimensions.wasm')
-    fetch('dimensions.wasm')
-        .then(r => r.arrayBuffer())
-        .then(r => WebAssembly.instantiate(r))
-        .then(wasmModule => {
-            let projected = wasmModule.instance.exports.render_from_js(camera,  shapeArgss)
-            console.log("Proj: ", projected)
-            render.gl_main(projected)
-        })
+    WebAssembly.instantiateStreaming(fetch('dimensions_bg.wasm'))
+        .then((wasm_module: any) => {
+            let result = wasm_module.instance.exports.render_from_js()
+            console.log(result)
+        });
 
     return (
         <div>
             <h1>Hello</h1>
-            {/*{Rust.greet("Data")}*/}
         </div>
     )
 }

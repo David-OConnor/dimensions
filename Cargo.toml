@@ -21,7 +21,16 @@ path = "src/bin.rs"
 
 [dependencies]
 ndarray = "^0.11.2"
-wasm-bindgen = "^0.2"
+gl = "^0.10.0"
+stdweb = "^0.4.6"
+stdweb-derive = "^0.4.0"
+serde = "^1.0.59"
+serde_json = "^1.0.17"
+serde_derive = "^1.0.59"
+
+[dependencies.wasm-bindgen]
+version = "^0.2"
+features = ["serde-serialize",]
 
 # I want something more like this:
 #[target.cfg(not(wasm32-unknown-unknown)).dependencies]
@@ -29,8 +38,11 @@ wasm-bindgen = "^0.2"
 [target.'cfg(windows)'.dependencies]
 ggez = "^0.4.2"
 
-#[build-dependencies]
+
+
+[build-dependencies]
 #cc = "1.0"
+webgl_generator = "^0.1.0"
 
 # WebGl.
 #gl = "0.6.0"

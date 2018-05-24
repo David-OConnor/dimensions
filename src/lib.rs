@@ -10,7 +10,18 @@
 
 #[macro_use]
 extern crate ndarray;
+
+#[macro_use]
 extern crate wasm_bindgen;
+
+//extern crate stdweb;
+
+//extern crate serde;
+//#[macro_use]
+//extern crate serde_json;
+//#[macro_use]
+//extern crate serde_derive;
+
 
 mod shape_maker;
 mod transforms;
@@ -20,13 +31,16 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 use wasm_bindgen::prelude::*;
+//use stdweb::js_export;
 
 use types::{Camera, Shape};
 
 
-#[wasm_bindgen]
+
+//#[wasm_bindgen]
+//#[derive(Debug, Serialize)]
 #[derive(Debug)]
-struct ProjectedPt3d {
+pub struct ProjectedPt3d {
     // This includes the id tuple as separate items, since wasm_bindgen can't
     // handle HashMaps  or JS Maps.
     shape_id: i32,
@@ -36,102 +50,105 @@ struct ProjectedPt3d {
     z: f64,
 }
 
-#[wasm_bindgen]
-#[derive(Debug)]
-struct ShapeArgs {
-    // Used for hypercubes etc
-    name: String,  // eg "cube", "hypercube"
-    // len of 1 for cubes/origin, 3 for 3d boxes, 4 for 4d boxes etc.
-    // eg vec![x_len, y_len, z_len] for a 3d box.
-    lens: Vec<f64>,
-    position: Vec<f64>,
-    scale: f64,
-    orientation: Vec<f64>,
-    rotation_speed: Vec<f64>,
-}
+//js_serializable!( ProjectedPt3d );
 
-fn to_shapes(shape_argss: Vec<ShapeArgs>) -> HashMap<i32, Shape> {
-    let mut result = HashMap::new();
+//
+//#[derive(Debug)]
+//#[wasm_bindgen]
+//pub struct ShapeArgs {
+//    // Used for hypercubes etc
+//    name: String,  // eg "cube", "hypercube"
+//    // len of 1 for cubes/origin, 3 for 3d boxes, 4 for 4d boxes etc.
+//    // eg vec![x_len, y_len, z_len] for a 3d box.
+//    lens: Vec<f64>,
+//    position: Vec<f64>,
+//    scale: f64,
+//    orientation: Vec<f64>,
+//    rotation_speed: Vec<f64>,
+//}
+//
+//fn to_shapes(shape_argss: Vec<ShapeArgs>) -> HashMap<i32, Shape> {
+//    let mut result = HashMap::new();
+//
+//    for (id, args) in shape_argss.into_iter().enumerate() {
+//        let shape = match args.name.as_ref() {
+//            "box" => shape_maker::make_box(
+//                args.lens[0], args.lens[1], args.lens[2],
+//                Array::from_vec(args.position),
+//                args.scale,
+//                Array::from_vec(args.orientation),
+//                Array::from_vec(args.rotation_speed)
+//            ),
+//            "cube" =>shape_maker::make_cube(
+//                args.lens[0],
+//                Array::from_vec(args.position),
+//                args.scale,
+//                Array::from_vec(args.orientation),
+//                Array::from_vec(args.rotation_speed)
+//            ),
+//            "pyramid" =>shape_maker::make_rectangular_pyramid(
+//                args.lens[0], args.lens[1], args.lens[2],
+//                Array::from_vec(args.position),
+//                args.scale,
+//                Array::from_vec(args.orientation),
+//                Array::from_vec(args.rotation_speed)
+//            ),
+//            "origin" => shape_maker::make_origin(
+//                args.lens[0],
+//                Array::from_vec(args.position),
+//                args.scale,
+//                Array::from_vec(args.orientation),
+//                Array::from_vec(args.rotation_speed)
+//            ),
+//            "hypercube" => shape_maker::make_hypercube(
+//                args.lens[0],
+//                Array::from_vec(args.position),
+//                args.scale,
+//                Array::from_vec(args.orientation),
+//                Array::from_vec(args.rotation_speed)
+//            ),
+//            _ => panic!["Shape named passed from JS must match a shape\
+//        described in shape_maker.rs."]
+//        };
+//        result.insert(id as i32, shape);
+//    }
+//    result
+//}
 
-    for (id, args) in shape_argss.into_iter().enumerate() {
-        let shape = match args.name.as_ref() {
-            "box" => shape_maker::make_box(
-                args.lens[0], args.lens[1], args.lens[2],
-                Array::from_vec(args.position),
-                args.scale,
-                Array::from_vec(args.orientation),
-                Array::from_vec(args.rotation_speed)
-            ),
-            "cube" =>shape_maker::make_cube(
-                args.lens[0],
-                Array::from_vec(args.position),
-                args.scale,
-                Array::from_vec(args.orientation),
-                Array::from_vec(args.rotation_speed)
-            ),
-            "pyramid" =>shape_maker::make_rectangular_pyramid(
-                args.lens[0], args.lens[1], args.lens[2],
-                Array::from_vec(args.position),
-                args.scale,
-                Array::from_vec(args.orientation),
-                Array::from_vec(args.rotation_speed)
-            ),
-            "origin" => shape_maker::make_origin(
-                args.lens[0],
-                Array::from_vec(args.position),
-                args.scale,
-                Array::from_vec(args.orientation),
-                Array::from_vec(args.rotation_speed)
-            ),
-            "hypercube" => shape_maker::make_hypercube(
-                args.lens[0],
-                Array::from_vec(args.position),
-                args.scale,
-                Array::from_vec(args.orientation),
-                Array::from_vec(args.rotation_speed)
-            ),
-            _ => panic!["Shape named passed from JS must match a shape\
-        described in shape_maker.rs."]
-        };
-        result.insert(id as i32, shape);
-    }
-    result
-}
-
-
-#[wasm_bindgen]
-#[derive(Debug)]
-pub struct CameraBindgen {
-    // This camera replaces ndarrays with vectors, for bindgen compatibility.
-    pub position: Vec<f64>,
-
-    // θ_3d is in tait-bryan angles. 3 entries for 3d, 6 for 4d.
-    pub θ_3d: Vec<f64>,
-    pub θ_4d: Vec<f64>,
-
-    pub fov_hor: f64,
-    pub fov_vert: f64,
-    pub fov_strange: f64,
-    pub clip_near: f64,
-    pub clip_far: f64,
-    pub clip_strange: f64
-}
-
-impl CameraBindgen {
-    fn to_camera(self) -> Camera {
-        Camera {
-            position:Array::from_vec(self.position),
-            θ_3d: Array::from_vec(self.θ_3d),
-            θ_4d: Array::from_vec(self.θ_4d),
-            fov_hor: self.fov_hor,
-            fov_vert: self.fov_vert,
-            fov_strange: self.fov_strange,
-            clip_near: self.clip_near,
-            clip_far: self.clip_far,
-            clip_strange: self.clip_strange,
-        }
-    }
-}
+//
+////#[wasm_bindgen]
+////#[derive(Debug)]
+//pub struct CameraBindgen {
+//    // This camera replaces ndarrays with vectors, for bindgen compatibility.
+//    pub position: Vec<f64>,
+//
+//    // θ_3d is in tait-bryan angles. 3 entries for 3d, 6 for 4d.
+//    pub theta_3d: Vec<f64>,
+//    pub theta_4d: Vec<f64>,
+//
+//    pub fov_hor: f64,
+//    pub fov_vert: f64,
+//    pub fov_strange: f64,
+//    pub clip_near: f64,
+//    pub clip_far: f64,
+//    pub clip_strange: f64
+//}
+//
+//impl CameraBindgen {
+//    fn to_camera(&self) -> Camera {
+//        Camera {
+//            position:Array::from_vec(self.position.clone()),
+//            θ_3d: Array::from_vec(self.theta_3d.clone()),
+//            θ_4d: Array::from_vec(self.theta_4d.clone()),
+//            fov_hor: self.fov_hor,
+//            fov_vert: self.fov_vert,
+//            fov_strange: self.fov_strange,
+//            clip_near: self.clip_near,
+//            clip_far: self.clip_far,
+//            clip_strange: self.clip_strange,
+//        }
+//    }
+//}
 
 fn project_shapes_4d_to_3d(shapes: HashMap<i32, Shape>, camera: &Camera,
                            R_4d: &Array2<f64>)
@@ -159,15 +176,47 @@ fn project_shapes_4d_to_3d(shapes: HashMap<i32, Shape>, camera: &Camera,
     result
 }
 
-//#[wasm_bindgen]
-//pub fn render_from_js(camera: CameraBindgen,
-//                      shape_argss: Vec<ShapeArgs>) -> Vec<ProjectedPt3d> {
+
+
+
+//#[js_export]
+//#[no_mangle]
+#[wasm_bindgen]
+pub extern fn render_from_js() -> u32 {
+//                      shape_args: ShapeArgs) {
+//                      shape_argss: Vec<ShapeArgs>) -> JsValue {
+
+//    println!("Camera: {:?}", camera);
+//    println!("Shape_argss: {:?}", shape_argss);
+
 //    let shapes = to_shapes(shape_argss);
-//
+//    let shapes = to_shapes(vec![shape_args]);
+
 //    println!("Cam: {}", &camera);
 //    println!("Args: {}", &shape_argss);
 //    let camera_rust = camera.to_camera();
 //
-//    project_shapes_4d_to_3d(shapes, camera_rust, transforms::rotate_4d(&camera_rust.θ_4d))
-//}
+//    let result = project_shapes_4d_to_3d(
+//        shapes,
+//        &camera_rust,
+//        &transforms::rotate_4d(&camera_rust.θ_4d)
+//    );
+//    JsValue::from_serde(&result).unwrap()
 
+    let mut test = HashMap::new();
+    test.insert("Whatd", 1);
+
+    test.insert("YO", 2);
+
+//    serde::serialize(test);
+
+    String::from("Huge success");
+    3
+
+//    JsValue::from_serde(&test).unwrap()
+}
+
+#[no_mangle]
+pub extern fn add_one(a: u32) -> u32 {
+    a + 1
+}

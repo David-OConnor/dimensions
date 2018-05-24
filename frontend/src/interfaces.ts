@@ -44,8 +44,6 @@ export class Camera {
         this.clip_strange = clip_strange
 
     }
-
-
 }
 
 export class Shape {

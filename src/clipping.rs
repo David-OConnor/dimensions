@@ -5,13 +5,28 @@
 
 use ndarray::prelude::*;
 
-use types::{Pt2D, Camera, Node};
+use types::{Pt2D, Pt3D, Camera, Node};
 
 const INSIDE: i8 = 0;
 const LEFT: i8 = 1;
 const RIGHT: i8 = 2;
 const BOTTOM: i8 = 4;
 const TOP: i8 = 8;
+
+struct Frustum {
+    // 3d frustrum.
+    // eg FUL for Far Up Left. Front means high z coord.
+    FUL: Array1<f64>,
+    FUR: Array1<f64>,
+    FDL: Array1<f64>,
+    FDR: Array1<f64>,
+
+    NUL: Array1<f64>,
+    NUR: Array1<f64>,
+    NDL: Array1<f64>,
+    NDR: Array1<f64>,
+}
+
 
 fn compute_outcode(pt: &Pt2D, x_min: f64, x_max: f64, y_min: f64, y_max: f64) -> i8 {
     // Initialised as being inside of clip window
@@ -105,22 +120,61 @@ pub fn clip(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
     }
 }
 
-struct _Frustrum {
-    // 3d frustrum.
-    // eg FUL for Far Up Left. Front means high z coord.
-    FUL: Array1<f64>,
-    FUR: Array1<f64>,
-    FDL: Array1<f64>,
-    FDR: Array1<f64>,
-     
-    NUL: Array1<f64>,
-    NUR: Array1<f64>,
-    NDL: Array1<f64>,
-    NDR: Array1<f64>,
+fn cross(a: Array1<f64>, b: Array1<f64>) -> Array1<f64> {
+    // Calculate the cross product between two vectors... Why isn't this
+    // included with the ndarray crate?
+    assert![a.len() == 3 && b.len() == 3];
+    array![a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]
 }
 
-fn _make_frustrum(cam: &Camera) -> _Frustrum {
-    // todo as method for camera?
+fn find_intersection_3d(
+    line: (Array1<f64>, Array1<f64>),
+                        plane: (Array1<f64>, Array1<f64>, Array1<f64>, Array1<f64>)
+    ) -> Option<Array1<f64>> {
+
+    // The normal vector is perpendicular to two vectors we create from our plane.
+    // We don't need the fourth point.
+    let norm_vec = cross(
+        array![plane.1[0] - plane.0[0], plane.1[1] - plane.0[1], plane.1[2] - plane.0[2]],
+        array![plane.2[0] - plane.0[0], plane.2[1] - plane.0[1], plane.2[2] - plane.0[2]]
+    );
+
+    // todo remove unit_norm if we don't need normalized
+    let unit_norm = norm_vec / (norm_vec[0].powi(2) + norm_vec[1].powi(2) +
+        norm_vec[2].powi(2)).sqrt();
+
+    let parallel_check = unit_norm.dot(&(line[1] - line[0]));
+    if parallel_check == 0. { // todo check floating point math isn't fucking you.
+        // No intersection if the line and planes are parallel.
+        return None;
+    }
+        return Some
+}
+
+fn clip_to_frustrum_3d(fm: &Frustum, line: (Array1<f64>, Array1<f64>)) ->
+        (Array1<f64>, Array1<f64>) {
+    let planes = vec![
+        // Left
+        (fm.FUL, fm.FDL, fm.NUL, fm.NDL),
+        // Right
+        (fm.FUR, fm.FDR, fm.NUR, fm.NDR),
+        // Top
+        (fm.FUL, fm.FUR, fm.NUL, fm.NUR),
+        // Bottom
+        (fm.FDL, fm.FDR, fm.NDL, fm.NDR),
+        // Front
+        (fm.FUL, fm.FUR, fm.FDL, fm.FDR),
+        // Near
+        (fm.NUL, fm.NUR, fm.NDL, fm.NDR)
+    ];
+
+    for plane in &planes {
+        let intersection = find_intersection_3d(&line, plane);
+    }
+}
+
+fn _make_frustrum(cam: &Camera) -> _Frustum {
+    // todo as method for camera? m for frustum???
     let (far_width, far_height) = cam.view_size(true);
     let (near_width, near_height) = cam.view_size(false);
     

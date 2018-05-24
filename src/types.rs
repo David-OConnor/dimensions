@@ -9,6 +9,13 @@ pub struct Pt2D {
 }
 
 #[derive(Debug)]
+pub struct Pt3D {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+#[derive(Debug)]
 pub struct Node {
     // a may be relative or absolute.
     pub a: Array1<f64>,
