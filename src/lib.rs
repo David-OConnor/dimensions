@@ -22,7 +22,7 @@ extern crate wasm_bindgen;
 //#[macro_use]
 //extern crate serde_derive;
 
-
+mod clipping;
 mod shape_maker;
 mod transforms;
 mod types;
@@ -150,20 +150,21 @@ pub struct ProjectedPt3d {
 //    }
 //}
 
-fn project_shapes_4d_to_3d(shapes: HashMap<i32, Shape>, camera: &Camera,
-                           R_4d: &Array2<f64>)
+fn project_shapes_4d_to_3d(shapes: HashMap<i32, Shape>, cam: &Camera)
                            -> Vec<ProjectedPt3d> {
     // Used for passing 3d shapes to WebGL; differs from project_shapes_3d in
     // that it skips the projection from 4d to 3d, and outputs in a
     // bindgen-friendly format.
-    assert![R_4d.rows() == 5 && R_4d.cols() == 5];
+    let R = transforms::make_rotator_4d(&cam.θ_4d);
+    let P = transforms::make_projector(cam, true);
+    let T = transforms::make_translator(&cam.position);
 
     let mut result = Vec::new();
 
     for (shape_id, shape) in &shapes {
         let positioned_nodes = transforms::position_shape(shape);
         for (node_id, node) in &positioned_nodes {
-            let projected = transforms::project(camera, R_4d, &node, true);
+            let projected = transforms::project(&R, &P, &T, node.clone(), true);
             result.push(ProjectedPt3d {
                 shape_id: *shape_id,
                 node_id: *node_id,

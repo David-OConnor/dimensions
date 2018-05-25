@@ -23,6 +23,8 @@ fn main() {
 
     let shape_vec = vec![
         shape_maker::make_cube(1., array![-5.5, 0., -3.5, 0.], 1., empty_6.clone(), array![0.001, 0., 0., 0., 0., 0.]),
+
+
         shape_maker::make_box(1.5, 0.5, 2.5, array![6., 0., 5., 0.], 1., empty_6.clone(), empty_6.clone()),
         shape_maker::make_rectangular_pyramid(2., 1.5, 0.5, array![-5., -0., 5.0, 0.], 1.,
                                               empty_6.clone(), array![0.001, -0.002, 0., 0., 0., 0.]),
@@ -58,7 +60,7 @@ fn main() {
         shapes.insert(id as i32, shape);
     }
 
-    render_ggez::run(shapes, true);
+    render_ggez::run(shapes, false);
     // gfx_render::main();
 }
 

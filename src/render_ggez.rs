@@ -16,8 +16,8 @@ use ggez::timer;
 
 use clipping;
 use transforms;
-use transforms::{MoveDirection, move_camera_3d, move_camera_4d};
-use types::{Shape, Node, Camera, Pt2D};
+use transforms::{MoveDirection, move_camera};
+use types::{Shape, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
@@ -27,8 +27,8 @@ fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
     Camera {
         // If 3d, the 4th items for position isn't used.
-        position: array![0., 3., -6., -2.],
-        θ_3d: array![0., 0., 0.],
+        position: array![0., 1., -6., -2.],
+        θ_3d: array![-0., 0., 0.],
         θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov_hor: τ / 5.,
         fov_vert: τ / 5.,
@@ -109,8 +109,8 @@ fn build_mesh(ctx: &mut Context,
     // Scale to window.
     // Assume the points projected to 0 are at the center of the
     // screen, and that we've projected onto a square window.
-    let x_max = view_size.0 / 2.;
-    let y_max = view_size.1;
+    let x_max = (view_size.0 / 2.) * 0.95;
+    let y_max = view_size.1 * 0.95;
     let x_min = -x_max;
     let y_min = x_min;
 
@@ -118,13 +118,27 @@ fn build_mesh(ctx: &mut Context,
 
     for (shape_id, shape) in shapes {
         for edge in &shape.edges {
-            let start = &projected[&(*shape_id, edge.node0)];
-            let end = &projected[&(*shape_id, edge.node1)];
 
-            let start_pt = Pt2D {x: start[0], y: start[1]};
-            let end_pt = Pt2D {x: end[0], y: end[1]};
+            // Absent keys indicate we've clipped the point from the projection.
+            let start = &projected.get(&(*shape_id, edge.node0));
+            let end = &projected.get(&(*shape_id, edge.node1));
+            let start1: &Array1<f64>;
+            let end1: &Array1<f64>;
 
-            let clipped_pt = clipping::clip(
+            match start {
+                Some(pt) => start1 = pt,
+                None => continue
+            }
+            match end {
+                Some(pt) => end1 = pt,
+                None => continue
+            }
+
+            let start_pt = Pt2D {x: start1[0], y: start1[1]};
+            let end_pt = Pt2D {x: end1[0], y: end1[1]};
+
+            // todo remove this clipping once clipping to the frustum is set up.
+            let clipped_pt = clipping::clip_2d(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max
             );
 
@@ -205,18 +219,10 @@ impl event::EventHandler for MainState {
             // Invert θ, since we're treating the camera as static, rotating
             // the world around it.
             // Same reason we invert the position transforms in transforms.rs.
-
-            let R_4d = transforms::rotate_4d(&self.camera.θ_4d);
-            let R_3d = transforms::rotate_3d(&self.camera.θ_3d);
-            projected = transforms::project_shapes_4d(
-                &self.shapes, &self.camera, &R_4d, &R_3d
-            );
+            projected = transforms::project_shapes_4d(&self.shapes, &self.camera);
         } else {
             // let R = transforms::rotate_3d(&-&self.camera.θ_3d);
-            let R = transforms::rotate_3d(&self.camera.θ_3d);
-            projected = transforms::project_shapes_3d(
-                &self.shapes, &self.camera, &R
-            );
+            projected = transforms::project_shapes_3d(&self.shapes, &self.camera);
         }
 
         let mesh = build_mesh(ctx,
@@ -238,11 +244,6 @@ impl event::EventHandler for MainState {
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
 
-//        let move_func = match self.is_4d {
-//            true => move_camera_4d,
-//            false => move_camera_3d,
-//        };
-
         let move_θ = &match self.is_4d {
             true => self.camera.θ_4d.clone(),
             false => self.camera.θ_3d.clone(),
@@ -250,60 +251,48 @@ impl event::EventHandler for MainState {
 
         // todo for now we've removed FPS controls; make the move simply modify
         // todo our position in abs coords. move_θ is unused, in this case.
-        let move_func = move_camera_4d;
-
 
         // Some of the entries appear for reversed, for reasons I don't
         // understand yet.
         match keycode {
             Keycode::W => {
-                let move_vec = move_func(MoveDirection::Forward, move_θ);
+                let move_vec = move_camera(MoveDirection::Forward, move_θ);
                 self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
                 // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
                 println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
                 println!("Posit: {}", &self.camera.position);
                 println!("θ {}", &self.camera.θ_3d);
-                println!("width: {}", &self.camera.width());
             },
             Keycode::S => {
-                let move_vec = move_func(MoveDirection::Back, move_θ);
+                let move_vec = move_camera(MoveDirection::Back, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
-
             Keycode::A => {
-                let move_vec = move_func(MoveDirection::Left, move_θ);
+                let move_vec = move_camera(MoveDirection::Left, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::D => {
-                let move_vec = move_func(MoveDirection::Right, move_θ);
+                let move_vec = move_camera(MoveDirection::Right, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::C => {
-                let move_vec = move_func(MoveDirection::Down, move_θ);
+                let move_vec = move_camera(MoveDirection::Down, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::LCtrl => {
-                let move_vec = move_func(MoveDirection::Down, move_θ);
+                let move_vec = move_camera(MoveDirection::Down, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::Space => {
-                let move_vec = move_func(MoveDirection::Up, move_θ);
-                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
-            },
-            Keycode::A => {
-                let move_vec = move_func(MoveDirection::Left, move_θ);
-                self.camera.position += &(move_vec * MOVE_SENSITIVITY);
-            },
-            Keycode::D => {
-                let move_vec = move_func(MoveDirection::Right, move_θ);
+                let move_vec = move_camera(MoveDirection::Up, move_θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::F => {
-                let move_vec = move_func(MoveDirection::Fourdown, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Earth, &self.camera.θ_4d);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::R => {
-                let move_vec = move_func(MoveDirection::Fourup, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Sky, &self.camera.θ_4d);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 
@@ -348,8 +337,16 @@ impl event::EventHandler for MainState {
             Keycode::N => self.camera.clip_far -= 1. * ZOOM_SENSITIVITY,
             Keycode::M => self.camera.clip_far += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::Minus => self.camera.fov_hor += 1. * ZOOM_SENSITIVITY,
-            Keycode::Equals => self.camera.fov_hor -= 1. * ZOOM_SENSITIVITY,
+            Keycode::Minus => {
+                self.camera.fov_hor += 1. * ZOOM_SENSITIVITY;
+                self.camera.fov_vert += 1. * ZOOM_SENSITIVITY;
+                self.camera.fov_strange += 1. * ZOOM_SENSITIVITY;
+            },
+            Keycode::Equals => {
+                self.camera.fov_hor -= 1. * ZOOM_SENSITIVITY;
+                self.camera.fov_vert -= 1. * ZOOM_SENSITIVITY;
+                self.camera.fov_strange -= 1. * ZOOM_SENSITIVITY;
+            },
 
             // reset
             Keycode::Backspace => self.camera = DEFAULT_CAMERA(),

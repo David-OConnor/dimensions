@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["David O'Connor <david.alan.oconnor@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/David-OConnor/dimensions"
-hoempage = "https://github.com/David-OConnor/dimensions"
+homepage = "https://github.com/David-OConnor/dimensions"
 readme = "README.md"
 build = "build.rs"
 

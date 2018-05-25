@@ -9,13 +9,6 @@ pub struct Pt2D {
 }
 
 #[derive(Debug)]
-pub struct Pt3D {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-#[derive(Debug)]
 pub struct Node {
     // a may be relative or absolute.
     pub a: Array1<f64>,
@@ -84,12 +77,6 @@ pub struct Camera {
 }
 
 impl Camera {
-    // For now, we create a square window.
-    pub fn width(&self) -> f64{
-        // Calculate the projected window width, using basic trig.
-        2. * self.clip_near * (self.fov_hor / 2.).tan()
-    }
-
     pub fn view_size(&self, far: bool) -> (f64, f64){
         // Calculate the projected window width and height, using basic trig.
         let dist = match far {
@@ -103,7 +90,7 @@ impl Camera {
     }
 }
 
-pub struct Quaternion {
+pub struct _Quaternion {
     // Borrowed heavily from cgmath.
     // Ref: https://github.com/brendanzab/cgmath/blob/master/src/quaternion.rs
     // https://en.wikipedia.org/wiki/Quaternion
@@ -118,18 +105,18 @@ pub struct Quaternion {
     pub v: Array1<f64>,
 }
 
-impl Quaternion {
-    pub fn conjugate(self) -> Quaternion {
-        Quaternion { s: self.s, v: -self.v }
+impl _Quaternion {
+    pub fn conjugate(self) -> _Quaternion {
+        _Quaternion { s: self.s, v: -self.v }
     }
 
-    pub fn product(&self, other: &Quaternion) -> Quaternion {
+    pub fn product(&self, other: &_Quaternion) -> _Quaternion {
         let a = self.s * other.s - self.v[0] * other.v[0] - self.v[1] * other.v[1] - self.v[2] * other.v[2];
         let i = self.s * other.v[0] + self.v[0] * other.s + self.v[1] * other.v[2] - self.v[2] * other.v[1];
         let j = self.s * other.v[1] - self.v[0] * other.v[2] + self.v[1] * other.s + self.v[2] * other.v[0];
         let k = self.s * other.v[2] + self.v[0] * other.v[1] - self.v[1] * other.v[0] + self.v[2] * other.s;
 
-        Quaternion { s: a, v: array![i, j, k] }
+        _Quaternion { s: a, v: array![i, j, k] }
     }
 }
 

@@ -5,7 +5,7 @@
 
 use ndarray::prelude::*;
 
-use types::{Pt2D, Pt3D, Camera, Node};
+use types::{Pt2D, Camera, Node};
 
 const INSIDE: i8 = 0;
 const LEFT: i8 = 1;
@@ -25,6 +25,18 @@ struct Frustum {
     NUR: Array1<f64>,
     NDL: Array1<f64>,
     NDR: Array1<f64>,
+
+    // We can call directions in the fourth dim earth and sky for down and up,
+    // respectively, for now.
+//    FULS: Array1<f64>,
+//    FURS: Array1<f64>,
+//    FDLS: Array1<f64>,
+//    FDRS: Array1<f64>,
+//
+//    NULS: Array1<f64>,
+//    NURS: Array1<f64>,
+//    NDLS: Array1<f64>,
+//    NDRS: Array1<f64>,
 }
 
 
@@ -47,8 +59,8 @@ fn compute_outcode(pt: &Pt2D, x_min: f64, x_max: f64, y_min: f64, y_max: f64) ->
     code
 }
 
-pub fn clip(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64, 
-            y_min: f64, y_max: f64) -> Option<(Pt2D, Pt2D)> {
+pub fn clip_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
+               y_min: f64, y_max: f64) -> Option<(Pt2D, Pt2D)> {
     // Cohen–Sutherland clipping algorithm clips a line from
     // P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
     // diagonal from (xmin, ymin) to (xmax, ymax).
@@ -127,53 +139,106 @@ fn cross(a: Array1<f64>, b: Array1<f64>) -> Array1<f64> {
     array![a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]]
 }
 
-fn find_intersection_3d(
-    line: (Array1<f64>, Array1<f64>),
-                        plane: (Array1<f64>, Array1<f64>, Array1<f64>, Array1<f64>)
-    ) -> Option<Array1<f64>> {
+//fn find_intersection_3d(
+//        line: (Array1<f64>, Array1<f64>),
+//        plane: (Array1<f64>, Array1<f64>, Array1<f64>, Array1<f64>)
+//    ) -> Option<Array1<f64>> {
+//
+//
+//    // todo we may simplify our calculations by using the camera directly,
+//    // todo rather than the set of points, to define the frsutum.
+//
+//    // The normal vector is perpendicular to two vectors we create from our plane.
+//    // We don't need the fourth point.
+//    let norm = cross(
+//        array![plane.1[0] - plane.0[0], plane.1[1] - plane.0[1], plane.1[2] - plane.0[2]],
+//        array![plane.2[0] - plane.0[0], plane.2[1] - plane.0[1], plane.2[2] - plane.0[2]]
+//    );
+//
+//    // todo remove unit_norm if we don't need normalized
+//    let unit_norm = norm / (norm[0].powi(2) + norm[1].powi(2) +
+//        norm[2].powi(2)).sqrt();
+//
+//    let parallel_check = norm.dot(&(line[1] - line[0]));
+//    // if the normal vector dotted with the line is 0, the line is parallel
+//    // to the plane, and therefore doesn't intersect it.
+//    if parallel_check == 0. { // todo check floating point math isn't fucking you.
+//        return None;  // todo distinguish between all outside/parallel, and all inside.
+//    }
+//
+//    // The equation of the plane is Ax + By +C z = D, where A, B, and C are the
+//    // unit normal vector's components.
+//    let D = norm[0] * ()
+//
+//    // Calculate the equation for the line; parameterize.
+//    let t = array![
+//
+//    ]
+//
+//
+//
+//        return Some
+//}
 
-    // The normal vector is perpendicular to two vectors we create from our plane.
-    // We don't need the fourth point.
-    let norm_vec = cross(
-        array![plane.1[0] - plane.0[0], plane.1[1] - plane.0[1], plane.1[2] - plane.0[2]],
-        array![plane.2[0] - plane.0[0], plane.2[1] - plane.0[1], plane.2[2] - plane.0[2]]
-    );
+pub fn clip_3d(cam: &Camera, line: (Array1<f64>, Array1<f64>)) ->
+        Option<(Array1<f64>, Array1<f64>)> {
+    let fm = make_frustum(&cam);
 
-    // todo remove unit_norm if we don't need normalized
-    let unit_norm = norm_vec / (norm_vec[0].powi(2) + norm_vec[1].powi(2) +
-        norm_vec[2].powi(2)).sqrt();
-
-    let parallel_check = unit_norm.dot(&(line[1] - line[0]));
-    if parallel_check == 0. { // todo check floating point math isn't fucking you.
-        // No intersection if the line and planes are parallel.
-        return None;
+    // todo You should be able to make a better skip-the-calcs check than this.
+    // Use the frustum's widest parts to check if both line components are outside
+    // them. This should get most cases of lines being completely outside the frustrum,
+    // but let some through.
+    if &line.0[0] >= &fm.FUR[0] && &line.1[0] >= &fm.FUR[0] {
+        return None  // Left of frustum
     }
-        return Some
-}
+    if &line.0[0] <= &fm.FUL[0] && &line.1[0] <= &fm.FUL[0] {
+        return None  // Right
+    }
+    if &line.0[1] >= &fm.FUL[1] && &line.1[1] >= &fm.FUL[1] {
+        return None  // Above
+    }
+    if &line.0[1] <= &fm.FDL[1] && &line.1[1] <= &fm.FDL[1] {
+        return None  // Below
+    }
+    if &line.0[2] >= &fm.FUL[2] && &line.1[2] >= &fm.FUL[2] {
+        return None  // Past far edge
+    }
+    if &line.0[1] <= &fm.NDL[2] && &line.1[2] <= &fm.NDL[2] {
+        return None  // Closer than near edge.
+    }
 
-fn clip_to_frustrum_3d(fm: &Frustum, line: (Array1<f64>, Array1<f64>)) ->
-        (Array1<f64>, Array1<f64>) {
+    // Check if the line's completely within the frustum. Again, using a
+    // conservative method that doesn't catch all cases.
+    return Some(line);
+
+    if &line.0[0] < &fm.NUR[0] && &line.1[0] > &fm.NUL[0] &&  // Inside horizontally
+       &line.0[1] < &fm.NUR[1] && &line.1[1] > &fm.NDL[1] &&  // Vertically
+       &line.0[2] < &fm.FUR[2] && &line.1[2] > &fm.NUL[2] {  // Forward and back
+            return Some(line)  // Return the original line, unclipped.
+        }
+
+
     let planes = vec![
         // Left
-        (fm.FUL, fm.FDL, fm.NUL, fm.NDL),
+        (&fm.FUL, &fm.FDL, &fm.NUL, &fm.NDL),
         // Right
-        (fm.FUR, fm.FDR, fm.NUR, fm.NDR),
+        (&fm.FUR, &fm.FDR, &fm.NUR, &fm.NDR),
         // Top
-        (fm.FUL, fm.FUR, fm.NUL, fm.NUR),
+        (&fm.FUL, &fm.FUR, &fm.NUL, &fm.NUR),
         // Bottom
-        (fm.FDL, fm.FDR, fm.NDL, fm.NDR),
+        (&fm.FDL, &fm.FDR, &fm.NDL, &fm.NDR),
         // Front
-        (fm.FUL, fm.FUR, fm.FDL, fm.FDR),
+        (&fm.FUL, &fm.FUR, &fm.FDL, &fm.FDR),
         // Near
-        (fm.NUL, fm.NUR, fm.NDL, fm.NDR)
+        (&fm.NUL, &fm.NUR, &fm.NDL, &fm.NDR)
     ];
 
-    for plane in &planes {
-        let intersection = find_intersection_3d(&line, plane);
-    }
+//    for plane in &planes {
+//        let intersection = find_intersection_3d(&line, plane);
+//    }
 }
 
-fn _make_frustrum(cam: &Camera) -> _Frustum {
+fn make_frustum(cam: &Camera) -> Frustum {
     // todo as method for camera? m for frustum???
     let (far_width, far_height) = cam.view_size(true);
     let (near_width, near_height) = cam.view_size(false);
@@ -188,7 +253,7 @@ fn _make_frustrum(cam: &Camera) -> _Frustum {
     let NDL = array![-near_width / 2., -near_height / 2., cam.clip_near];
     let NDR = array![near_width / 2., -near_height / 2., cam.clip_near];
 
-    _Frustrum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
+    Frustum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
 }
 
 fn _normalize_to_frustrum(shifted_node: Node) {
