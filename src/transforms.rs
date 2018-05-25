@@ -165,38 +165,59 @@ pub fn make_projector(cam: &Camera, is_4d: bool) -> Array2<f64> {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
-    // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
+    // Let's compile the different versions you've seen:
+    // 1: http://learnwebgl.brown37.net/08_projections/projections_perspective.html
+    // 2: https://en.wikipedia.org/wiki/3D_projection
+    // 3: https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
+    // 4: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
     // projection-matrix/building-basic-perspective-projection-matrix
-    let s_h = 1. / (cam.fov_hor / 2. as f64).tan();
-    let s_v = 1. / (cam.fov_vert / 2. as f64).tan();
-    let s_d = s_h;  // depth for 4d?
+    // 5: https://github.com/brendanzab/cgmath/blob/master/src/projection.rs
+    // 6: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_model_view_projection
+    // 7: http://www.songho.ca/opengl/gl_projectionmatrix.html
+
+    // 7's on point with my calcs, although stated in terms of right/top.
+
+    let y_scale = 1. / (cam.fov / 2. as f64).tan();
+    let x_scale = y_scale / cam.aspect;
+    let z_scale = x_scale;  // depth for 4d
 
     // Is the discarded projection axis z (like 3d), or u?
     // Currently set for u.
 
+    // We're treating u in 4d as the view that gets collapsed; as z is for 3d.
+
+    // I've derived these matrices myself; none of the ones described in the
+    // above links seem to produce a unit cube for easy clipping.
     match is_4d {
         true => array![
-            [s_h, 0., 0., 0., 0.],
-            [0., s_v, 0., 0., 0.],
-            [0., 0., s_d, 0., 0.],
-            [0., 0., 0., -cam.clip_far / (cam.clip_far-cam.clip_near), -1.,],
-            [0., 0., -cam.clip_far*cam.clip_near / (cam.clip_far-cam.clip_near), 0., 1.],
+            [x_scale, 0., 0., 0., 0.],
+            [0., y_scale, 0., 0., 0.],
+            [0., 0., z_scale, 0., 0.],
+            [0., 0., 1. / (cam.far - cam.near), -cam.near / (cam.far - cam.near), 0.],
+            [0., 0., 0., -1., 1.],
         ],
-
         false => array![
-            [s_h, 0., 0., 0., 0.],
-            [0., s_v, 0., 0., 0.],
-            [0., 0., -cam.clip_far / (cam.clip_far-cam.clip_near), -1., 0.],
+            [x_scale, 0., 0., 0., 0.],
+            [0., y_scale, 0., 0., 0.],
+            [0., 0., 1. / (cam.far - cam.near), -cam.near / (cam.far - cam.near), 0.],
             [0., 0., 0., 1., 0.],  // unused row for u.
-            [0., 0., -cam.clip_far*cam.clip_near / (cam.clip_far-cam.clip_near), 0., 1.],
+            [0., 0., -1., 0., 1.],
         ]
 
+        // More flexible version found online; equivalent for our use case.
+            // This matrix projects onto the unit cube. Allegedly used by OpenGL.
+    // https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
+//    let top = cam.near * (cam.fov / 2.).tan();
+//    let bottom = -top;
+//    let right = top * cam.aspect;
+//    let left = -right;
 //        array![
-//            [s_h, 0., 0., 0., 0.],
-//            [0., s_v, 0., 0., 0.],
-//            [0., 0., -cam.clip_far / (cam.clip_far-cam.clip_near), -1., 0.],
+//            [2. * cam.near / (right - left), 0., (right + left) / (right - left), 0., 0.],
+//            [0., 2. * cam.near / (top - bottom), (top + bottom) / (top - bottom), 0., 0.],
+//            [0., 0., -(cam.far + cam.near) / (cam.far - cam.near), -(2. * cam.far * cam.near) / (cam.far - cam.near), 0.],
 //            [0., 0., 0., 1., 0.],  // unused row for u.
-//            [0., 0., -cam.clip_far*cam.clip_near / (cam.clip_far-cam.clip_near), 0., 1.],
+//            [0., 0., -1., 0., 1.],
+////            [0., 0., (2. * cam.far * cam.near) / (cam.near - cam.far), 0., 1.],
 //        ]
     }
 }
@@ -209,6 +230,8 @@ pub fn project(R: &Array2<f64>, P: &Array2<f64>, T: &Array2<f64>, pt: Array1<f64
     let augmented_pt = array![pt[0], pt[1], pt[2], pt[3], 1.];
     let positioned_pt = R.dot(&(T.dot(&augmented_pt)));
 
+    // I think f is the point in a 4 or 3-dimensional [hyper]cube; a
+    // crushed frustrum. ?
     let f = P.dot(&positioned_pt);
 
     if is_4d {
@@ -270,16 +293,32 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
         for edge in &shape.edges {
             let node0 = &positioned_nodes[&edge.node0];
             let node1 = &positioned_nodes[&edge.node1];
-            let clipped_line = clipping::clip_3d(cam, (node0.clone(), node1.clone()));
 
-            match clipped_line {
-                Some(clipped) => {
-                    result.insert((*shape_id, edge.node0), project(&R, &P, &T, clipped.0, false));
-                    result.insert((*shape_id, edge.node1), project(&R, &P, &T, clipped.1, false));
-                },
-                // The edge is completely outside the viewing area; move on.
-                None => continue
-            }
+            let augmented_pt0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
+            let f0 = P.dot(&(R.dot(&(T.dot(&augmented_pt0)))));
+            println!("F0: {}", f0);
+            println!("Clip space?: {} {} {}", f0[0]/f0[4], f0[1]/f0[4] , f0[2]);
+
+            result.insert((*shape_id, edge.node0), array![f0[0] / f0[4], f0[1] / f0[4]]);
+
+            let augmented_pt1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
+            let f1 = P.dot(&(R.dot(&(T.dot(&augmented_pt1)))));
+            result.insert((*shape_id, edge.node1), array![f1[0] / f1[4], f1[1] / f1[4]]);
+
+
+//            let clipped_line = clipping::clip_3d(cam, (node0.clone(), node1.clone()));
+
+            // todo testing clipping post-projection.
+//            let clipped_line = Some((node0.clone(), node1.clone()));
+//
+//            match clipped_line {
+//                Some(clipped) => {
+//                    result.insert((*shape_id, edge.node0), project(&R, &P, &T, clipped.0, false));
+//                    result.insert((*shape_id, edge.node1), project(&R, &P, &T, clipped.1, false));
+//                },
+//                // The edge is completely outside the viewing area; move on.
+//                None => continue
+//            }
         }
     }
     result

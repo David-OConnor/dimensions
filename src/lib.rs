@@ -126,9 +126,8 @@ pub struct ProjectedPt3d {
 //    pub theta_3d: Vec<f64>,
 //    pub theta_4d: Vec<f64>,
 //
-//    pub fov_hor: f64,
-//    pub fov_vert: f64,
-//    pub fov_strange: f64,
+//    pub fov: f64,
+//    pub aspect: f64,
 //    pub clip_near: f64,
 //    pub clip_far: f64,
 //    pub clip_strange: f64
@@ -140,9 +139,8 @@ pub struct ProjectedPt3d {
 //            position:Array::from_vec(self.position.clone()),
 //            θ_3d: Array::from_vec(self.theta_3d.clone()),
 //            θ_4d: Array::from_vec(self.theta_4d.clone()),
-//            fov_hor: self.fov_hor,
-//            fov_vert: self.fov_vert,
-//            fov_strange: self.fov_strange,
+//            fov: self.fov_hor,
+//            aspect: aspect,
 //            clip_near: self.clip_near,
 //            clip_far: self.clip_far,
 //            clip_strange: self.clip_strange,

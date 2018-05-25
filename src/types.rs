@@ -66,26 +66,25 @@ pub struct Camera {
     pub θ_3d: Array1<f64>,
     pub θ_4d: Array1<f64>,
 
-    pub fov_hor: f64,  // field of view in radians.
-    pub fov_vert: f64, // vertical FOV. Unused currently.
-    pub fov_strange: f64,
+    pub aspect: f64,  // width / height.
+    pub fov: f64,  // field of view in radians.  I think this is vertical FOV.
     // near, far, and strange for our 3d and 4d frustrums.  Strange is an
     // experimental extension into the 4th dimension.
-    pub clip_near: f64,
-    pub clip_far: f64,
-    pub clip_strange: f64
+    pub near: f64,
+    pub far: f64,
+    pub strange: f64
 }
 
 impl Camera {
     pub fn view_size(&self, far: bool) -> (f64, f64){
         // Calculate the projected window width and height, using basic trig.
         let dist = match far {
-            true => self.clip_far,
-            false => self.clip_near,
+            true => self.far,
+            false => self.near,
         };
 
-        let width = 2. * dist * (self.fov_hor / 2.).tan();
-        let height = 2. * dist * (self.fov_vert / 2.).tan();
+        let width = 2. * dist * (self.fov * self.aspect / 2.).tan();
+        let height = 2. * dist * (self.fov / 2.).tan();
         (width, height)
     }
 }

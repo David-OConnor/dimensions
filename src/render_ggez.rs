@@ -30,12 +30,11 @@ fn DEFAULT_CAMERA() -> Camera {
         position: array![0., 1., -6., -2.],
         θ_3d: array![-0., 0., 0.],
         θ_4d: array![0., 0., 0., 0., 0., 0.],
-        fov_hor: τ / 5.,
-        fov_vert: τ / 5.,
-        fov_strange: τ / 5.,
-        clip_far: 30.,
-        clip_near: 0.9,
-        clip_strange: 1.0,
+        fov: τ / 5.,
+        aspect: 1.,
+        far: 30.,
+        near: 0.6,
+        strange: 1.0,
     }
 }
 
@@ -331,22 +330,14 @@ impl event::EventHandler for MainState {
             Keycode::P => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], TURN_SENSITIVITY),
             Keycode::Semicolon => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], -TURN_SENSITIVITY),
 
-            Keycode::V => self.camera.clip_near -= 1. * ZOOM_SENSITIVITY,
-            Keycode::B => self.camera.clip_near += 1. * ZOOM_SENSITIVITY,
+            Keycode::V => self.camera.near -= 1. * ZOOM_SENSITIVITY,
+            Keycode::B => self.camera.near += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::N => self.camera.clip_far -= 1. * ZOOM_SENSITIVITY,
-            Keycode::M => self.camera.clip_far += 1. * ZOOM_SENSITIVITY,
+            Keycode::N => self.camera.far -= 1. * ZOOM_SENSITIVITY,
+            Keycode::M => self.camera.far += 1. * ZOOM_SENSITIVITY,
 
-            Keycode::Minus => {
-                self.camera.fov_hor += 1. * ZOOM_SENSITIVITY;
-                self.camera.fov_vert += 1. * ZOOM_SENSITIVITY;
-                self.camera.fov_strange += 1. * ZOOM_SENSITIVITY;
-            },
-            Keycode::Equals => {
-                self.camera.fov_hor -= 1. * ZOOM_SENSITIVITY;
-                self.camera.fov_vert -= 1. * ZOOM_SENSITIVITY;
-                self.camera.fov_strange -= 1. * ZOOM_SENSITIVITY;
-            },
+            Keycode::Minus => self.camera.fov += 1. * ZOOM_SENSITIVITY,
+            Keycode::Equals => self.camera.fov -= 1. * ZOOM_SENSITIVITY,
 
             // reset
             Keycode::Backspace => self.camera = DEFAULT_CAMERA(),

@@ -243,15 +243,15 @@ fn make_frustum(cam: &Camera) -> Frustum {
     let (far_width, far_height) = cam.view_size(true);
     let (near_width, near_height) = cam.view_size(false);
     
-    let FUL = array![-far_width / 2., far_height / 2., cam.clip_far];
-    let FUR = array![far_width / 2., far_height / 2., cam.clip_far];
-    let FDL = array![-far_width / 2., -far_height / 2., cam.clip_far];
-    let FDR = array![far_width / 2., -far_height / 2., cam.clip_far];
+    let FUL = array![-far_width / 2., far_height / 2., cam.far];
+    let FUR = array![far_width / 2., far_height / 2., cam.far];
+    let FDL = array![-far_width / 2., -far_height / 2., cam.far];
+    let FDR = array![far_width / 2., -far_height / 2., cam.far];
 
-    let NUL = array![-near_width / 2., near_height / 2., cam.clip_near];
-    let NUR = array![near_width / 2., near_height / 2., cam.clip_near];
-    let NDL = array![-near_width / 2., -near_height / 2., cam.clip_near];
-    let NDR = array![near_width / 2., -near_height / 2., cam.clip_near];
+    let NUL = array![-near_width / 2., near_height / 2., cam.near];
+    let NUR = array![near_width / 2., near_height / 2., cam.near];
+    let NDL = array![-near_width / 2., -near_height / 2., cam.near];
+    let NDR = array![near_width / 2., -near_height / 2., cam.near];
 
     Frustum {FUL, FUR, FDL, FDR, NUL, NUR, NDL, NDR}
 }
