@@ -179,68 +179,35 @@ pub fn make_projector(cam: &Camera, is_4d: bool) -> Array2<f64> {
 
     let y_scale = 1. / (cam.fov / 2. as f64).tan();
     let x_scale = y_scale / cam.aspect;
-    let z_scale = x_scale;  // depth for 4d
+    let z_scale = y_scale / cam.aspect_4;  // depth for 4d
 
     // Is the discarded projection axis z (like 3d), or u?
     // Currently set for u.
 
-    // We're treating u in 4d as the view that gets collapsed; as z is for 3d.
-
     // I've derived these matrices myself; none of the ones described in the
     // above links seem to produce a unit cube for easy clipping.
+    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
+    // along each axis.
+    // Note: Unlike x and y, z (or u? for 4d) doesn't map in a linear way; it goes
+    // as a decaying exponential from -1 to +1.
     match is_4d {
+        // We're treating u in 4d as the view that gets collapsed; as z is for 3d.
         true => array![
             [x_scale, 0., 0., 0., 0.],
             [0., y_scale, 0., 0., 0.],
             [0., 0., z_scale, 0., 0.],
-            [0., 0., 1. / (cam.far - cam.near), -cam.near / (cam.far - cam.near), 0.],
-            [0., 0., 0., -1., 1.],
+            [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+                (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
+            [0., 0., 0., 1., 1.],
         ],
         false => array![
             [x_scale, 0., 0., 0., 0.],
             [0., y_scale, 0., 0., 0.],
-            [0., 0., 1. / (cam.far - cam.near), -cam.near / (cam.far - cam.near), 0.],
+            [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+                (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
             [0., 0., 0., 1., 0.],  // unused row for u.
-            [0., 0., -1., 0., 1.],
+            [0., 0., 1., 0., 1.],
         ]
-
-        // More flexible version found online; equivalent for our use case.
-            // This matrix projects onto the unit cube. Allegedly used by OpenGL.
-    // https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
-//    let top = cam.near * (cam.fov / 2.).tan();
-//    let bottom = -top;
-//    let right = top * cam.aspect;
-//    let left = -right;
-//        array![
-//            [2. * cam.near / (right - left), 0., (right + left) / (right - left), 0., 0.],
-//            [0., 2. * cam.near / (top - bottom), (top + bottom) / (top - bottom), 0., 0.],
-//            [0., 0., -(cam.far + cam.near) / (cam.far - cam.near), -(2. * cam.far * cam.near) / (cam.far - cam.near), 0.],
-//            [0., 0., 0., 1., 0.],  // unused row for u.
-//            [0., 0., -1., 0., 1.],
-////            [0., 0., (2. * cam.far * cam.near) / (cam.near - cam.far), 0., 1.],
-//        ]
-    }
-}
-
-pub fn project(R: &Array2<f64>, P: &Array2<f64>, T: &Array2<f64>, pt: Array1<f64>,
-           is_4d: bool) -> Array1<f64> {
-    // Project a 3d node onto a 2d plane, or a 4d node onto a 3d volume.  This
-    // assumes the point is already positioned and rotated relative to the camera.
-    // https://en.wikipedia.org/wiki/3D_projection
-    let augmented_pt = array![pt[0], pt[1], pt[2], pt[3], 1.];
-    let positioned_pt = R.dot(&(T.dot(&augmented_pt)));
-
-    // I think f is the point in a 4 or 3-dimensional [hyper]cube; a
-    // crushed frustrum. ?
-    let f = P.dot(&positioned_pt);
-
-    if is_4d {
-        // Divide to find the 3d projected coords.
-       array![f[0] / f[4], f[1] / f[4], f[2] / f[4]]
-    }
-    else {
-        // Divide to find the 2d projected coords.
-        array![f[0] / f[4], f[1] / f[4]]
     }
 }
 
@@ -248,12 +215,9 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    let mut is_4d = false;
     // todo Need more checks than rotation speed... temp.
-    if shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
-        shape.rotation_speed[5].abs() > 0. {
-        is_4d = true;
-    }
+    let is_4d = if shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
+        shape.rotation_speed[5].abs() > 0. { true } else { false };
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
@@ -268,21 +232,59 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     for (id, node) in &shape.nodes {
     // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
     // then rotate, then translate.
-        let new_pt = T.dot(&(R.dot(&(S.dot(&node.augmented())))));
+        let homogenous = array![node.a[0], node.a[1], node.a[2], node.a[3], 1.];
+        let new_pt = T.dot(&(R.dot(&(S.dot(&homogenous)))));
         positioned_nodes.insert(*id, new_pt);
     }
 
     positioned_nodes
 }
 
+//fn project(shapes: &HashMap<i32, Shape>, T: Array2<f64>, R: Array2<f64>, P: Array2<f64>)
+//        -> HashMap<(i32, i32), Array1<f64>> {
+//    // Applies the shape projection in a way that facilities clipping edges.
+//    // This function reduces code repetition between 3d and 4d projection funcs.
+//
+//    let mut result = HashMap::new();
+//
+//    for (shape_id, shape) in shapes {
+//        let positioned_nodes = position_shape(shape);
+//
+//        // Iterate over edges so we can clip lines.
+//        for edge in &shape.edges {
+//            let node0 = &positioned_nodes[&edge.node0];
+//            let node1 = &positioned_nodes[&edge.node1];
+//
+//            // Clip our edge, which has been projected into "clipspace", eg a
+//            // cube ranging from -1 to +1 on each axes.
+//            // augmented points let us add constant values with matrix math.
+//            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
+//            let f0 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogeneous_0)))));
+//            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
+//
+//            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
+//            let f1 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogenous_1)))));
+//            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
+//
+//             match clipping::clip_3d(cam, (pt0_clipspace, pt1_clipspace)) {
+//                Some((pt0_clipped, pt1_clipped)) => {
+//                    result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+//                    result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+//                }
+//                None => ()
+//            }
+//        }
+//    }
+//}
+
 pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
         -> HashMap<(i32, i32), Array1<f64>> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
     // The HashMap key is (shape_index, node_index), so we can tie back to the
     // original shapes later.
+    let T = make_translator(&-&(cam.position));
     let R = make_rotator_3d(&cam.θ_3d);
     let P = make_projector(&cam, false);
-    let T = make_translator(&-&(cam.position));
 
     let mut result = HashMap::new();
 
@@ -294,31 +296,22 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
             let node0 = &positioned_nodes[&edge.node0];
             let node1 = &positioned_nodes[&edge.node1];
 
-            let augmented_pt0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
-            let f0 = P.dot(&(R.dot(&(T.dot(&augmented_pt0)))));
-            println!("F0: {}", f0);
-            println!("Clip space?: {} {} {}", f0[0]/f0[4], f0[1]/f0[4] , f0[2]);
+            // Clip our edge, which has been projected into "clipspace", eg a
+            // cube ranging from -1 to +1 on each axes.
+            // augmented points let us add constant values with matrix math.
+            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
+            let f0 = P.dot(&(R.dot(&(T.dot(&homogeneous_0)))));
+            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
 
-            result.insert((*shape_id, edge.node0), array![f0[0] / f0[4], f0[1] / f0[4]]);
+            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
+            let f1 = P.dot(&(R.dot(&(T.dot(&homogenous_1)))));
+            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
 
-            let augmented_pt1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
-            let f1 = P.dot(&(R.dot(&(T.dot(&augmented_pt1)))));
-            result.insert((*shape_id, edge.node1), array![f1[0] / f1[4], f1[1] / f1[4]]);
-
-
-//            let clipped_line = clipping::clip_3d(cam, (node0.clone(), node1.clone()));
-
-            // todo testing clipping post-projection.
-//            let clipped_line = Some((node0.clone(), node1.clone()));
-//
-//            match clipped_line {
-//                Some(clipped) => {
-//                    result.insert((*shape_id, edge.node0), project(&R, &P, &T, clipped.0, false));
-//                    result.insert((*shape_id, edge.node1), project(&R, &P, &T, clipped.1, false));
-//                },
-//                // The edge is completely outside the viewing area; move on.
-//                None => continue
-//            }
+            let clipped = clipping::cohen_sutherland_3d(cam, (pt0_clipspace, pt1_clipspace));
+            if let Some((pt0_clipped, pt1_clipped)) = clipped {
+                result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+                result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+            }
         }
     }
     result
@@ -327,46 +320,55 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
 pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
          -> HashMap<(i32, i32), Array1<f64>> {
     // Project shapes; modify their nodes to be projected on a 2d surface.
+    let T = make_translator(&-&(cam.position));
     let R_4d = make_rotator_4d(&cam.θ_4d);
     let R_3d = make_rotator_3d(&cam.θ_3d);
     let P_4d = make_projector(&cam, true);
     let P_3d = make_projector(&cam, false);
-    let T = make_translator(&-&(cam.position));
 
-    // First position the nodes, and project from 4d to 3d
-    let mut projected_3d = HashMap::new();
+    let mut projected_3d: HashMap<(i32, i32), Array1<f64>> = HashMap::new();
+    projected_3d
 
-    // todo DRY between here and project_shapes_3d.
-    for (shape_id, shape) in shapes {
-        let positioned_nodes = position_shape(shape);
-
-        // Iterate over edges so we can clip lines.
-        for edge in &shape.edges {
-            let node0 = &positioned_nodes[&edge.node0];
-            let node1 = &positioned_nodes[&edge.node1];
-            let clipped_line = clipping::clip_3d(cam, (node0.clone(), node1.clone()));
-
-            match clipped_line {
-                Some(clipped) => {
-                    projected_3d.insert((*shape_id, edge.node0), project(&R_4d, &P_4d, &T, clipped.0, true));
-                    projected_3d.insert((*shape_id, edge.node1), project(&R_4d, &P_4d, &T, clipped.1, true));
-                },
-                // The edge is completely outside the viewing area; move on.
-                None => continue
-            }
-        }
-    }
-
-    let mut projected_2d = HashMap::new();
-    // Now project from 3d to 2d.  We don't need to position
-    for (ids, pt) in projected_3d {
-        // Re-agument our 3d nodes to len 5, in preparation for projecting to 2d.
-        // We only need to clip once; clipping in a higher dimension clips in
-        // all lower ones projected into.
-        let aug = array![pt[0], pt[1], pt[2], 0., 1.];
-        projected_2d.insert(ids, project(&R_3d, &P_3d, &T, aug, false));
-    }
-    projected_2d
+//    // todo DRY between here and shapes_3d for now.
+//    for (shape_id, shape) in shapes {
+//        let positioned_nodes = position_shape(shape);
+//
+//        // Iterate over edges so we can clip lines.
+//        for edge in &shape.edges {
+//            let node0 = &positioned_nodes[&edge.node0];
+//            let node1 = &positioned_nodes[&edge.node1];
+//
+//            // Clip our edge, which has been projected into "clipspace", eg a
+//            // cube ranging from -1 to +1 on each axes.
+//            // augmented points let us add constant values with matrix math.
+//            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
+//            let f0 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogeneous_0)))));
+//            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
+//
+//            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
+//            let f1 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogenous_1)))));
+//            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
+//
+//             match clipping::clip_3d(cam, (pt0_clipspace, pt1_clipspace)) {
+//                Some((pt0_clipped, pt1_clipped)) => {
+//                    projected_3d.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+//                    projected_3d.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+//                }
+//                None => ()
+//            }
+//        }
+//    }
+//
+//    let mut projected_2d = HashMap::new();
+//    // Now project from 3d to 2d.  We don't need to position or clip again;
+//    // Clipping in a higher dimension clips in all lower ones projected into.
+//    for (ids, pt) in projected_3d {
+//        // Re-agument our 3d nodes to len 5, in preparation for projecting to 2d.
+//
+//        let homogenous = array![pt[0], pt[1], pt[2], 0., 1.];
+//        projected_2d.insert(ids, project(&R_3d, &P_3d, &T, homogenous, false));
+//    }
+//    projected_2d
 }
 
 pub enum MoveDirection{

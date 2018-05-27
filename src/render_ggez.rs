@@ -32,6 +32,7 @@ fn DEFAULT_CAMERA() -> Camera {
         θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov: τ / 5.,
         aspect: 1.,
+        aspect_4: 1.,
         far: 30.,
         near: 0.6,
         strange: 1.0,
@@ -137,7 +138,7 @@ fn build_mesh(ctx: &mut Context,
             let end_pt = Pt2D {x: end1[0], y: end1[1]};
 
             // todo remove this clipping once clipping to the frustum is set up.
-            let clipped_pt = clipping::clip_2d(
+            let clipped_pt = clipping::cohen_sutherland_2d(
                 &start_pt, &end_pt, x_min, x_max, y_min, y_max
             );
 
@@ -224,11 +225,16 @@ impl event::EventHandler for MainState {
             projected = transforms::project_shapes_3d(&self.shapes, &self.camera);
         }
 
+        // view_size should reflect the -1 -> +1 clipspace cube.
+
+        let view_size = (2., 2.);
+
         let mesh = build_mesh(ctx,
                               projected,
                               &self.shapes,
                               &self.camera.position,
-                              self.camera.view_size(false)
+                              view_size
+//                              self.camera.view_size(false)
         )?;
 
         graphics::set_color(ctx, (0, 255, 255).into())?;
@@ -242,6 +248,8 @@ impl event::EventHandler for MainState {
         const MOVE_SENSITIVITY: f64 = 0.05;
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
+
+//        let move_θ = if self.is_4d { self.camera.θ_4d.clone()) } else { self.camera.θ_3d.clone() };
 
         let move_θ = &match self.is_4d {
             true => self.camera.θ_4d.clone(),
