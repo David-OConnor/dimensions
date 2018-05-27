@@ -333,41 +333,10 @@ pub fn make_hypercube(side_len: f64,
 
 #[cfg(test)]
 mod tests {
-    use::super::*;
+    use super::*;
 
     #[test]
     fn test_cube() {
 
-        let expected = Shape{
-            nodes: {vec![
-                Node {a: array![1., 2., -1.], id: 0},
-                Node {a: array![1., 2., -1.] , id: 1},
-                Node {a: , id: 2},
-            Node {a: , id: 3},
-
-        Node {a: , id: 4},
-    Node {a: , id: 5},
-    Node {a: , id: 6},
-    Node {a: , id: 7},
-    ]},
-edges: {vec![
-Edge {node0: 0, node1: 1},
-Edge {node0: 1, node1: 2},
-Edge {node0: 2, node1: 3},
-Edge {node0: 3, node1: 0},
-
-Edge {node0: 4, node1: 5},
-Edge {node0: 5, node1: 6},
-Edge {node0: 6, node1: 7},
-Edge {node0: 7, node1: 4},
-
-Edge {node0: 0, node1: 4},
-Edge {node0: 1, node1: 5},
-Edge {node0: 2, node1: 6},
-Edge {node0: 3, node1: 7},
-]},
-};
-
-assert_eq!(make_cube(array![1., 2., -1.], 2.0, 0), exptected);
-}
+    }
 }

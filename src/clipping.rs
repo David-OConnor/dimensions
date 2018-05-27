@@ -104,7 +104,7 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
             // Now find the intersection point;
             // use formulas:
             //   slope = (y1 - y0) / (x1 - x0)
-            //   x = x0 + (1 / slope) * (ym bv - y0), where ym is ymin or ymax
+            //   x = x0 + (1 / slope) * (ym - y0), where ym is ymin or ymax
             //   y = y0 + slope * (xm - x0), where xm is xmin or xmax
             // No need to worry about divide-by-zero because, in each case, the
             // outcode bit being tested guarantees the denominator is non-zero
@@ -143,6 +143,7 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
 
 pub fn cohen_sutherland_3d(cam: &Camera, line: (Array1<f64>, Array1<f64>)) ->
         Option<(Array1<f64>, Array1<f64>)> {
+    // Clip to a "unit" (-1 to +1 on each axis) frustum.
     let (x_min, x_max, y_min, y_max, z_min, z_max) = (-1., 1., -1., 1., -1., 1.);
 
     let mut outcode_0 = compute_outcode_3d(&line.0, x_min, x_max, y_min, y_max, z_min, z_max);
@@ -157,73 +158,189 @@ pub fn cohen_sutherland_3d(cam: &Camera, line: (Array1<f64>, Array1<f64>)) ->
 
     loop {
         if outcode_0 | outcode_1 == 0 {
-            // bitwise OR is 0: both points inside window; trivially accept and exit loop
+            // bitwise OR is 0: both points inside window; trivially accept and
+            // exit the loop.
             return Some((array![x_0, y_0, z_0], array![x_1, y_1, z_1]));
         } else if outcode_0 & outcode_1 > 0 {
-            // bitwise AND is not 0: both points share an outside zone so both
-            // must be outside window; return None. Trivial reject.
+            // bitwise AND is not 0: both points share an outside zone, so the
+            // line won't intersect the frustum; trivially reject.
             return None
         } else {
-            // todo temp
-            return Some((array![x_0, y_0, z_0], array![x_1, y_1, z_1]));
-
             let x: f64;
             let y: f64;
             let z: f64;
-            let t: f64;
             // At least one endpoint is outside the clip rectangle; pick it.
             let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
 
-            // See notes in 2d cohen-sutherland function.
+            // See notes in 2d cohen-sutherland function.  The calculations
+            // follow this pattern: x = x_0 + dx/dy * dy, etc.
             if outcode_out & TOP > 0 {
                 // point is above the clip window
-                t = (z_0 - y_0) / ((x_1 - x_0) - (z_1 - z_0));
-                x = x_0 + t * (x_1 - x_0);
+                x = x_0 + (x_1 - x_0) / (y_1 - y_0) * (y_max - y_0);
                 y = y_max;
-                z = z_0 + t * (z_1 - z_0);
+                z = z_0 + (z_1 - z_0) / (y_1 - y_0) * (y_max - y_0);
             } else if outcode_out & BOTTOM > 0 {
                 // point is below the clip window
-                t = (z_0 - x_0) / ((x_1 - x_0) - (z_1 - z_0));
-                x = x_0 + t * (x_1 - x_0);
+                x = x_0 + (x_1 - x_0) / (y_1 - y_0) * (y_min - y_0);
                 y = y_min;
-                z = z_0 + t * (z_1 - z_0);
+                z = z_0 + (z_1 - z_0) / (y_1 - y_0) * (y_min - y_0);
             } else if outcode_out & RIGHT > 0 {
                 // point is to the right of the clip window
-                t = (z_0 - y_0) / ((y_1 - y_0) - (z_1 - z_0));
                 x = x_max;
-                y = y_0 + t * (y_1 - y_0);
-                z = z_0 + t * (z_1 - z_0);
+                y = y_0 + (y_1 - y_0) / (x_1 - x_0) * (x_max - x_0);
+                z = z_0 + (z_1 - z_0) / (x_1 - x_0) * (x_max - x_0);
             } else if outcode_out & LEFT > 0 {
                 // point is to the left of the clip window
-                t = (z_0 - y_0) / ((y_1 - y_0) - (z_1 - z_0));
                 x = x_min;
-                y = y_0 + t * (y_1 - y_0);
-                z = z_0 + t * (z_1 - z_0);
+                y = y_0 + (y_1 - y_0) / (x_1 - x_0) * (x_min - x_0);
+                z = z_0 + (z_1 - z_0) / (x_1 - x_0) * (x_min - x_0);
             } else if outcode_out & FORWARD > 0 {
-                // point is to the right of the clip window
-                t = (x_0 - y_0) / ((y_1 - y_0) - (x_1 - x_0));
-                x = x_0 + t * (x_1 - x_0);
-                y = y_0 + t * (y_1 - y_0);
+                // point is to the foward part of the clip window
+                x = x_0 + (x_1 - x_0) / (z_1 - z_0) * (z_max - z_0);
+                y = y_0 + (y_1 - y_0) / (z_1 - z_0) * (z_max - z_0);
                 z = z_max;
             } else {
                 // point is in the back of the clip window
-                t = (x_0 - y_0) / ((y_1 - y_0) - (x_1 - x_0));
-                x = x_0 + t * (x_1 - x_0);
-                y = y_0 + t * (y_1 - y_0);
+                x = x_0 + (x_1 - x_0) / (z_1 - z_0) * (z_min - z_0);
+                y = y_0 + (y_1 - y_0) / (z_1 - z_0) * (z_min - z_0);
                 z = z_min;
             }
 
             // Now we move outside point to intersection point to clip
             // and get ready for next pass.
             if outcode_out == outcode_0 {
+                x_0 = x;
+                y_0 = y;
+                z_0 = z;
                 outcode_0 = compute_outcode_3d(
-                    &array![x, y, z],
+                    &array![x_0, y_0, z_0],
                     x_min, x_max, y_min, y_max, z_min, z_max
                 );
             } else {
+                x_1 = x;
+                y_1 = y;
+                z_1 = z;
                 outcode_1 = compute_outcode_3d(
-                    &array![x, y, z],
+                    &array![x_1, y_1, z_1],
                     x_min, x_max, y_min, y_max, z_min, z_max
+                );
+            }
+        }
+    }
+}
+
+pub fn cohen_sutherland_4d(cam: &Camera, line: (Array1<f64>, Array1<f64>)) ->
+        Option<(Array1<f64>, Array1<f64>)> {
+    // Clip to a "unit" (-1 to +1 on each axis) hyperfrustum.
+    let (x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max) =
+        (-1., 1., -1., 1., -1., 1., -1., 1.);
+
+    let mut outcode_0 = compute_outcode_4d(
+        &line.0, x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
+    );
+    let mut outcode_1 = compute_outcode_4d(
+        &line.1, x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
+    );
+
+    let mut x_0 = line.0[0];
+    let mut y_0 = line.0[1];
+    let mut z_0 = line.0[2];
+    let mut u_0 = line.0[3];
+    let mut x_1 = line.1[0];
+    let mut y_1 = line.1[1];
+    let mut z_1 = line.1[2];
+    let mut u_1 = line.1[3];
+    return Some((array![x_0, y_0, z_0, u_0], array![x_1, y_1, z_1, u_1]));
+    loop {
+        if outcode_0 | outcode_1 == 0 {
+            // bitwise OR is 0: both points inside window; trivially accept and
+            // exit the loop.
+            return Some((array![x_0, y_0, z_0, u_0], array![x_1, y_1, z_1, u_1]));
+        } else if outcode_0 & outcode_1 > 0 {
+            // bitwise AND is not 0: both points share an outside zone, so the
+            // line won't intersect the frustum; trivially reject.
+            return None
+        } else {
+            let x: f64;
+            let y: f64;
+            let z: f64;
+            let u: f64;
+            // At least one endpoint is outside the clip rectangle; pick it.
+            let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
+
+            // todo cache dy * dy etc.
+
+            // See notes in 2d cohen-sutherland function.  The calculations
+            // follow this pattern: x = x_0 + dx/dy * dy, etc.
+            if outcode_out & TOP > 0 {
+                // point is above the clip window
+                x = x_0 + (x_1 - x_0) / (y_1 - y_0) * (y_max - y_0);
+                y = y_max;
+                z = z_0 + (z_1 - z_0) / (y_1 - y_0) * (y_max - y_0);
+                u = u_0 + (u_1 - u_0) / (y_1 - y_0) * (y_max - y_0);
+            } else if outcode_out & BOTTOM > 0 {
+                // point is below the clip window
+                x = x_0 + (x_1 - x_0) / (y_1 - y_0) * (y_min - y_0);
+                y = y_min;
+                z = z_0 + (z_1 - z_0) / (y_1 - y_0) * (y_min - y_0);
+                u = u_0 + (u_1 - u_0) / (y_1 - y_0) * (y_max - y_0);
+            } else if outcode_out & RIGHT > 0 {
+                // point is to the right of the clip window
+                x = x_max;
+                y = y_0 + (y_1 - y_0) / (x_1 - x_0) * (x_max - x_0);
+                z = z_0 + (z_1 - z_0) / (x_1 - x_0) * (x_max - x_0);
+                u = u_0 + (u_1 - u_0) / (x_1 - x_0) * (x_max - x_0);
+            } else if outcode_out & LEFT > 0 {
+                // point is to the left of the clip window
+                x = x_min;
+                y = y_0 + (y_1 - y_0) / (x_1 - x_0) * (x_min - x_0);
+                z = z_0 + (z_1 - z_0) / (x_1 - x_0) * (x_min - x_0);
+                u = u_0 + (u_1 - u_0) / (x_1 - x_0) * (x_max - x_0);
+            } else if outcode_out & FORWARD > 0 {
+                // point is to the foward part of the clip window
+                x = x_0 + (x_1 - x_0) / (z_1 - z_0) * (z_max - z_0);
+                y = y_0 + (y_1 - y_0) / (z_1 - z_0) * (z_max - z_0);
+                z = z_max;
+                u = u_0 + (u_1 - u_0) / (z_1 - z_0) * (z_max - z_0);
+            } else if outcode_out & BACK > 0 {
+                // point is in the back of the clip window
+                x = x_0 + (x_1 - x_0) / (z_1 - z_0) * (z_min - z_0);
+                y = y_0 + (y_1 - y_0) / (z_1 - z_0) * (z_min - z_0);
+                z = z_min;
+                u = u_0 + (u_1 - u_0) / (z_1 - z_0) * (z_max - z_0);
+            } else if outcode_out & SKY > 0 {
+                // point is in the sky of the clip window
+                x = x_0 + (x_1 - x_0) / (u_1 - u_0) * (u_max - u_0);
+                y = y_0 + (y_1 - y_0) / (u_1 - u_0) * (u_max - u_0);
+                z = z_0 + (z_1 - z_0) / (u_1 - u_0) * (u_max - u_0);;
+                u = u_max;
+            } else {
+                // point is in the earth of the clip window
+                x = x_0 + (x_1 - x_0) / (u_1 - u_0) * (u_min - u_0);
+                y = y_0 + (y_1 - y_0) / (u_1 - u_0) * (u_min - u_0);
+                z = z_0 + (z_1 - z_0) / (u_1 - u_0) * (u_min - u_0);;
+                u = u_min;
+            }
+
+            // Now we move outside point to intersection point to clip
+            // and get ready for next pass.
+            if outcode_out == outcode_0 {
+                x_0 = x;
+                y_0 = y;
+                z_0 = z;
+                u_0 = u;
+                outcode_0 = compute_outcode_4d(
+                    &array![x_0, y_0, z_0, u_0],
+                    x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
+                );
+            } else {
+                x_1 = x;
+                y_1 = y;
+                z_1 = z;
+                u_0 = u;
+                outcode_1 = compute_outcode_4d(
+                    &array![x_1, y_1, z_1, u_1],
+                    x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
                 );
             }
         }
@@ -235,22 +352,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn clip_1() {
-        let pt_0 = (32., -11.);
-        let pt_1 = (0., -1.2);
-
-        let expected = 0;
-
-        assert_eq!(clipping::clip_and_draw(pt_0[0], pt_0[1], pt_1[0], pt_1[1]), expected);
-    }
-
-    #[test]
     fn outcodes() {
-        let pt_0 = (32., -11.);
-        let pt_1 = (0., -1.2);
+        // By testing outcodes in 4d, we implicitly test the 3 and 2d functions.
+        let pt_0 = array![1.5, -0.2, 0., 1.3];  // Right, sky
+        let pt_1 = array![-3.5, -0.2, -2.2, 2.4];  // Left, back, sky
+        let pt_2 = array![0.5, -1.2, -0.3, 0.8];  // Down
+        let pt_3 = array![0.99, -0.99, -0.1, -0.3];  // Inside
 
-        let expected = 0;
-
-        assert_eq!(clipping::clip_and_draw(pt_0[0], pt_0[1], pt_1[0], pt_1[1]), expected);
+        assert_eq!(compute_outcode_4d(&pt_0, -1., 1., -1., 1., -1., 1., -1., 1.), 130);
+        assert_eq!(compute_outcode_4d(&pt_1, -1., 1., -1., 1., -1., 1., -1., 1.), 145);
+        assert_eq!(compute_outcode_4d(&pt_2, -1., 1., -1., 1., -1., 1., -1., 1.), 4);
+        assert_eq!(compute_outcode_4d(&pt_3, -1., 1., -1., 1., -1., 1., -1., 1.), 0);
     }
 }

@@ -240,42 +240,21 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     positioned_nodes
 }
 
-//fn project(shapes: &HashMap<i32, Shape>, T: Array2<f64>, R: Array2<f64>, P: Array2<f64>)
-//        -> HashMap<(i32, i32), Array1<f64>> {
-//    // Applies the shape projection in a way that facilities clipping edges.
-//    // This function reduces code repetition between 3d and 4d projection funcs.
-//
-//    let mut result = HashMap::new();
-//
-//    for (shape_id, shape) in shapes {
-//        let positioned_nodes = position_shape(shape);
-//
-//        // Iterate over edges so we can clip lines.
-//        for edge in &shape.edges {
-//            let node0 = &positioned_nodes[&edge.node0];
-//            let node1 = &positioned_nodes[&edge.node1];
-//
-//            // Clip our edge, which has been projected into "clipspace", eg a
-//            // cube ranging from -1 to +1 on each axes.
-//            // augmented points let us add constant values with matrix math.
-//            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
-//            let f0 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogeneous_0)))));
-//            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
-//
-//            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
-//            let f1 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogenous_1)))));
-//            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
-//
-//             match clipping::clip_3d(cam, (pt0_clipspace, pt1_clipspace)) {
-//                Some((pt0_clipped, pt1_clipped)) => {
-//                    result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
-//                    result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
-//                }
-//                None => ()
-//            }
-//        }
-//    }
-//}
+fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
+             P: &Array2<f64>) -> Array1<f64> {
+    // Helper function to reduce repetition in project_shapes_3/4d.
+    // Clip our edge, which has been projected into "clipspace", eg a
+    // cube ranging from -1 to +1 on each axes.
+    // augmented points let us add constant values with matrix math.
+
+    // Homogenous points simplify calculations by allowing us to add constant values.
+    let homogeneous = array![pt[0], pt[1], pt[2], pt[3], 1.];
+    // Project into clipspace.
+    let f = P.dot(&(R.dot(&(T.dot(&homogeneous)))));
+    // We divide by z (or u in 4d), since this is part of our calculation for
+    // projecting into the "unit" cube clipspace.
+    array![f[0] / f[4], f[1] / f[4], f[2] / f[4], f[3] / f[4]]
+}
 
 pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
         -> HashMap<(i32, i32), Array1<f64>> {
@@ -289,28 +268,21 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
     let mut result = HashMap::new();
 
     for (shape_id, shape) in shapes {
-        let positioned_nodes = position_shape(shape);
+        let positioned_pts = position_shape(shape);
 
         // Iterate over edges so we can clip lines.
         for edge in &shape.edges {
-            let node0 = &positioned_nodes[&edge.node0];
-            let node1 = &positioned_nodes[&edge.node1];
+            let pt_0 = &positioned_pts[&edge.node0];
+            let pt_1 = &positioned_pts[&edge.node1];
+            let pt_0_clipspace = project(pt_0, &T, &R, &P);
+            let pt_1_clipspace = project(pt_1, &T, &R, &P);
 
-            // Clip our edge, which has been projected into "clipspace", eg a
-            // cube ranging from -1 to +1 on each axes.
-            // augmented points let us add constant values with matrix math.
-            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
-            let f0 = P.dot(&(R.dot(&(T.dot(&homogeneous_0)))));
-            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
-
-            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
-            let f1 = P.dot(&(R.dot(&(T.dot(&homogenous_1)))));
-            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
-
-            let clipped = clipping::cohen_sutherland_3d(cam, (pt0_clipspace, pt1_clipspace));
-            if let Some((pt0_clipped, pt1_clipped)) = clipped {
-                result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
-                result.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
+            let clipped = clipping::cohen_sutherland_3d(cam, (pt_0_clipspace, pt_1_clipspace));
+            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
+                // We return the full (non-homogenous) projected point, even
+                // though we only need x and y to display.
+                result.insert((*shape_id, edge.node0), pt_0_clipped);
+                result.insert((*shape_id, edge.node1), pt_1_clipped);
             }
         }
     }
@@ -326,47 +298,47 @@ pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
     let P_4d = make_projector(&cam, true);
     let P_3d = make_projector(&cam, false);
 
-    let mut projected_3d: HashMap<(i32, i32), Array1<f64>> = HashMap::new();
+    // Combine our 4d and 3d rotation matrices, to allow for the addition of
+    // intuitive camera controls.
+    let R = R_3d.dot(&R_4d);
+
+    // todo it may not be necessary to split these project functions into 2 versions...
+    // todo we're leaving our pts 4d anyway, and projecting into a 4d ndc/clipsace...
+    // todo probably don't need two passes on project...
+
+    let mut projected_3d = HashMap::new();
+
+     // todo DRY between here and shapes_3d for now.
+     for (shape_id, shape) in shapes {
+        let positioned_pts = position_shape(shape);
+
+        // Iterate over edges so we can clip lines.
+        for edge in &shape.edges {
+            let pt_0 = &positioned_pts[&edge.node0];
+            let pt_1 = &positioned_pts[&edge.node1];
+            let pt_0_clipspace = project(pt_0, &T, &R, &P_4d);
+            let pt_1_clipspace = project(pt_1, &T, &R, &P_4d);
+
+            let clipped = clipping::cohen_sutherland_4d(cam, (pt_0_clipspace, pt_1_clipspace));
+            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
+                // We return the full (non-homogenous) projected point, even
+                // though we only need x and y to display.
+                projected_3d.insert((*shape_id, edge.node0), pt_0_clipped);
+                projected_3d.insert((*shape_id, edge.node1), pt_1_clipped);
+            }
+        }
+    }
+
     projected_3d
 
-//    // todo DRY between here and shapes_3d for now.
-//    for (shape_id, shape) in shapes {
-//        let positioned_nodes = position_shape(shape);
-//
-//        // Iterate over edges so we can clip lines.
-//        for edge in &shape.edges {
-//            let node0 = &positioned_nodes[&edge.node0];
-//            let node1 = &positioned_nodes[&edge.node1];
-//
-//            // Clip our edge, which has been projected into "clipspace", eg a
-//            // cube ranging from -1 to +1 on each axes.
-//            // augmented points let us add constant values with matrix math.
-//            let homogeneous_0 = array![node0[0], node0[1], node0[2], node0[3], 1.];
-//            let f0 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogeneous_0)))));
-//            let pt0_clipspace = array![f0[0]/f0[4], f0[1]/f0[4], f0[2]/f0[4]];
-//
-//            let homogenous_1 = array![node1[0], node1[1], node1[2], node1[3], 1.];
-//            let f1 = P_4d.dot(&(R_4d.dot(&(T.dot(&homogenous_1)))));
-//            let pt1_clipspace = array![f1[0]/f1[4], f1[1]/f1[4], f1[2]/f1[4]];
-//
-//             match clipping::clip_3d(cam, (pt0_clipspace, pt1_clipspace)) {
-//                Some((pt0_clipped, pt1_clipped)) => {
-//                    projected_3d.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
-//                    projected_3d.insert((*shape_id, edge.node0), array![pt0_clipped[0], pt0_clipped[1]]);
-//                }
-//                None => ()
-//            }
-//        }
-//    }
-//
+
+
+
 //    let mut projected_2d = HashMap::new();
 //    // Now project from 3d to 2d.  We don't need to position or clip again;
 //    // Clipping in a higher dimension clips in all lower ones projected into.
 //    for (ids, pt) in projected_3d {
-//        // Re-agument our 3d nodes to len 5, in preparation for projecting to 2d.
-//
-//        let homogenous = array![pt[0], pt[1], pt[2], 0., 1.];
-//        projected_2d.insert(ids, project(&R_3d, &P_3d, &T, homogenous, false));
+//        projected_2d.insert(ids, project(pt, &T, &R_3d, &P_3d));
 //    }
 //    projected_2d
 }

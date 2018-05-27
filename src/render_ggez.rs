@@ -96,74 +96,52 @@ fn find_thickness(min_width: f32, max_width: f32,
 fn build_mesh(ctx: &mut Context, 
               projected: HashMap<(i32, i32), Array1<f64>>,
               shapes: &HashMap<i32, Shape>,
-              cam_posit: &Array1<f64>, 
-              view_size: (f64, f64)
+              cam_posit: &Array1<f64>,
     ) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
 
     let mb = &mut graphics::MeshBuilder::new();
 
+    // Center and scale to window.
+    // Assume the points projected to 0 are at the center of the
+    // screen, and the projected points range from -1 to +1 on each axis.
     const OFFSET_X: f32 = (CANVAS_SIZE.0 / 2) as f32;
     const OFFSET_Y: f32 = (CANVAS_SIZE.1 / 2) as f32;
-
-    // Scale to window.
-    // Assume the points projected to 0 are at the center of the
-    // screen, and that we've projected onto a square window.
-    let x_max = (view_size.0 / 2.) * 0.95;
-    let y_max = view_size.1 * 0.95;
-    let x_min = -x_max;
-    let y_min = x_min;
-
-    let scaler = (CANVAS_SIZE.0 as f64 / view_size.0) as f32;
+    // view_size reflects the -1 -> +1 clipspace cube.
+    const VIEW_SIZE: (f32, f32) = (2., 2.);
+    // todo how do we deal with non-square windows?
+    let scaler = (CANVAS_SIZE.0 as f32 / VIEW_SIZE.0);
 
     for (shape_id, shape) in shapes {
         for edge in &shape.edges {
-
-            // Absent keys indicate we've clipped the point from the projection.
             let start = &projected.get(&(*shape_id, edge.node0));
             let end = &projected.get(&(*shape_id, edge.node1));
-            let start1: &Array1<f64>;
-            let end1: &Array1<f64>;
+            let start_unwrapped: &Array1<f64>;
+            let end_unwrapped: &Array1<f64>;
 
+            // Absent keys indicate we've clipped the point from the projection.
             match start {
-                Some(pt) => start1 = pt,
+                Some(pt) => start_unwrapped = pt,
                 None => continue
             }
             match end {
-                Some(pt) => end1 = pt,
+                Some(pt) => end_unwrapped = pt,
                 None => continue
             }
 
-            let start_pt = Pt2D {x: start1[0], y: start1[1]};
-            let end_pt = Pt2D {x: end1[0], y: end1[1]};
-
-            // todo remove this clipping once clipping to the frustum is set up.
-            let clipped_pt = clipping::cohen_sutherland_2d(
-                &start_pt, &end_pt, x_min, x_max, y_min, y_max
-            );
-
-            let start_clipped: Pt2D;
-            let end_clipped: Pt2D;
-
-            match clipped_pt {
-                Some(pt) => {
-                    start_clipped = pt.0;
-                    end_clipped = pt.1;
-                }
-                None => continue,
-            };
-          
             let points = &[
+                // ggez's Points use f32.
                 Point2::new(
-                    OFFSET_X + start_clipped.x as f32 * scaler,
-                    OFFSET_Y + start_clipped.y as f32 * scaler,
+                    OFFSET_X + start_unwrapped[0] as f32 * scaler,
+                    OFFSET_Y + start_unwrapped[1] as f32 * scaler,
                 ),
                 Point2::new(
-                    OFFSET_X + end_clipped.x as f32 * scaler,
-                    OFFSET_Y + end_clipped.y as f32 * scaler,
+                    OFFSET_X + end_unwrapped[0] as f32 * scaler,
+                    OFFSET_Y + end_unwrapped[1] as f32 * scaler,
                 ),
             ];
 
+            // Set line thickness proportional to inverse distance.
             let dist = dist_from_edge(
                 &shape.nodes[&edge.node0].a,
                 &shape.nodes[&edge.node1].a,
@@ -172,7 +150,7 @@ fn build_mesh(ctx: &mut Context,
 
             mb.line(
                 points,
-                find_thickness(0.3, 12.0, 0.1, 10., dist)  // line width.
+                find_thickness(0.3, 12.0, 0.1, 10., dist)  // line thickness.
             );
         }
     }
@@ -216,25 +194,15 @@ impl event::EventHandler for MainState {
         let projected;
 
         if self.is_4d {
-            // Invert θ, since we're treating the camera as static, rotating
-            // the world around it.
-            // Same reason we invert the position transforms in transforms.rs.
             projected = transforms::project_shapes_4d(&self.shapes, &self.camera);
         } else {
-            // let R = transforms::rotate_3d(&-&self.camera.θ_3d);
             projected = transforms::project_shapes_3d(&self.shapes, &self.camera);
         }
-
-        // view_size should reflect the -1 -> +1 clipspace cube.
-
-        let view_size = (2., 2.);
 
         let mesh = build_mesh(ctx,
                               projected,
                               &self.shapes,
                               &self.camera.position,
-                              view_size
-//                              self.camera.view_size(false)
         )?;
 
         graphics::set_color(ctx, (0, 255, 255).into())?;

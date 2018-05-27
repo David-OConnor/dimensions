@@ -37,7 +37,7 @@ fn main() {
         shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.], 1.,
                                     empty_6.clone(),
                                     array![0., 0., 0., 0.005, 0.005, 0.005]),
-//
+
         shape_maker::make_hypercube(1., array![0., 0., 0.0, 0.], 1.,
                                     empty_6.clone(),
                                     array![0.0, 0., 0., 0.005, 0.0, 0.0]),
@@ -48,7 +48,7 @@ fn main() {
         shapes.insert(id as i32, shape);
     }
 
-    render_ggez::run(shapes, false);
+    render_ggez::run(shapes, true);
     // gfx_render::main();
 }
 
