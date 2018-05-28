@@ -127,50 +127,51 @@ pub fn make_rectangular_pyramid(x_len: f64,
     Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
 }
 
-// pub fn make_house(x_len: f64,
-//                   y_len: f64, z_len: f64, position: Array1<f64>, orientation: Array1<f64>,
-//                                rotation_speed: Array1<f64>) -> Shape {
-//     let mut base = make_box(&(center.clone()), x_len, y_len, z_len);
+ pub fn make_house(x_len: f64, y_len: f64, z_len: f64,
+                   position: Array1<f64>, scale: f64,
+                   orientation: Array1<f64>,
+                   rotation_speed: Array1<f64>) -> Shape {
+     let empty_array = array![0., 0., 0., 0., 0., 0.];
 
-//     let mut roof = make_rectangular_pyramid(
-//         // Let the roof overhang the base by a little.
-//         &array![center[0] - x_len * 0.1, center[1] + y_len, center[2] - x_len * 0.1, center[3]],
-//         x_len * 1.2, 
-//         z_len * 1.2, 
-//         y_len / 3.,  // Make the roof height a portion of the base height. 
-//     );
+     // We'll modify base in-place, then return it.
+     let mut base = make_box(x_len, y_len, z_len, position, scale,
+                         orientation, rotation_speed);
 
-//     // Now that we've made the shapes, recompose them to be one shape.
-//     // todo make this a separate, (reusable) func?
-//     let id_addition = base.nodes.len() as i32;
+     let roof = make_rectangular_pyramid(
+         x_len * 1.2,  // Let the roof overhang the base by a little.
+         z_len * 1.2,
+         y_len / 3.,  // Make the roof height a portion of the base height.
+         empty_array.clone(), 0., empty_array.clone(), empty_array.clone()
+     );
 
-//     let mut combined_nodes = HashMap::new();
-//     let mut combined_edges: Vec<Edge> = Vec::new();
+     // Now that we've made the shapes, recompose them to be one shape.
+     // todo make this a separate, (reusable) func?
+     let id_addition = base.nodes.len() as i32;
 
-//     for (id, node) in &base.nodes {
-//         combined_nodes.insert(id as i32, node);
-//     }
-//     for (id, node) in &roof.nodes {
-//         // For the roof, modify the ids to be unique.
-//         combined_nodes.insert(&((id + id_addition) as i32), node);
-//     }
-//     for edge in &mut base.edges {
-//         combined_edges.append(edge);
-//     }
-//     for edge in &roof.edges {
-//         combined_edges.append(Edge {
-//             node0: edge.node0 + id_addition,
-//             node1: edge.node1 + id_addition
-//         });
-//     }
-
-//     Shape {nodes, edges, position, scale, orientation, rotation_speed}
-// }
+     for (id, node) in &roof.nodes {
+         // For the roof, modify the ids to be unique.
+         base.nodes.insert(
+             id + id_addition,
+             Node {a: array![node.a[0], node.a[1] + y_len, node.a[2], node.a[3]]}
+         );
+     }
+     for edge in &roof.edges {
+         base.edges.push(Edge {
+             node0: edge.node0 + id_addition,
+             node1: edge.node1 + id_addition
+         });
+     }
+     for face in &roof.faces {
+         base.faces.push(face.clone());
+     }
+     base
+ }
 
 pub fn make_cube(side_len: f64,
                  position: Array1<f64>, scale: f64, orientation: Array1<f64>,
                  rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
+    // We'll still treat the center as the center of the base portion.
     make_box(side_len, side_len, side_len, position, scale, orientation, rotation_speed)
 }
 

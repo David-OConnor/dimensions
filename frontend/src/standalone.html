@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script>
+      WebAssembly.instantiateStreaming(fetch('dimensions.wasm'))
+        .then(wasm_module => {
+            alert(`2 + 1 = ${wasm_module.instance.exports.add_one(2)}`);
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

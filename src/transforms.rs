@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ndarray::prelude::*;
 
 use clipping;
-use types::{Camera, Node, Shape};
+use types::{Camera, Shape};
 
 pub fn make_rotator_4d(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -161,7 +161,7 @@ fn make_scaler(scale: Array1<f64>) -> Array2<f64> {
     ]
 }
 
-pub fn make_projector(cam: &Camera, is_4d: bool) -> Array2<f64> {
+pub fn make_projector(cam: &Camera) -> Array2<f64> {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -179,45 +179,45 @@ pub fn make_projector(cam: &Camera, is_4d: bool) -> Array2<f64> {
 
     let y_scale = 1. / (cam.fov / 2. as f64).tan();
     let x_scale = y_scale / cam.aspect;
-    let z_scale = y_scale / cam.aspect_4;  // depth for 4d
+    let u_scale = y_scale / cam.aspect_4;  // depth for 4d
 
-    // Is the discarded projection axis z (like 3d), or u?
-    // Currently set for u.
+    // We are defining z as the axis that determines how x and y points are
+    // scaled, for both 4d and 3d projections. U points don't play a factor
+    // in our final result; their data is only included during rotations;
+    // This function transforms them, but that ultimately is not projected to
+    // 2d screens.
+
+    // Insight: z (or u, depending on which convention we settle on) is used
+    // for two things: Determining how we should scale x and y (The vars that
+
 
     // I've derived these matrices myself; none of the ones described in the
     // above links seem to produce a unit cube for easy clipping.
     // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
     // along each axis.
-    // Note: Unlike x and y, z (or u? for 4d) doesn't map in a linear way; it goes
+    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
     // as a decaying exponential from -1 to +1.
-    match is_4d {
-        // We're treating u in 4d as the view that gets collapsed; as z is for 3d.
-        true => array![
-            [x_scale, 0., 0., 0., 0.],
-            [0., y_scale, 0., 0., 0.],
-            [0., 0., z_scale, 0., 0.],
-            [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-                (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
-            [0., 0., 0., 1., 1.],
-        ],
-        false => array![
+
+    array![
             [x_scale, 0., 0., 0., 0.],
             [0., y_scale, 0., 0., 0.],
             [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
                 (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
-            [0., 0., 0., 1., 0.],  // unused row for u.
+            // u_scale is, ultimately, not really used.
+            [0., 0., 0., u_scale, 0.],
+            // This row allows us to divide by z after taking the dot product,
+            // as part of our scaling operation.
             [0., 0., 1., 0., 1.],
         ]
-    }
 }
 
 pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    // todo Need more checks than rotation speed... temp.
     let is_4d = if shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
-        shape.rotation_speed[5].abs() > 0. { true } else { false };
+        shape.rotation_speed[5].abs() > 0. || shape.orientation[3].abs() > 0. ||
+        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0. { true } else { false };
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
@@ -242,7 +242,7 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
 
 fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
              P: &Array2<f64>) -> Array1<f64> {
-    // Helper function to reduce repetition in project_shapes_3/4d.
+    // Helper function to reduce repetition in project_shapes.
     // Clip our edge, which has been projected into "clipspace", eg a
     // cube ranging from -1 to +1 on each axes.
     // augmented points let us add constant values with matrix math.
@@ -253,17 +253,25 @@ fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
     let f = P.dot(&(R.dot(&(T.dot(&homogeneous)))));
     // We divide by z (or u in 4d), since this is part of our calculation for
     // projecting into the "unit" cube clipspace.
-    array![f[0] / f[4], f[1] / f[4], f[2] / f[4], f[3] / f[4]]
+
+    // todo: I'm not sure exactly why we must reverse y.
+    array![f[0] / f[4], -f[1] / f[4], f[2] / f[4], f[3] / f[4]]
 }
 
-pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
+pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
         -> HashMap<(i32, i32), Array1<f64>> {
-    // Project shapes; modify their nodes to be projected on a 2d surface.
+    // Position and rotate shapes relative to the camera; project into a
+    // clipspace [hyper]frustum.
     // The HashMap key is (shape_index, node_index), so we can tie back to the
     // original shapes later.
+    // We negate R and T, since we're shifting and rotating relative to the
+    // [fixed] camera.
     let T = make_translator(&-&(cam.position));
-    let R = make_rotator_3d(&cam.θ_3d);
-    let P = make_projector(&cam, false);
+    let R = if is_4d {
+        make_rotator_3d(&-&(cam.θ_3d)).dot(&(make_rotator_4d(&-&(cam.θ_4d))))
+    } else
+        { make_rotator_3d(&-&(cam.θ_3d)) };
+    let P = make_projector(&cam);
 
     let mut result = HashMap::new();
 
@@ -277,7 +285,7 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
             let pt_0_clipspace = project(pt_0, &T, &R, &P);
             let pt_1_clipspace = project(pt_1, &T, &R, &P);
 
-            let clipped = clipping::cohen_sutherland_3d(cam, (pt_0_clipspace, pt_1_clipspace));
+            let clipped = clipping::clip_3d((pt_0_clipspace, pt_1_clipspace));
             if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
                 // We return the full (non-homogenous) projected point, even
                 // though we only need x and y to display.
@@ -288,49 +296,48 @@ pub fn project_shapes_3d(shapes: &HashMap<i32, Shape>, cam: &Camera)
     }
     result
 }
-
-pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
-         -> HashMap<(i32, i32), Array1<f64>> {
-    // Project shapes; modify their nodes to be projected on a 2d surface.
-    let T = make_translator(&-&(cam.position));
-    let R_4d = make_rotator_4d(&cam.θ_4d);
-    let R_3d = make_rotator_3d(&cam.θ_3d);
-    let P_4d = make_projector(&cam, true);
-    let P_3d = make_projector(&cam, false);
-
-    // Combine our 4d and 3d rotation matrices, to allow for the addition of
-    // intuitive camera controls.
-    let R = R_3d.dot(&R_4d);
-
-    // todo it may not be necessary to split these project functions into 2 versions...
-    // todo we're leaving our pts 4d anyway, and projecting into a 4d ndc/clipsace...
-    // todo probably don't need two passes on project...
-
-    let mut projected_3d = HashMap::new();
-
-     // todo DRY between here and shapes_3d for now.
-     for (shape_id, shape) in shapes {
-        let positioned_pts = position_shape(shape);
-
-        // Iterate over edges so we can clip lines.
-        for edge in &shape.edges {
-            let pt_0 = &positioned_pts[&edge.node0];
-            let pt_1 = &positioned_pts[&edge.node1];
-            let pt_0_clipspace = project(pt_0, &T, &R, &P_4d);
-            let pt_1_clipspace = project(pt_1, &T, &R, &P_4d);
-
-            let clipped = clipping::cohen_sutherland_4d(cam, (pt_0_clipspace, pt_1_clipspace));
-            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
-                // We return the full (non-homogenous) projected point, even
-                // though we only need x and y to display.
-                projected_3d.insert((*shape_id, edge.node0), pt_0_clipped);
-                projected_3d.insert((*shape_id, edge.node1), pt_1_clipped);
-            }
-        }
-    }
-
-    projected_3d
-
+//
+//pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
+//         -> HashMap<(i32, i32), Array1<f64>> {
+//    // Project shapes; modify their nodes to be projected on a 2d surface.
+//    let T = make_translator(&-&(cam.position));
+//    let R_4d = make_rotator_4d(&cam.θ_4d);
+//    let R_3d = make_rotator_3d(&cam.θ_3d);
+//    let P = make_projector(&cam);
+//
+//    // Combine our 4d and 3d rotation matrices, to allow for the addition of
+//    // intuitive camera controls.
+//    let R = R_3d.dot(&R_4d);
+//
+//    // todo it may not be necessary to split these project functions into 2 versions...
+//    // todo we're leaving our pts 4d anyway, and projecting into a 4d ndc/clipsace...
+//    // todo probably don't need two passes on project...
+//
+//    let mut projected_3d = HashMap::new();
+//
+//     // todo DRY between here and shapes_3d for now.
+//     for (shape_id, shape) in shapes {
+//        let positioned_pts = position_shape(shape);
+//
+//        // Iterate over edges so we can clip lines.
+//        for edge in &shape.edges {
+//            let pt_0 = &positioned_pts[&edge.node0];
+//            let pt_1 = &positioned_pts[&edge.node1];
+//            let pt_0_clipspace = project(pt_0, &T, &R, &P);
+//            let pt_1_clipspace = project(pt_1, &T, &R, &P);
+//
+//            let clipped = clipping::cohen_sutherland_4d(cam, (pt_0_clipspace, pt_1_clipspace));
+//            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
+//                // We return the full (non-homogenous) projected point, even
+//                // though we only need x and y to display.
+//                projected_3d.insert((*shape_id, edge.node0), pt_0_clipped);
+//                projected_3d.insert((*shape_id, edge.node1), pt_1_clipped);
+//            }
+//        }
+//    }
+//
+//    projected_3d
+//
 
 
 
@@ -341,7 +348,7 @@ pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
 //        projected_2d.insert(ids, project(pt, &T, &R_3d, &P_3d));
 //    }
 //    projected_2d
-}
+//}
 
 pub enum MoveDirection{
     Forward,
@@ -359,8 +366,8 @@ pub fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1., 0.],
         MoveDirection::Back => array![0., 0., -1., 0.],
-        MoveDirection::Left => -array![-1., 0., 0., 0.],
-        MoveDirection::Right => -array![1., 0., 0., 0.],
+        MoveDirection::Left => array![-1., 0., 0., 0.],
+        MoveDirection::Right => array![1., 0., 0., 0.],
         MoveDirection::Up => array![0., 1., 0., 0.],
         MoveDirection::Down => array![0., -1., 0., 0.],
         MoveDirection::Sky => array![0., 0., 0., 1.],

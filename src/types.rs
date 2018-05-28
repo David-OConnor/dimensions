@@ -8,7 +8,7 @@ pub struct Pt2D {
     pub y: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     // a may be relative or absolute.
     pub a: Array1<f64>,
@@ -29,7 +29,7 @@ pub struct Edge {
     pub node1: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Face {
     // Edges should lie in a plane, and be in an order that links them together.
     pub edges: Vec<Edge>

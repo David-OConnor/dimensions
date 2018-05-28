@@ -28,13 +28,13 @@ fn DEFAULT_CAMERA() -> Camera {
     Camera {
         // If 3d, the 4th items for position isn't used.
         position: array![0., 1., -6., -2.],
-        θ_3d: array![-0., 0., 0.],
+        θ_3d: array![0., 0., 0.],
         θ_4d: array![0., 0., 0., 0., 0., 0.],
         fov: τ / 5.,
         aspect: 1.,
         aspect_4: 1.,
-        far: 30.,
-        near: 0.6,
+        far: 50.,
+        near: 0.1,
         strange: 1.0,
     }
 }
@@ -109,8 +109,19 @@ fn build_mesh(ctx: &mut Context,
     const OFFSET_Y: f32 = (CANVAS_SIZE.1 / 2) as f32;
     // view_size reflects the -1 -> +1 clipspace cube.
     const VIEW_SIZE: (f32, f32) = (2., 2.);
-    // todo how do we deal with non-square windows?
-    let scaler = (CANVAS_SIZE.0 as f32 / VIEW_SIZE.0);
+
+    let scaler = CANVAS_SIZE.0 as f32 / VIEW_SIZE.0;
+
+    // todo we need to perform an additional 2d clipping step for non-1 aspect
+    // todo ratios. Ie for landscape.
+    let (mut x_clip, mut y_clip) = (1., 1.);
+    if CANVAS_SIZE.0 > CANVAS_SIZE.1 {  // Landscape; clip y.
+        y_clip = CANVAS_SIZE.1 as f64 / CANVAS_SIZE.0 as f64;
+    } else if CANVAS_SIZE.1 > CANVAS_SIZE.0 {  // Portrait; clip x.
+        x_clip = CANVAS_SIZE.0 as f64/ CANVAS_SIZE.1 as f64;
+    }
+    // Else AA == 1; no 2d clipping required.
+
 
     for (shape_id, shape) in shapes {
         for edge in &shape.edges {
@@ -193,10 +204,10 @@ impl event::EventHandler for MainState {
 
         let projected;
 
-        if self.is_4d {
-            projected = transforms::project_shapes_4d(&self.shapes, &self.camera);
+        if self.is_4d {  // todo simplify this DRY.
+            projected = transforms::project_shapes(&self.shapes, &self.camera, true);
         } else {
-            projected = transforms::project_shapes_3d(&self.shapes, &self.camera);
+            projected = transforms::project_shapes(&self.shapes, &self.camera, false);
         }
 
         let mesh = build_mesh(ctx,
