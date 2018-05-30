@@ -148,7 +148,7 @@ pub fn make_translator(cam_position: &Array1<f64>) -> Array2<f64> {
     ]
 }
 
-fn make_scaler(scale: Array1<f64>) -> Array2<f64> {
+fn make_scaler(scale: &Array1<f64>) -> Array2<f64> {
     // Return a scale matrix; the pt must have 1 appended to its end.
     assert_eq![scale.len(), 4];
 
@@ -221,11 +221,11 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    let R = match is_4d {
-        true => make_rotator_4d(&shape.orientation),
-        false => make_rotator_3d(&shape.orientation),
-    };
-    let S = make_scaler(array![shape.scale, shape.scale, shape.scale, shape.scale]);
+    let R = if is_4d
+        { make_rotator_4d(&shape.orientation) } else
+        { make_rotator_3d(&shape.orientation) };
+
+    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
     let T = make_translator(&shape.position);
 
     let mut positioned_nodes = HashMap::new();
@@ -285,7 +285,7 @@ pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
             let pt_0_clipspace = project(pt_0, &T, &R, &P);
             let pt_1_clipspace = project(pt_1, &T, &R, &P);
 
-            let clipped = clipping::clip_3d((pt_0_clipspace, pt_1_clipspace));
+            let clipped = clipping::clip_3d((&pt_0_clipspace, &pt_1_clipspace));
             if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
                 // We return the full (non-homogenous) projected point, even
                 // though we only need x and y to display.

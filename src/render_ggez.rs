@@ -228,7 +228,7 @@ impl event::EventHandler for MainState {
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
 
-//        let move_θ = if self.is_4d { self.camera.θ_4d.clone()) } else { self.camera.θ_3d.clone() };
+//        let move_θ = if self.is_4d { &(self.camera).θ_4d.clone()) } else { &(self.camera).θ_3d.clone() };
 
         let move_θ = &match self.is_4d {
             true => self.camera.θ_4d.clone(),

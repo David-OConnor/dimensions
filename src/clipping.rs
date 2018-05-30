@@ -4,8 +4,7 @@
 // This algorithm clips post-projection, ie on the 2d screen.
 
 use ndarray::prelude::*;
-
-use types::{Pt2D, Camera};
+use types::{Camera, Pt2D};
 
 const INSIDE: i16 = 0;
 const LEFT: i16 = 1;
@@ -141,22 +140,28 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
     }
 }
 
-fn line_plane_intersection(norm: Array1<f64>, plane_pt: Array1<f64>,
-                           line: (Array1<f64>, Array1<f64>)) -> Option<Array1<f64>> {
-    // 3d only.
-    let ϵ = 1e-4;
+fn line_plane_intersection(norm: &Array1<f64>, plane_pt: &Array1<f64>,
+                           line: (&Array1<f64>, &Array1<f64>)) -> Option<Array1<f64>> {
+    // 3d only.  https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+    let ϵ = 1e-6;
 
-    let line_direction = line.1.clone() - line.0.clone();
-    let normal_dotted = norm.dot(&line_direction);
-    if normal_dotted.abs() < ϵ {
-//        return None;
-        // todo address this kludge.
-        return Some(array![999., 999., 999.]);
+    let l = line.1 - line.0;  // Vector in the direction of the line.
+
+    let line_dot_norm = l.dot(norm);
+    if line_dot_norm.abs() < ϵ {
+        // This means the line is parallel with the plane (Or is contained
+        // within it).  There is no intersection.
+        return None
     }
 
-    let w = line.0.clone() - plane_pt.clone();
-    let si = -norm.dot(&w) / normal_dotted;
-    Some(w + si * line_direction + plane_pt)
+    let d = (plane_pt - line.0).dot(norm) / line_dot_norm;
+    // The direction we must travel along
+    // our line to intersect.
+    let d2 = d * l;
+    if len(&d2) > len(&(line.1 - line.0)) {
+        return None  // The line is too short; it doesn't make it to the plane.
+    }
+    Some(d2 + line.0.clone())
 }
 
 fn inside_frustum(pt: &Array1<f64>) -> bool {
@@ -168,12 +173,13 @@ fn inside_frustum(pt: &Array1<f64>) -> bool {
     false
 }
 
-fn dist_3d(pt0: &Array1<f64>, pt1: &Array1<f64>) -> f64 {
-    let diff = pt1 - pt0;
-    (diff[0].powi(2) + diff[1].powi(2) + diff[2].powi(2)).sqrt()
+fn len(pt: &Array1<f64>) -> f64 {
+//    (pt[0].powi(2) + pt[1].powi(2) + pt[2].powi(2)).sqrt()
+    (pt.iter().fold(0. as f64, |acc, coord| acc + coord.powi(2))).sqrt()
+
 }
 
-pub fn clip_3d(line: (Array1<f64>, Array1<f64>)) -> Option<(Array1<f64>, Array1<f64>)> {
+pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array1<f64>)> {
     // Struggling on Cohen Sutherland for 3d; rolling my own algo.
 
     // Clip to a clipspace frustum, bounded by -1 and +1 on each axis.
@@ -184,92 +190,83 @@ pub fn clip_3d(line: (Array1<f64>, Array1<f64>)) -> Option<(Array1<f64>, Array1<
     let (mut x1, mut y1, mut z1) = (line.1[0], line.1[1], line.1[2]);
 
     let (pt0_inside, pt1_inside) = (inside_frustum(&line.0), inside_frustum(&line.1));
-
     // Both points are inside the clipspace frustum; trivially accept.
     if pt0_inside && pt1_inside {
-        return Some(line.clone())
+        return Some((
+            array![line.0[0], line.0[1], line.0[2], line.0[3]],
+            array![line.1[0], line.1[1], line.1[2], line.1[3]]
+        ))
     }
     // Both points are outside the same frustum plane; trivially reject.
     else if (x0 < min && x1 < min) || (x0 > max && x1 > max) ||
         (y0 < min && y1 < min) || (y0 > max && y1 > max) ||
         (z0 < min && z1 < min) || (z0 > max && z1 > max) {
         return None
-    }
-    // Otherwise, we need to clip one or both points, non-trivially.
-    let line_3d = (
+    }  // Otherwise, we need to clip one or both points, non-trivially.
+
+    let mut line_3d = (
         array![line.0[0], line.0[1], line.0[2]],
         array![line.1[0], line.1[1], line.1[2]]
     );
+    if pt0_inside {
+        line_3d = (
+            array![line.0[0], line.0[1], line.0[2]],
+            array![line.1[0], line.1[1], line.1[2]]
+        );
+    } else if pt1_inside {
+        line_3d = (
+            array![line.1[0], line.1[1], line.1[2]],
+            array![line.0[0], line.0[1], line.0[2]]
+        );
+    }
 
-    let intersections = vec![
-        line_plane_intersection(
-            array![0., 1., 0.], array![0., 1., 0.], line_3d.clone()
-        ).unwrap(),
-        line_plane_intersection(
-            array![0., -1., 0.], array![0., -1., 0.], line_3d.clone()
-        ).unwrap(),
-        line_plane_intersection(
-            array![1., 0., 0.], array![1., 0., 0.], line_3d.clone()
-        ).unwrap(),
-        line_plane_intersection(
-            array![-1., 0., 0.], array![-1., 0., 0.], line_3d.clone()
-        ).unwrap(),
-        line_plane_intersection(
-            array![0., 0., 1.], array![0., 0., 1.], line_3d.clone()
-        ).unwrap(),
-        line_plane_intersection(
-            array![0., 0., -1.], array![0., 0., -1.], line_3d.clone()
-        ).unwrap()
-    ];
+    let mut intersections = Vec::new();
 
-    // Only two of the calculated intersections should be contained within the
-    // planes; these are our new endpoints.
-    const ϵ: f64 = 0.1;  // todo re-attack.
-    // todo maybe we just take the lowest two plane intersections.
-
-    let mut clipped_ends = Vec::new();
-    for intersection in &intersections {
-        if intersection[0].abs() <= 1. + ϵ && intersection[1].abs() <= 1. + ϵ &&
-            intersection[2].abs() <= 1. + ϵ {
-            clipped_ends.push(intersection);
-            if clipped_ends.len() >= 2 { break };
+    for plane in &vec![
+        array![0., 1., 0.],
+        array![0., -1., 0.],
+        array![1., 0., 0.],
+        array![-1., 0., 0.],
+        array![0., 0., 1.],
+        array![0., 0., -1.],
+    ] {
+        // None indicates a parallel line; no intersection with that plane.
+        if let Some(pt) = line_plane_intersection(plane, plane, (&line_3d.0, &line_3d.1)) {
+            intersections.push(pt)
         }
     }
-    // todo analyze how you handle this; it theroetrically should work, but it's
-    // todo getting scrweed up by edge cases.
-    println!("INTS: T{} B{} R{} L{} F{} B{}\n\n", &intersections[0], &intersections[1],
-    &intersections[2], &intersections[3], &intersections[4], &intersections[5]);
-//    assert_eq![clipped_ends.len(), 2];
-    if clipped_ends.len() < 2 {
-        return None;  // todo fix!
+
+    // Determine which two planes our line passes through.
+    const ϵ: f64 = 1e-4;
+    let adj_max = max + ϵ;
+
+    let clipped_pts: Vec<Array1<f64>> = intersections.into_iter().filter(
+        |inter| inter[0].abs() <= adj_max && inter[1].abs() <= adj_max &&
+            inter[2].abs() <= adj_max
+    ).collect();
+
+    // The line never intersects the frustum; not caught by trivial reject.
+    if clipped_pts.len() < 1 { return None; }
+
+    // We only have one plane intersected; line doesn't go all the way through
+    // our clipspace cube.
+    if clipped_pts.len() == 1 {
+        if pt0_inside {
+            return Some((line.0.clone(),
+                      array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.1[3]]
+            ))
+        } else if pt1_inside {
+            return Some((array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.0[3]],
+                      line.1.clone(),
+            ))
+        }
     }
 
-    let clipped0;
-    let clipped1;
-    // Go with withever end is closer to the non-inside point.
-    if pt0_inside {  // We clip pt2 only.
-        clipped0 = line.0;
-        let dist0 = dist_3d(&line_3d.1, &clipped_ends[0]);
-        let dist1 = dist_3d(&line_3d.1, &clipped_ends[1]);
-        clipped1 = if dist0 < dist1 { clipped_ends[0].clone() } else
-            { clipped_ends[1].clone() };
-    } else if pt1_inside {  // We clip pt1 only
-        clipped1 = line.1;
-        let dist0 = dist_3d(&line_3d.0, &clipped_ends[0]);
-        let dist1 = dist_3d(&line_3d.0, &clipped_ends[1]);
-        clipped0 = if dist0 < dist1 { clipped_ends[0].clone() } else
-            { clipped_ends[1].clone() };
-    } else {
-        // We clip both points. Must keep the initial order.
-        // todo not ordered!
-         clipped0 = clipped_ends[0].clone();
-         clipped1 = clipped_ends[0].clone();
-    }
-
-    let result0 = array![clipped0[0], clipped0[1], clipped0[2], 1.];
-    let result1 = array![clipped1[0], clipped1[1], clipped1[2], 1.];
-
-    Some((result0, result1))
+    // Otherwise, return both clipped points. But how do we keep the right order?
+    return Some((
+        array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.0[3]],
+        array![clipped_pts[1][0], clipped_pts[1][1], clipped_pts[1][2], line.1[3]],
+    ))
 }
 
 
@@ -513,17 +510,51 @@ mod tests {
     }
 
     #[test]
-    fn plane_intersection() {
-        let epsilon = 1e-2;
-        let line = (array![0.8, 1.3, -0.7], array![-0.9, -1.2, 0.6]);
+    fn line_intersects_plane() {
+        let epsilon = 1e-6;
+        let line = (&array![0.8, 1.3, -0.7], &array![-0.9, -1.2, 0.6]);
         let expected = array![0.596, 1.0, -0.544];
 
         let actual = line_plane_intersection(
-            array![0., 1., 0.], array![0., 1., 0.], line
+            &array![0., 1., 0.], &array![0., 1., 0.], line
         ).unwrap();
 
         assert!((expected[0] - actual[0]).abs() < epsilon);
         assert!((expected[1] - actual[1]).abs() < epsilon);
         assert!((expected[2] - actual[2]).abs() < epsilon);
+    }
+
+    #[test]
+    fn line_plane_plel() {
+        let epsilon = 1e-6;
+        let line = (&array![0.2, 1.3, -0.7], &array![0.2, -0.2, -0.7]);
+
+        let result = line_plane_intersection(
+            &array![-1., 0., 0.], &array![-1., 2., -4.], line
+        );
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn line_doesnt_intersect() {
+        let epsilon = 1e-6;
+        // This line never touches the z = +1; it's too short.
+        let too_short = (&array![0.2, -0.2, -2.7], &array![0.3, 0.4, 0.95]);
+        let long_enough = (&array![0.2, -0.2, -2.7], &array![0.3, 0.4, 1.05]);
+        let expected = array![0.2986667, 0.392, 1.];
+
+        let short_intersect = line_plane_intersection(
+            &array![0., 0., 1.], &array![-0.2, 67., 1.], too_short
+        );
+        let better = line_plane_intersection(
+            &array![0., 0., 1.], &array![-0.2, 67., 1.], long_enough
+        ).unwrap();
+
+
+        // The longer line should intersect; the shorter line should not.
+        assert_eq!(short_intersect, None);
+        assert!((expected[0] - better[0]).abs() < epsilon);
+        assert!((expected[1] - better[1]).abs() < epsilon);
+        assert!((expected[2] - better[2]).abs() < epsilon);
     }
 }
