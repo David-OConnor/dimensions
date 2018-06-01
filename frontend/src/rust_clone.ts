@@ -1,19 +1,16 @@
 // Code in this file was intended to be in Rust/WASM. Here since I've given up
 // on getting ASM working for now.
+import {Shape, Edge, Face, Node2, Camera, Vec5, Array5} from './interfaces'
 
-import {NdArray, array, dot} from 'numjs'
-
-import {Shape, Edge, Face, Node2, Camera} from './interfaces'
-
-// toddo: Not specifying njarray return types since TS doesn't like it.
+// toddo: Not specifying njnew Vec5 return types since TS doesn't like it.
 
 export function make_box(lens: [number, number, number],
-                position: NdArray, scale: number, orientation: NdArray,
-                rotation_speed: NdArray): Shape {
+                         position: Vec5, scale: number, orientation: number[],
+                         rotation_speed: number[]): Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
-    let coords = [
+    const coords = [
         // Front
         [-1., -1., -1., 0.],
         [1., -1., -1., 0.],
@@ -31,11 +28,11 @@ export function make_box(lens: [number, number, number],
 
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2(array([coord[0] * lens[0], coord[1] * lens[1],
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
             coord[2] * lens[2], coord[3]])))
     }
 
-    let edges = [
+    const edges = [
         // Front
         new Edge(0, 1),
         new Edge(1, 2),
@@ -73,10 +70,10 @@ export function make_box(lens: [number, number, number],
     return new Shape(nodes, edges, faces, position, scale, orientation, rotation_speed)
 }
 
-export function make_origin(len: number, position: NdArray, scale: number,
-                            orientation: NdArray, rotation_speed: NdArray): Shape {
+export function make_origin(len: number, position: Vec5, scale: number,
+                            orientation: number[], rotation_speed: number[]): Shape {
     // A 4-dimensional cross, for marking the origin.
-    let coords = [
+    const coords = [
         [-1., 0., 0., 0.],
         [1., 0., 0., 0.],
         [0., -1., 0., 0.],
@@ -92,10 +89,10 @@ export function make_origin(len: number, position: NdArray, scale: number,
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
         // todo should have better vector arithmetic
-        nodes.set(id, new Node2(array([coord[0] * len, coord[1] * len,
+        nodes.set(id, new Node2(new Vec5([coord[0] * len, coord[1] * len,
             coord[2] * len, coord[3] * len])))
     }
-    let edges = [
+    const edges = [
         new Edge(0, 1),
         new Edge(2, 3),
         new Edge(4, 5),
@@ -105,7 +102,7 @@ export function make_origin(len: number, position: NdArray, scale: number,
     return new Shape(nodes, edges, [], position as any, scale, orientation as any, rotation_speed as any)
 }
 
-export function make_rotator_4d(θ: NdArray) {
+export function make_rotator_4d(θ: number[]): Array5 {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -114,79 +111,79 @@ export function make_rotator_4d(θ: NdArray) {
     // dimensions.
 
     // cache trig computations
-    let cos_xy = Math.cos(θ[0])
-    let sin_xy = Math.sin(θ[0])
-    let cos_yz = Math.cos(θ[1])
-    let sin_yz = Math.sin(θ[1])
-    let cos_xz = Math.cos(θ[2])
-    let sin_xz = Math.sin(θ[2])
-    let cos_xu = Math.cos(θ[3])
-    let sin_xu = Math.sin(θ[3])
-    let cos_yu = Math.cos(θ[4])
-    let sin_yu = Math.sin(θ[4])
-    let cos_zu = Math.cos(θ[5])
-    let sin_zu = Math.sin(θ[5])
+    const cos_xy = Math.cos(θ[0])
+    const sin_xy = Math.sin(θ[0])
+    const cos_yz = Math.cos(θ[1])
+    const sin_yz = Math.sin(θ[1])
+    const cos_xz = Math.cos(θ[2])
+    const sin_xz = Math.sin(θ[2])
+    const cos_xu = Math.cos(θ[3])
+    const sin_xu = Math.sin(θ[3])
+    const cos_yu = Math.cos(θ[4])
+    const sin_yu = Math.sin(θ[4])
+    const cos_zu = Math.cos(θ[5])
+    const sin_zu = Math.sin(θ[5])
 
     // Potentially there exist 4 hyperrotations as well? ie combinations of
     // 3 axes ?  xyz  yzu  zux  uxy
 
     // Rotations around the xy, yz, and xz planes should appear normal.
-    let R_xy = [
+    let R_xy = new Array5([
         [cos_xy, sin_xy, 0., 0., 0.],
         [-sin_xy, cos_xy, 0., 0., 0.],
         [0., 0., 1., 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
-    let R_yz = [
+    const R_yz = new Array5([
         [1., 0., 0., 0., 0.],
         [0., cos_yz, sin_yz, 0., 0.],
         [0., -sin_yz, cos_yz, 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
-    let R_xz = [
+    const R_xz = new Array5([
         [cos_xz, 0., -sin_xz, 0., 0.],
         [0., 1., 0., 0., 0.],
         [sin_xz, 0., cos_xz, 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
     // Rotations involving u, the fourth dimension, should distort 3d objects.
-    let R_xu = [
+    const R_xu = new Array5([
         [cos_xu, 0., 0., sin_xu, 0.],
         [0., 1., 0., 0., 0.],
         [0., 0., 1., 0., 0.],
         [-sin_xu, 0., 0., cos_xu, 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
-    let R_yu = [
+    const R_yu = new Array5([
         [1., 0., 0., 0., 0.],
         [0., cos_yu, 0., -sin_yu, 0.],
         [0., 0., 1., 0., 0.],
         [0., sin_yu, 0., cos_yu, 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
-    let R_zu = [
+    const R_zu = new Array5([
         [1., 0., 0., 0., 0.],
         [0., 1., 0., 0., 0.],
         [0., 0., cos_zu, -sin_zu, 0.],
         [0., 0., sin_zu, cos_zu, 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
     // Combine the rotations.
-    let R_1 = dot(R_xy, dot(R_yz, R_xz))
-    let R_2 = dot(R_xu, dot(R_yu, R_zu))
-    return dot(R_1, R_2)
+    const R_1 = R_xy.dotM(R_yz.dotM(R_xz))
+    const R_2 = R_xu.dotM(R_yu.dotM(R_zu))
+    return R_1.dotM(R_2)
 }
 
-export function make_rotator_3d(θ: NdArray) {
+export function make_rotator_3d(θ: number[]): Array5 {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // We return 5x5 matrices for compatibility with other transforms, and to
@@ -204,59 +201,59 @@ export function make_rotator_3d(θ: NdArray) {
     let sin_z = Math.sin(θ[2])
 
     // R matrices rotate a vector around a single axis.
-    let R_x = [
+    let R_x = new Array5([
         [1., 0., 0., 0., 0.],
         [0., cos_x, -sin_x, 0., 0.],
         [0., sin_x, cos_x, 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ];
+    ]);
 
-    let R_y = [
+    let R_y = new Array5([
         [cos_y, 0., sin_y, 0., 0.],
         [0., 1., 0., 0., 0.],
         [-sin_y, 0., cos_y, 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
-    let R_z = [
+    let R_z = new Array5([
         [cos_z, -sin_z, 0., 0., 0.],
         [sin_z, cos_z, 0., 0., 0.],
         [0., 0., 1., 0., 0.],
         [0., 0., 0., 1., 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 
     // Combine the three rotations.
-    return dot(R_x, dot(R_y, R_z))
+    return R_x.dotM(R_y.dotM(R_z))
 }
 
-export function make_translator(position: NdArray) {
+export function make_translator(position: Vec5): Array5 {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
-    return array([
-        [1., 0., 0., 0., position[0]],
-        [0., 1., 0., 0., position[1]],
-        [0., 0., 1., 0., position[2]],
-        [0., 0., 0., 1., position[3]],
+    return new Array5([
+        [1., 0., 0., 0., position.vals[0]],
+        [0., 1., 0., 0., position.vals[1]],
+        [0., 0., 1., 0., position.vals[2]],
+        [0., 0., 0., 1., position.vals[3]],
         [0., 0., 0., 0., 1.]
     ])
 }
 
-export function make_scaler(scale: NdArray) {
+export function make_scaler(scale: Vec5): Array5 {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    return array([
-        [scale[0], 0., 0., 0., 0.],
-        [0., scale[1], 0., 0., 0.],
-        [0., 0., scale[2], 0., 0.],
-        [0., 0., 0., scale[3], 0.],
+    return new Array5([
+        [scale.vals[0], 0., 0., 0., 0.],
+        [0., scale.vals[1], 0., 0., 0.],
+        [0., 0., scale.vals[2], 0., 0.],
+        [0., 0., 0., scale.vals[3], 0.],
         [0., 0., 0., 0., 1.]
     ])
 }
 
-export function make_projector(cam: Camera) {
+export function make_projector(cam: Camera): Array5 {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -292,41 +289,66 @@ export function make_projector(cam: Camera) {
     // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
     // as a decaying exponential from -1 to +1.
 
-    return [
-            [x_scale, 0., 0., 0., 0.],
-            [0., y_scale, 0., 0., 0.],
-            [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-                (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
-            // u_scale is, ultimately, not really used.
-            [0., 0., 0., u_scale, 0.],
-            // This row allows us to divide by z after taking the dot product,
-            // as part of our scaling operation.
-            [0., 0., 1., 0., 1.],
-        ]
+    return new Array5([
+        [x_scale, 0., 0., 0., 0.],
+        [0., y_scale, 0., 0., 0.],
+        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+            (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
+        // u_scale is, ultimately, not really used.
+        [0., 0., 0., u_scale, 0.],
+        // This row allows us to divide by z after taking the dot product,
+        // as part of our scaling operation.
+        [0., 0., 1., 0., 1.],
+    ])
 }
 
-export function position_shape(shape: Shape): Map<number, NdArray> {
+export function make_projector_3d(cam: Camera): Float32Array {
+    // This will still be used for 4d objects; the interesting 4d things happen
+    // during the translation and rotation.
+
+    let y_scale = 1. / Math.tan(cam.fov / 2.)
+    let x_scale = y_scale / cam.aspect
+
+    // The negative value on teh last row, third col is different from our
+    // conventions in the Rust program; OpenGl seems to want it this way.
+    return Float32Array.from([
+        x_scale, 0., 0., 0.,
+        0., y_scale, 0., 0.,
+        0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+            (-2. * cam.far * cam.near) / (cam.far - cam.near),
+        // u_scale is, ultimately, not really used.
+        // This row allows us to divide by z after taking the dot product,
+        // as part of our scaling operation.
+        0., 0., -1., 1.,
+    ])
+}
+
+export function position_shape(shape: Shape): Map<number, Vec5> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    let is_4d = Math.abs(shape.rotation_speed[3]) > 0. || Math.abs(shape.rotation_speed[4]) > 0. ||
+    const is_4d = Math.abs(shape.rotation_speed[3]) > 0. || Math.abs(shape.rotation_speed[4]) > 0. ||
         Math.abs(shape.rotation_speed[5]) > 0. || Math.abs(shape.orientation[3]) > 0. ||
         Math.abs(shape.orientation[4]) > 0. || Math.abs(shape.orientation[5]) > 0.
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    let R = is_4d ? make_rotator_4d(shape.orientation) : make_rotator_3d(shape.orientation)
+    const R = is_4d ? make_rotator_4d(shape.orientation) : make_rotator_3d(shape.orientation)
 
-    let S = make_scaler(array([shape.scale, shape.scale, shape.scale, shape.scale]))
-    let T = make_translator(shape.position)
+    const S = make_scaler(new Vec5([shape.scale, shape.scale, shape.scale, shape.scale]))
+    const T = make_translator(shape.position)
 
     let positioned_nodes = new Map()
     for (let id=0; id < shape.nodes.size; id++) {
-        let node = shape.nodes[id]
-    // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
-    // then rotate, then translate.
-        let homogenous = [node.a[0], node.a[1], node.a[2], node.a[3], 1.]
-        let new_pt = dot(T, dot(R, S))
+
+        let node: any = shape.nodes.get(id)
+        // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
+        // then rotate, then translate.
+        const homogenous = new Vec5([node.a.vals[0], node.a.vals[1],
+            node.a.vals[2], node.a.vals[3], 1.])
+
+        const transform = T.dotM(R.dotM(S))
+        const new_pt = transform.dotV(homogenous)
         positioned_nodes.set(id, new_pt)
     }
 

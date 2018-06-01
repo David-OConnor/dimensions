@@ -1,5 +1,4 @@
 import * as React from 'react'
-import {array} from 'numjs'
 
 // import * as Rust from './unitalgebra'
 
@@ -9,7 +8,7 @@ import {array} from 'numjs'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-import {Shape, Camera, ShapeArgs} from './interfaces'
+import {Shape, Camera, Vec5} from './interfaces'
 import * as rustClone from './rust_clone'
 import * as render from './render'
 
@@ -36,15 +35,17 @@ export class Main extends React.Component<any, any> {
         super(props)
         this.state = {
             shapes: new Map( // todo temp
-                [[0, rustClone.make_box([1, 2, 1], array([2, 0, 2, 0]), 1,
-                array([0, 0, 0, 0, 0, 0]), array([0, 0, 0, 0, 0, 0]))]]
-            ),
+                [[0, rustClone.make_box(
+                    [1, 2, 1], new Vec5([2, 0, 2, 0]), 1,
+                        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]
+                    )
+            ]]),
 
             camera: {
-                position: [0., 3., -6., -2.],
+                position: new Vec5([0., 1., -2., -2.]),
                 θ_3d: [0., 0., 0.],
-                θ_4d: [0., 0., 0., 0., 0., 0.],
-                fov: τ / 5.,
+                θ_4d: [0., -2., 0., 0., 0., 0.],
+                fov: τ / 6.,
                 aspect: 1.,
                 aspect_4: 1.,
                 far: 30.,
@@ -82,11 +83,11 @@ export class Main extends React.Component<any, any> {
 
     componentDidMount() {
         let shape_list = [
-            rustClone.make_box([1, 2, 1], array([2, 0, 2, 0]), 1,
-                array([0, 0, 0, 0, 0, 0]), array([0, 0, 0, 0, 0, 0])),
+            rustClone.make_box([1, 2, 1], new Vec5([2, 0, 2, 0]), 1,
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-                rustClone.make_origin(1, array([0, 0, 0, 0]), 1,
-                    array([0, 0, 0, 0, 0, 0]), array([0, 0, 0, 0, 0, 0]))
+                rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
+                    [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 
         ]
 

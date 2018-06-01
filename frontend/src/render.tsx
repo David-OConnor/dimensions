@@ -1,5 +1,4 @@
-import {mat4} from 'gl-matrix'
-import {array, dot} from 'numjs'
+import {mat4, glMatrix} from 'gl-matrix'
 
 // import * as Rust from './unitalgebra'
 
@@ -10,7 +9,8 @@ import {array, dot} from 'numjs'
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 import * as rustClone from './rust_clone'
-import {ProgramInfo, Shape, Camera} from './interfaces'
+import {ProgramInfo, Shape, Camera, Vec5, Array5} from './interfaces'
+import {position_shape} from "./rust_clone";
 
 let cubeRotation = 0.0;
 
@@ -78,57 +78,58 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     // and we only want to see objects between 0.1 units
     // and 100 units away from the camera.
 
-    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-    const projectionMatrix = mat4.create()
+    // const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
+    let projectionMatrixOld = mat4.create()
 
     // note: glmatrix.js always has the first argument
     // as the destination to receive the result.
     mat4.perspective(
-        projectionMatrix,
+        projectionMatrixOld,
         cam.fov,
-        aspect,
+        cam.aspect,
         cam.near,
         cam.far
     )
-
-    let box: any = shapes.get(0)
-
-    // T must be done last.
-    let Smodel = rustClone.make_scaler(array([box.scale, box.scale, box.scale, box.scale]))
-    let Rmodel = rustClone.make_rotator_4d(box.orientation)
-    let Tmodel = rustClone.make_translator(box.position)
-
-    let modelViewMatrix2 = dot(Tmodel, dot(Rmodel, Smodel))
+        // todo add in Rview and Tview later.
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
-    const modelViewMatrix = mat4.create()
+    // const modelViewMatrixOld = mat4.create()
+    //
+    // // Now move the drawing position a bit to where we want to
+    // // start drawing the square.
+    //
+    // mat4.translate(
+    //     modelViewMatrixOld,  // destination matrix
+    //     modelViewMatrixOld,  // matrix to translate
+    //     [-0.0, 0.0, -6.0]  // amount to translate
+    // )
+    // mat4.rotate(
+    //     modelViewMatrixOld,  // destination matrix
+    //     modelViewMatrixOld,  // matrix to rotate
+    //     cubeRotation,     // amount to rotate in radians
+    //     [0, 0, 1]         // axis to rotate around (Z)
+    // )
+    // mat4.rotate(
+    //     modelViewMatrixOld,  // destination matrix
+    //     modelViewMatrixOld,  // matrix to rotate
+    //     cubeRotation * .7,// amount to rotate in radians
+    //     [0, 1, 0]         // axis to rotate around (X)
+    // )
 
-    // Now move the drawing position a bit to where we want to
-    // start drawing the square.
-
-    mat4.translate(
-        modelViewMatrix,  // destination matrix
-        modelViewMatrix,  // matrix to translate
-        [-0.0, 0.0, -6.0]  // amount to translate
-    )
-    mat4.rotate(
-        modelViewMatrix,  // destination matrix
-        modelViewMatrix,  // matrix to rotate
-        cubeRotation,     // amount to rotate in radians
-        [0, 0, 1]         // axis to rotate around (Z)
-    )
-    mat4.rotate(
-        modelViewMatrix,  // destination matrix
-        modelViewMatrix,  // matrix to rotate
-        cubeRotation * .7,// amount to rotate in radians
-        [0, 1, 0]         // axis to rotate around (X)
-    )
+    // We've positioned our points rel to their model and the cam already,
+    // using 4d transforms; doesn't modify further.
+    const I_4 = new Float32Array([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    ])
 
     // Tell WebGL how to pull out the positions from the position
     // buffer into the vertexPosition attribute.
     {
-        const numComponents = 3  // pull out 3 values per iteration
+        const numComponents = 4  // pull out 3 values per iteration
         const type = gl.FLOAT    // the data in the buffer is 32bit floats
         const normalize = false  // don't normalize
         const stride = 0         // how many bytes to get from one set of values to the next
@@ -177,11 +178,11 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.projectionMatrix,
         false,
-        projectionMatrix)
+        projectionMatrixOld)
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.modelViewMatrix,
         false,
-        modelViewMatrix2)
+        I_4)
 
     {
         const vertexCount = 36
@@ -191,13 +192,49 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     }
 
     // Update the rotation for the next draw
-    // cubeRotation += deltaTime
+    cubeRotation += deltaTime
     shapes.forEach(
-        (shape, id, map) => (shape.orientation as any) += (shape.rotation_speed) as any
+        (shape, id, map) => {
+            // todo need vector addition to simplify...
+            shape.orientation[0] += shape.rotation_speed[0]
+            shape.orientation[1] += shape.rotation_speed[1]
+            shape.orientation[2] += shape.rotation_speed[2]
+            shape.orientation[3] += shape.rotation_speed[3]
+            shape.orientation[4] += shape.rotation_speed[4]
+            shape.orientation[5] += shape.rotation_speed[5]
+        }
     )
+    // throw "DEBUG"
 }
 
-function initBuffers(gl: any) {
+function preprocessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
+    // Set up shapes rel to their model, and the camera.  The result is
+    // T must be done last.
+    let result = new Map()
+    let positionedModel, positionM
+
+    const R = rustClone.make_rotator_4d(cam.θ_4d)
+    const T = rustClone.make_translator(cam.position)
+
+    shapes.forEach(
+        (shape, id, map) => {
+            positionedModel = rustClone.position_shape(shape)
+            positionedModel.forEach(
+                (node, nid, _map) => {
+                    // For cam transform, position first; then rotate.
+                    positionM = T.dotM(R)
+
+                    // Map doesn't like tuples/arrays as keys :/
+                    result.set([id, nid].join(','), positionM.dotV(node).toGl())
+                }
+            )
+        }
+    )
+    return result
+}
+
+function initBuffers(gl: any, shapes: Map<number, Shape>,
+                     processedShapes: Map<string, Float32Array>) {
     // Create a buffer for the square's positions and color.
 
     const positionBuffer = gl.createBuffer()
@@ -209,43 +246,66 @@ function initBuffers(gl: any) {
 
     // Now create an array of positions for the square.
 
-    const positions = [
-        // Front face
-        -1.0, -1.0,  1.0,
-        1.0, -1.0,  1.0,
-        1.0,  1.0,  1.0,
-        -1.0,  1.0,  1.0,
+    let node0, node1
+    let positions: any = []
 
-        // Back face
-        -1.0, -1.0, -1.0,
-        -1.0,  1.0, -1.0,
-        1.0,  1.0, -1.0,
-        1.0, -1.0, -1.0,
+    shapes.forEach(
+        (shape, s_id, map) => {
+            for (let face of shape.faces) {
+                for (let edge of face.edges) {
+                    // map doesn't like tuples as keys :/
+                    node0 = processedShapes.get([s_id, edge.node0].join(',')) as any
+                    node1 = processedShapes.get([s_id, edge.node1].join(',')) as any
+                    positions.push(node0[0])
+                    positions.push(node0[1])
+                    positions.push(node0[2])
+                    positions.push(node1[0])
+                    positions.push(node1[1])
+                    positions.push(node1[2])
+                }
+            }
+        }
+    )
 
-        // Top face
-        -1.0,  1.0, -1.0,
-        -1.0,  1.0,  1.0,
-        1.0,  1.0,  1.0,
-        1.0,  1.0, -1.0,
+    // const positions = [
+    //     // Front face
+    //     -1.0, -1.0,  1.0,
+    //     1.0, -1.0,  1.0,
+    //     1.0,  1.0,  1.0,
+    //     -1.0,  1.0,  1.0,
+    //
+    //     // Back face
+    //     -1.0, -1.0, -1.0,
+    //     -1.0,  1.0, -1.0,
+    //     1.0,  1.0, -1.0,
+    //     1.0, -1.0, -1.0,
+    //
+    //     // Top face
+    //     -1.0,  1.0, -1.0,
+    //     -1.0,  1.0,  1.0,
+    //     1.0,  1.0,  1.0,
+    //     1.0,  1.0, -1.0,
+    //
+    //     // Bottom face
+    //     -1.0, -1.0, -1.0,
+    //     1.0, -1.0, -1.0,
+    //     1.0, -1.0,  1.0,
+    //     -1.0, -1.0,  1.0,
+    //
+    //     // Right face
+    //     1.0, -1.0, -1.0,
+    //     1.0,  1.0, -1.0,
+    //     1.0,  1.0,  1.0,
+    //     1.0, -1.0,  1.0,
+    //
+    //     // Left face
+    //     -1.0, -1.0, -1.0,
+    //     -1.0, -1.0,  1.0,
+    //     -1.0,  1.0,  1.0,
+    //     -1.0,  1.0, -1.0,
+    // ]
 
-        // Bottom face
-        -1.0, -1.0, -1.0,
-        1.0, -1.0, -1.0,
-        1.0, -1.0,  1.0,
-        -1.0, -1.0,  1.0,
-
-        // Right face
-        1.0, -1.0, -1.0,
-        1.0,  1.0, -1.0,
-        1.0,  1.0,  1.0,
-        1.0, -1.0,  1.0,
-
-        // Left face
-        -1.0, -1.0, -1.0,
-        -1.0, -1.0,  1.0,
-        -1.0,  1.0,  1.0,
-        -1.0,  1.0, -1.0,
-    ]
+    console.log("POS", positions)
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -359,7 +419,9 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
 
     // Here's where we call the routine that builds all the
     // objects we'll be drawing.
-    const buffers = initBuffers(gl)
+    const processedShapes = preprocessShapes(cam, shapes)
+
+    const buffers = initBuffers(gl, shapes, processedShapes)
 
     let then = 0
     // Draw the scene repeatedly
