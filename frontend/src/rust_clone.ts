@@ -1,11 +1,15 @@
 // Code in this file was intended to be in Rust/WASM. Here since I've given up
 // on getting ASM working for now.
 
+import {NdArray, array, dot} from 'numjs'
+
 import {Shape, Edge, Face, Node2, Camera} from './interfaces'
 
-export function make_box(x_len: number, y_len: number, z_len: number,
-                position: number[], scale: number, orientation: number[],
-                rotation_speed: number[]): Shape {
+// toddo: Not specifying njarray return types since TS doesn't like it.
+
+export function make_box(lens: [number, number, number],
+                position: NdArray, scale: number, orientation: NdArray,
+                rotation_speed: NdArray): Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -27,7 +31,8 @@ export function make_box(x_len: number, y_len: number, z_len: number,
 
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2([coord[0] * x_len, coord[1] * y_len, coord[2] * z_len, coord[3]]))
+        nodes.set(id, new Node2(array([coord[0] * lens[0], coord[1] * lens[1],
+            coord[2] * lens[2], coord[3]])))
     }
 
     let edges = [
@@ -68,7 +73,39 @@ export function make_box(x_len: number, y_len: number, z_len: number,
     return new Shape(nodes, edges, faces, position, scale, orientation, rotation_speed)
 }
 
-export function make_rotator_4d(θ: number[]) : number[] {
+export function make_origin(len: number, position: NdArray, scale: number,
+                            orientation: NdArray, rotation_speed: NdArray): Shape {
+    // A 4-dimensional cross, for marking the origin.
+    let coords = [
+        [-1., 0., 0., 0.],
+        [1., 0., 0., 0.],
+        [0., -1., 0., 0.],
+        [0., 1., 0., 0.],
+
+        [0., 0., -1., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., -1.],
+        [0., 0., 0., 1.],
+    ];
+
+    let nodes = new Map()
+    for (let id=0; id < coords.length; id++) {
+        let coord = coords[id]
+        // todo should have better vector arithmetic
+        nodes.set(id, new Node2(array([coord[0] * len, coord[1] * len,
+            coord[2] * len, coord[3] * len])))
+    }
+    let edges = [
+        new Edge(0, 1),
+        new Edge(2, 3),
+        new Edge(4, 5),
+        new Edge(6, 7),
+    ];
+
+    return new Shape(nodes, edges, [], position as any, scale, orientation as any, rotation_speed as any)
+}
+
+export function make_rotator_4d(θ: NdArray) {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -149,7 +186,7 @@ export function make_rotator_4d(θ: number[]) : number[] {
     return dot(R_1, R_2)
 }
 
-export function make_rotator_3d(θ: number[]): number[] {
+export function make_rotator_3d(θ: NdArray) {
     // Compute a 3-dimensional rotation matrix.
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // We return 5x5 matrices for compatibility with other transforms, and to
@@ -195,31 +232,31 @@ export function make_rotator_3d(θ: number[]): number[] {
     return dot(R_x, dot(R_y, R_z))
 }
 
-export function make_translator(cam_position: number[]): number[][] {
+export function make_translator(position: NdArray) {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
-    return [
-        [1., 0., 0., 0., cam_position[0]],
-        [0., 1., 0., 0., cam_position[1]],
-        [0., 0., 1., 0., cam_position[2]],
-        [0., 0., 0., 1., cam_position[3]],
+    return array([
+        [1., 0., 0., 0., position[0]],
+        [0., 1., 0., 0., position[1]],
+        [0., 0., 1., 0., position[2]],
+        [0., 0., 0., 1., position[3]],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 }
 
-export function make_scaler(scale: number[]): number[][] {
+export function make_scaler(scale: NdArray) {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    return [
+    return array([
         [scale[0], 0., 0., 0., 0.],
         [0., scale[1], 0., 0., 0.],
         [0., 0., scale[2], 0., 0.],
         [0., 0., 0., scale[3], 0.],
         [0., 0., 0., 0., 1.]
-    ]
+    ])
 }
 
-export function make_projector(cam: Camera): number[][] {
+export function make_projector(cam: Camera) {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -248,7 +285,6 @@ export function make_projector(cam: Camera): number[][] {
     // Insight: z (or u, depending on which convention we settle on) is used
     // for two things: Determining how we should scale x and y (The vars that
 
-
     // I've derived these matrices myself; none of the ones described in the
     // above links seem to produce a unit cube for easy clipping.
     // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
@@ -269,14 +305,7 @@ export function make_projector(cam: Camera): number[][] {
         ]
 }
 
-function dot(a: any, b: any) {
-	return a.map(function(x: any, i: any) {
-		return a[i] * b[i];
-	}).reduce(function(m: any, n: any) { return m + n; });
-}
-
-
-export function position_shape(shape: Shape): Map<number, number[]> {
+export function position_shape(shape: Shape): Map<number, NdArray> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
@@ -288,7 +317,7 @@ export function position_shape(shape: Shape): Map<number, number[]> {
     // defined in the shape's initial nodes. S may be applied at any point.
     let R = is_4d ? make_rotator_4d(shape.orientation) : make_rotator_3d(shape.orientation)
 
-    let S = make_scaler([shape.scale, shape.scale, shape.scale, shape.scale])
+    let S = make_scaler(array([shape.scale, shape.scale, shape.scale, shape.scale]))
     let T = make_translator(shape.position)
 
     let positioned_nodes = new Map()

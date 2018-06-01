@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "gl-matrix": "^2.6.1",
     "history": "^4.7.2",
     "react": "^16.3.2",
     "react-bootstrap": "^0.32.1",
@@ -12,8 +13,7 @@
     "react-scripts-ts": "2.15.1",
     "react-spinkit": "^3.0.0",
     "react-three": "^0.9.7",
-    "redux-first-router": "^0.0.16-next",
-    "gl-matrix": "^2.6.1"
+    "redux-first-router": "^0.0.16-next"
   },
   "scripts": {
     "start": "react-scripts-ts start",
@@ -22,6 +22,7 @@
     "eject": "react-scripts-ts eject"
   },
   "devDependencies": {
+    "@types/gl-matrix": "^2.4.0",
     "@types/jest": "^22.2.3",
     "@types/node": "^10.0.8",
     "@types/react": "^16.3.14",
@@ -29,7 +30,7 @@
     "@types/react-redux": "^5.0.15",
     "@types/react-spinkit": "^3.0.3",
     "@types/redux-first-router": "^1.10.2",
-    "@types/gl-matrix": "^2.4.0",
+    "@types/numjs": "^0.14.3",
     "typescript": "^2.8.3"
   }
 }

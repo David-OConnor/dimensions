@@ -10,7 +10,7 @@ use types::{Node, Edge, Face, Shape};
 // Nodes are set up here so that 0 is at their center; this is used for scaling,
 // rotation, and positioning in the world.
 
-pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
+pub fn make_box(lens: (f64, f64, f64),
                 position: Array1<f64>, scale: f64, orientation: Array1<f64>,
                 rotation_speed: Array1<f64>) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
@@ -33,7 +33,7 @@ pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * x_len, coord[1] * y_len, coord[2] * z_len, coord[3]]
+            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
         });
     }
 
@@ -75,8 +75,7 @@ pub fn make_box(x_len: f64, y_len: f64, z_len: f64,
     Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
 }
 
-pub fn make_rectangular_pyramid(x_len: f64,
-                                z_len: f64, height: f64,
+pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
                                 position: Array1<f64>, scale: f64, orientation: Array1<f64>,
                                 rotation_speed: Array1<f64>) -> Shape {
     let coords = [
@@ -93,7 +92,7 @@ pub fn make_rectangular_pyramid(x_len: f64,
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * x_len, coord[1] * height, coord[2] * z_len, coord[3]]
+            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
         });
     }
 
@@ -127,32 +126,31 @@ pub fn make_rectangular_pyramid(x_len: f64,
     Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
 }
 
- pub fn make_house(x_len: f64, y_len: f64, z_len: f64,
+ pub fn make_house(lens: (f64, f64, f64),
                    position: Array1<f64>, scale: f64,
                    orientation: Array1<f64>,
                    rotation_speed: Array1<f64>) -> Shape {
      let empty_array = array![0., 0., 0., 0., 0., 0.];
 
      // We'll modify base in-place, then return it.
-     let mut base = make_box(x_len, y_len, z_len, position, scale,
-                         orientation, rotation_speed);
+     let mut base = make_box(lens, position, scale, orientation, rotation_speed);
 
      let roof = make_rectangular_pyramid(
-         x_len * 1.2,  // Let the roof overhang the base by a little.
-         z_len * 1.2,
-         y_len / 3.,  // Make the roof height a portion of the base height.
+         // Let the roof overhang the base by a little.
+         // Make the roof height a portion of the base height.
+         (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
          empty_array.clone(), 0., empty_array.clone(), empty_array.clone()
      );
 
      // Now that we've made the shapes, recompose them to be one shape.
-     // todo make this a separate, (reusable) func?
+     // todo make this a separate, (reusable) func?1
      let id_addition = base.nodes.len() as i32;
 
      for (id, node) in &roof.nodes {
          // For the roof, modify the ids to be unique.
          base.nodes.insert(
              id + id_addition,
-             Node {a: array![node.a[0], node.a[1] + y_len, node.a[2], node.a[3]]}
+             Node {a: array![node.a[0], node.a[1] + lens.1, node.a[2], node.a[3]]}
          );
      }
      for edge in &roof.edges {
@@ -172,7 +170,7 @@ pub fn make_cube(side_len: f64,
                  rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
-    make_box(side_len, side_len, side_len, position, scale, orientation, rotation_speed)
+    make_box((side_len, side_len, side_len), position, scale, orientation, rotation_speed)
 }
 
 pub fn make_origin(len: f64, position: Array1<f64>, scale: f64, orientation: Array1<f64>,
@@ -230,7 +228,7 @@ pub fn make_origin(len: f64, position: Array1<f64>, scale: f64, orientation: Arr
 //    Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
 //}
 
-pub fn make_hyperrect(x_len: f64, y_len: f64, z_len: f64, u_len: f64,
+pub fn make_hyperrect(lens: (f64, f64, f64, f64),
                       position: Array1<f64>, scale: f64, orientation: Array1<f64>,
                       rotation_speed: Array1<f64>) -> Shape {
     // Make a 4d hypercube.
@@ -264,7 +262,7 @@ pub fn make_hyperrect(x_len: f64, y_len: f64, z_len: f64, u_len: f64,
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * x_len, coord[1] * y_len, coord[2] * z_len, coord[3] * u_len]
+            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3] * lens.3]
         });
     }
 
@@ -328,7 +326,7 @@ pub fn make_hypercube(side_len: f64,
                       position: Array1<f64>, scale: f64, orientation: Array1<f64>,
                       rotation_speed: Array1<f64>) -> Shape {
     // Convenience function.
-    make_hyperrect(side_len, side_len, side_len, side_len,
+    make_hyperrect((side_len, side_len, side_len, side_len),
                    position, scale, orientation, rotation_speed)
 }
 

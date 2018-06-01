@@ -1,6 +1,8 @@
+import {NdArray} from 'numjs'
+
 export class Node2 {
-    a: number[]
-    constructor(a: number[]) {
+    a: NdArray
+    constructor(a: NdArray) {
         this.a = a
     }
 }
@@ -25,14 +27,14 @@ export class Shape {
     nodes: Map<number, Node2>
     edges: Edge[]
     faces: Face[]
-    position: number[]
+    position: NdArray
     scale: number
-    orientation: number[]
-    rotation_speed: number[]
+    orientation: NdArray
+    rotation_speed: NdArray
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
-                position: number[], scale: number, orientation: number[],
-                rotation_speed: number[]) {
+                position: NdArray, scale: number, orientation: NdArray,
+                rotation_speed: NdArray) {
         this.nodes = nodes
         this.edges = edges
         this.faces = faces
@@ -55,9 +57,9 @@ export interface ShapeArgs {
 
 export class Camera {
     // See Rust's Camera struct for information.
-    position: number[]
-    θ_3d: number[]
-    θ_4d: number[]
+    position: NdArray
+    θ_3d: NdArray
+    θ_4d: NdArray
     fov: number
     aspect: number
     aspect_4: number
@@ -65,7 +67,7 @@ export class Camera {
     far: number
     strange: number
 
-    constructor(position: number[], θ_3d: number[], θ_4d: number[],
+    constructor(position: NdArray, θ_3d: NdArray, θ_4d: NdArray,
                 fov: number, aspect: number, aspect_4: number,
                 near: number, far: number, strange: number) {
         this.position = position

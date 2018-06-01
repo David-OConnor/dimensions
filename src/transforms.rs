@@ -133,17 +133,17 @@ pub fn make_rotator_3d(θ: &Array1<f64>) -> Array2<f64> {
     R_x.dot(&(R_y.dot(&R_z)))
 }
 
-pub fn make_translator(cam_position: &Array1<f64>) -> Array2<f64> {
+pub fn make_translator(position: &Array1<f64>) -> Array2<f64> {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
-    assert_eq![cam_position.len(), 4];
+    assert_eq![position.len(), 4];
 
     array![
-        [1., 0., 0., 0., cam_position[0]],
-        [0., 1., 0., 0., cam_position[1]],
-        [0., 0., 1., 0., cam_position[2]],
-        [0., 0., 0., 1., cam_position[3]],
+        [1., 0., 0., 0., position[0]],
+        [0., 1., 0., 0., position[1]],
+        [0., 0., 1., 0., position[2]],
+        [0., 0., 0., 1., position[3]],
         [0., 0., 0., 0., 1.],
     ]
 }
@@ -217,7 +217,7 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
 
     let is_4d = shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
         shape.rotation_speed[5].abs() > 0. || shape.orientation[3].abs() > 0. ||
-        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0.
+        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0.;
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.

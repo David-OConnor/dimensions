@@ -1,4 +1,5 @@
 import {mat4} from 'gl-matrix'
+import {array, dot} from 'numjs'
 
 // import * as Rust from './unitalgebra'
 
@@ -8,7 +9,8 @@ import {mat4} from 'gl-matrix'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-import {ProgramInfo, Shape} from './interfaces'
+import * as rustClone from './rust_clone'
+import {ProgramInfo, Shape, Camera} from './interfaces'
 
 let cubeRotation = 0.0;
 
@@ -59,7 +61,8 @@ function loadShader(gl: any, type: any, source: any) {
     return shader
 }
 
-function drawScene(gl: any, programInfo: ProgramInfo, buffers: any, deltaTime: number) {
+function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
+                   deltaTime: number, cam: Camera, shapes: Map<number, Shape>) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
     gl.clearDepth(1.0)                 // Clear everything
     gl.enable(gl.DEPTH_TEST)           // Enable depth testing
@@ -74,21 +77,28 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any, deltaTime: n
     // ratio that matches the display size of the canvas
     // and we only want to see objects between 0.1 units
     // and 100 units away from the camera.
-    const fieldOfView = 45 * Math.PI / 180   // in radians
+
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-    const zNear = 0.1
-    const zFar = 100.0
     const projectionMatrix = mat4.create()
 
     // note: glmatrix.js always has the first argument
     // as the destination to receive the result.
     mat4.perspective(
         projectionMatrix,
-        fieldOfView,
+        cam.fov,
         aspect,
-        zNear,
-        zFar
+        cam.near,
+        cam.far
     )
+
+    let box: any = shapes.get(0)
+
+    // T must be done last.
+    let Smodel = rustClone.make_scaler(array([box.scale, box.scale, box.scale, box.scale]))
+    let Rmodel = rustClone.make_rotator_4d(box.orientation)
+    let Tmodel = rustClone.make_translator(box.position)
+
+    let modelViewMatrix2 = dot(Tmodel, dot(Rmodel, Smodel))
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
@@ -171,7 +181,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any, deltaTime: n
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.modelViewMatrix,
         false,
-        modelViewMatrix)
+        modelViewMatrix2)
 
     {
         const vertexCount = 36
@@ -181,7 +191,10 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any, deltaTime: n
     }
 
     // Update the rotation for the next draw
-    cubeRotation += deltaTime
+    // cubeRotation += deltaTime
+    shapes.forEach(
+        (shape, id, map) => (shape.orientation as any) += (shape.rotation_speed) as any
+    )
 }
 
 function initBuffers(gl: any) {
@@ -290,7 +303,7 @@ function initBuffers(gl: any) {
     }
 }
 
-export function gl_main(projected: any) {
+export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
     // Initialize WebGL rendering.
 
     let canvas = document.getElementById("glCanvas")
@@ -349,14 +362,13 @@ export function gl_main(projected: any) {
     const buffers = initBuffers(gl)
 
     let then = 0
-
     // Draw the scene repeatedly
     function render(now: number) {
         now *= 0.001;  // convert to seconds
         const deltaTime = now - then;
         then = now;
 
-        drawScene(gl, programInfo, buffers, deltaTime);
+        drawScene(gl, programInfo, buffers, deltaTime, cam, shapes);
 
         requestAnimationFrame(render)
     }
