@@ -24,6 +24,9 @@ fn main() {
     let shape_vec = vec![
         shape_maker::make_cube(1., array![-3., 0., 3.0, 0.], 1., empty_6.clone(),
                                array![0.0, 0., 0., 0., 0., 0.]),
+        // copycat cube in a dif 4d posit!
+        shape_maker::make_hypercube(1., array![-3., 0., 3.0, 3.], 1., empty_6.clone(),
+                       array![0.0, 0., 0., 0., 0., 0.]),
 
 
 //        shape_maker::make_box(1.5, 0.5, 2.5, array![6., 0., 5., 0.], 1., empty_6.clone(), empty_6.clone()),
@@ -35,13 +38,13 @@ fn main() {
         // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1.),
 
         shape_maker::make_origin(1., array![0., 0., 0., 0.], 1., empty_6.clone(), empty_6.clone()),
-//        shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.], 1.,
-//                                    empty_6.clone(),
-//                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
-//
-//        shape_maker::make_hypercube(1., array![0., 0., 0.0, 0.], 1.,
-//                                    empty_6.clone(),
-//                                    array![0.0, 0., 0., 0.005, 0.0, 0.0]),
+        shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.], 1.,
+                                    empty_6.clone(),
+                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
+
+        shape_maker::make_hypercube(1., array![0., 0., 0.0, 0.], 1.,
+                                    empty_6.clone(),
+                                    array![0.0, 0., 0., 0.005, 0.0, 0.0]),
     ];
 
     let mut shapes = HashMap::new();

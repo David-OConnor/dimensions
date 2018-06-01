@@ -284,32 +284,47 @@ impl event::EventHandler for MainState {
 
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
-            Keycode::Left => self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], -TURN_SENSITIVITY),
-            Keycode::Right => self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], TURN_SENSITIVITY),
+            Keycode::Left => {
+                self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], -TURN_SENSITIVITY);
+                self.camera.θ_4d[2] += TURN_SENSITIVITY;  // todo why reverse?
+            },
+            Keycode::Right => {
+                self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], TURN_SENSITIVITY);
+                self.camera.θ_4d[2] -= TURN_SENSITIVITY;
+            },
             // Don't allow us to look greater than τ/4 up or down.
             Keycode::Down => {
-                self.camera.θ_3d[0] -= TURN_SENSITIVITY;
+                self.camera.θ_3d[0] += TURN_SENSITIVITY;
                 if self.camera.θ_3d[0] <= -τ / 4. {
                     self.camera.θ_3d[0] = -τ / 4.
                 }
+
+                self.camera.θ_4d[1] -= TURN_SENSITIVITY;
             },
             Keycode::Up => {
-                self.camera.θ_3d[0] += TURN_SENSITIVITY;
+                self.camera.θ_3d[0] -= TURN_SENSITIVITY;
                 if self.camera.θ_3d[0] >= τ / 4. {
                     self.camera.θ_3d[0] = τ / 4.
                 }
+                self.camera.θ_4d[1] += TURN_SENSITIVITY;
             },
             
-            Keycode::Q => self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], -TURN_SENSITIVITY),
-            Keycode::E => self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], TURN_SENSITIVITY),
+            Keycode::Q => {
+                self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], TURN_SENSITIVITY);
+                self.camera.θ_4d[0] -= TURN_SENSITIVITY;
+            },
+            Keycode::E => {
+                self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], -TURN_SENSITIVITY);
+                self.camera.θ_4d[0] += TURN_SENSITIVITY;
+            },
             
             // 4d rotations
-            Keycode::T => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], TURN_SENSITIVITY),
-            Keycode::G => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], -TURN_SENSITIVITY),
-            Keycode::Y => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], TURN_SENSITIVITY),
-            Keycode::H => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], -TURN_SENSITIVITY),
-            Keycode::U => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], TURN_SENSITIVITY),
-            Keycode::J => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], -TURN_SENSITIVITY),
+//            Keycode::T => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], TURN_SENSITIVITY),
+//            Keycode::G => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], -TURN_SENSITIVITY),
+//            Keycode::Y => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], TURN_SENSITIVITY),
+//            Keycode::H => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], -TURN_SENSITIVITY),
+//            Keycode::U => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], TURN_SENSITIVITY),
+//            Keycode::J => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], -TURN_SENSITIVITY),
             Keycode::I => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], TURN_SENSITIVITY),
             Keycode::K => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], -TURN_SENSITIVITY),
             Keycode::O => self.camera.θ_4d[4] = add_ang_norm(self.camera.θ_4d[4], TURN_SENSITIVITY),

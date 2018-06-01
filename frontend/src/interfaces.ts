@@ -16,33 +16,8 @@ export class Edge {
 
 export class Face {
     edges: Edge[]
-}
-
-export class Camera {
-    // See Rust's Camera struct for information.
-    position: number[]
-    θ_3d: number[]
-    θ_4d: number[]
-    fov_vert: number
-    fov_hor: number
-    fov_strange: number
-    clip_near: number
-    clip_far: number
-    clip_strange: number
-
-    constructor(position: number[], θ_3d: number[], θ_4d: number[],
-                fov_vert: number, fov_hor: number, fov_strange: number,
-                clip_near: number, clip_far: number, clip_strange: number) {
-        this.position = position
-        this.θ_3d = θ_3d
-        this.θ_4d = θ_4d
-        this.fov_vert = fov_vert
-        this.fov_hor = fov_hor
-        this.fov_strange = fov_strange
-        this.clip_near = clip_near
-        this.clip_far = clip_far
-        this.clip_strange = clip_strange
-
+    constructor(edges: Edge[]) {
+        this.edges = edges
     }
 }
 
@@ -53,18 +28,18 @@ export class Shape {
     position: number[]
     scale: number
     orientation: number[]
-    rotationSpeed: number[]
+    rotation_speed: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
                 position: number[], scale: number, orientation: number[],
-                rotationSpeed: number[]) {
+                rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
         this.faces = faces
         this.position = position
         this.scale = scale
         this.orientation = orientation
-        this.rotationSpeed = rotationSpeed
+        this.rotation_speed = rotation_speed
     }
 }
 
@@ -76,6 +51,34 @@ export interface ShapeArgs {
     scale: number
     orientation: number[]
     rotation_speed: number[]
+}
+
+export class Camera {
+    // See Rust's Camera struct for information.
+    position: number[]
+    θ_3d: number[]
+    θ_4d: number[]
+    fov: number
+    aspect: number
+    aspect_4: number
+    near: number
+    far: number
+    strange: number
+
+    constructor(position: number[], θ_3d: number[], θ_4d: number[],
+                fov: number, aspect: number, aspect_4: number,
+                near: number, far: number, strange: number) {
+        this.position = position
+        this.θ_3d = θ_3d
+        this.θ_4d = θ_4d
+        this.fov = fov
+        this.aspect = aspect
+        this.aspect_4 = aspect_4
+        this.near = near
+        this.far = far
+        this.strange = strange
+
+    }
 }
 
 export interface MainState {

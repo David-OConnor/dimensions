@@ -142,9 +142,9 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
 
 fn line_plane_intersection(norm: &Array1<f64>, plane_pt: &Array1<f64>,
                            line: (&Array1<f64>, &Array1<f64>)) -> Option<Array1<f64>> {
+    // Compute where a line segment intersects an infinite plane, if it does.
     // 3d only.  https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    let ϵ = 1e-6;
-
+    const ϵ: f64 = 1e-6;
     let l = line.1 - line.0;  // Vector in the direction of the line.
 
     let line_dot_norm = l.dot(norm);
@@ -158,7 +158,7 @@ fn line_plane_intersection(norm: &Array1<f64>, plane_pt: &Array1<f64>,
     // The direction we must travel along
     // our line to intersect.
     let d2 = d * l;
-    if len(&d2) > len(&(line.1 - line.0)) {
+    if magnitude(&d2) > magnitude(&(line.1 - line.0)) {
         return None  // The line is too short; it doesn't make it to the plane.
     }
     Some(d2 + line.0.clone())
@@ -173,62 +173,45 @@ fn inside_frustum(pt: &Array1<f64>) -> bool {
     false
 }
 
-fn len(pt: &Array1<f64>) -> f64 {
-//    (pt[0].powi(2) + pt[1].powi(2) + pt[2].powi(2)).sqrt()
+fn magnitude(pt: &Array1<f64>) -> f64 {
+    // Calculate the magnitude of a vector.
     (pt.iter().fold(0. as f64, |acc, coord| acc + coord.powi(2))).sqrt()
-
 }
 
 pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array1<f64>)> {
     // Struggling on Cohen Sutherland for 3d; rolling my own algo.
-
     // Clip to a clipspace frustum, bounded by -1 and +1 on each axis.
     let (min, max) = (-1., 1.);
 
     // Assign to variables to make subsequent calcs easier to read.
-    let (mut x0, mut y0, mut z0) = (line.0[0], line.0[1], line.0[2]);
-    let (mut x1, mut y1, mut z1) = (line.1[0], line.1[1], line.1[2]);
+    let (x0, y0, z0, u0) = (line.0[0], line.0[1], line.0[2], line.0[3]);
+    let (x1, y1, z1, u1) = (line.1[0], line.1[1], line.1[2], line.1[3]);
 
     let (pt0_inside, pt1_inside) = (inside_frustum(&line.0), inside_frustum(&line.1));
     // Both points are inside the clipspace frustum; trivially accept.
     if pt0_inside && pt1_inside {
-        return Some((
-            array![line.0[0], line.0[1], line.0[2], line.0[3]],
-            array![line.1[0], line.1[1], line.1[2], line.1[3]]
-        ))
+        return Some((array![x0, y0, z0, u0], array![x1, y1, z1, u1]))
     }
     // Both points are outside the same frustum plane; trivially reject.
     else if (x0 < min && x1 < min) || (x0 > max && x1 > max) ||
         (y0 < min && y1 < min) || (y0 > max && y1 > max) ||
         (z0 < min && z1 < min) || (z0 > max && z1 > max) {
         return None
-    }  // Otherwise, we need to clip one or both points, non-trivially.
-
-    let mut line_3d = (
-        array![line.0[0], line.0[1], line.0[2]],
-        array![line.1[0], line.1[1], line.1[2]]
-    );
-    if pt0_inside {
-        line_3d = (
-            array![line.0[0], line.0[1], line.0[2]],
-            array![line.1[0], line.1[1], line.1[2]]
-        );
-    } else if pt1_inside {
-        line_3d = (
-            array![line.1[0], line.1[1], line.1[2]],
-            array![line.0[0], line.0[1], line.0[2]]
-        );
     }
 
-    let mut intersections = Vec::new();
+    // Otherwise, we need to clip one or both points, non-trivially.
+    let line_3d = (array![x0, y0, z0], array![x1, y1, z1]);
 
+    // Intersections aren't necessarily inside the clipspace frustum; the
+    // planes we intersect with are infinite. (Although the lines are finite).
+    let mut intersections = Vec::new();
     for plane in &vec![
-        array![0., 1., 0.],
-        array![0., -1., 0.],
-        array![1., 0., 0.],
-        array![-1., 0., 0.],
-        array![0., 0., 1.],
-        array![0., 0., -1.],
+        array![0., 1., 0.],  // Top
+        array![0., -1., 0.],  // Bottom
+        array![1., 0., 0.],  // Right
+        array![-1., 0., 0.],  // Left
+        array![0., 0., 1.],  // Forward
+        array![0., 0., -1.],  // Back
     ] {
         // None indicates a parallel line; no intersection with that plane.
         if let Some(pt) = line_plane_intersection(plane, plane, (&line_3d.0, &line_3d.1)) {
@@ -236,264 +219,46 @@ pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array
         }
     }
 
-    // Determine which two planes our line passes through.
-    const ϵ: f64 = 1e-4;
+    const ϵ: f64 = 1e-6;
     let adj_max = max + ϵ;
 
+    // Find the subset of intersections that occur on faces of our frustum.
     let clipped_pts: Vec<Array1<f64>> = intersections.into_iter().filter(
         |inter| inter[0].abs() <= adj_max && inter[1].abs() <= adj_max &&
             inter[2].abs() <= adj_max
     ).collect();
 
     // The line never intersects the frustum; not caught by trivial reject.
-    if clipped_pts.len() < 1 { return None; }
+    if clipped_pts.len() == 0 { return None; }
 
     // We only have one plane intersected; line doesn't go all the way through
     // our clipspace cube.
     if clipped_pts.len() == 1 {
+        let clipped = &clipped_pts[0];
         if pt0_inside {
-            return Some((line.0.clone(),
-                      array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.1[3]]
-            ))
+            return Some((line.0.clone(), array![clipped[0], clipped[1], clipped[2], u1]))
         } else if pt1_inside {
-            return Some((array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.0[3]],
-                      line.1.clone(),
-            ))
+            return Some((array![clipped[0], clipped[1], clipped[2], u0], line.1.clone()))
+        }
+        else {
+            // todo look into this. Some other reason for finding exactly one face
+            // todo intersection - not exactly one point being inside?
+        return None
         }
     }
+    return None;
 
-    // Otherwise, return both clipped points. But how do we keep the right order?
     return Some((
         array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.0[3]],
         array![clipped_pts[1][0], clipped_pts[1][1], clipped_pts[1][2], line.1[3]],
     ))
 }
 
-
-pub fn cohen_sutherland_3d(line: (Array1<f64>, Array1<f64>)) ->
-        Option<(Array1<f64>, Array1<f64>)> {
-    // Clip to a "unit" (-1 to +1 on each axis) frustum.
-    let (x_min, x_max, y_min, y_max, z_min, z_max) = (-1., 1., -1., 1., -1., 1.);
-
-    let mut outcode_0 = compute_outcode_3d(&line.0, x_min, x_max, y_min, y_max, z_min, z_max);
-    let mut outcode_1 = compute_outcode_3d(&line.1, x_min, x_max, y_min, y_max, z_min, z_max);
-
-    let mut x_0 = line.0[0];
-    let mut y_0 = line.0[1];
-    let mut z_0 = line.0[2];
-    let mut x_1 = line.1[0];
-    let mut y_1 = line.1[1];
-    let mut z_1 = line.1[2];
-
-    loop {
-        if outcode_0 | outcode_1 == 0 {
-            // bitwise OR is 0: both points inside window; trivially accept and
-            // exit the loop.
-            return Some((array![x_0, y_0, z_0], array![x_1, y_1, z_1]));
-        } else if outcode_0 & outcode_1 > 0 {
-            // bitwise AND is not 0: both points share an outside zone, so the
-            // line won't intersect the frustum; trivially reject.
-            return None
-        } else {
-            let x: f64;
-            let y: f64;
-            let z: f64;
-            // At least one endpoint is outside the clip rectangle; pick it.
-            let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
-
-            //
-            //x = x_0 + (x_1 - x_0) * (y_min - y_0) / (y_1 - y_0);
-            //
-            // See notes in 2d cohen-sutherland function.  The calculations
-            // follow this pattern: x = x_0 + dx/dy * dy, etc.
-            if outcode_out & TOP > 0 {
-                // point is above the clip window
-                let clip_ratio = (y_1 - y_0) / (y_max - y_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_max;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-            } else if outcode_out & BOTTOM > 0 {
-                // point is below the clip window
-                let clip_ratio = (y_1 - y_0) / (y_min - y_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_min;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-            } else if outcode_out & RIGHT > 0 {
-                // point is to the right of the clip window
-                let clip_ratio = (x_1 - x_0) / (x_max - x_0);
-                x = x_max;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-            } else if outcode_out & LEFT > 0 {
-                // point is to the left of the clip window
-                let clip_ratio = (x_1 - x_0) / (x_min - x_0);
-                x = x_min;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-            } else if outcode_out & FORWARD > 0 {
-                // point is to the foward part of the clip window
-                let clip_ratio = (z_1 - z_0) / (z_max - z_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_max;
-            } else {
-                // point is in the back of the clip window
-                let clip_ratio = (z_1 - z_0) / (z_min - z_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_min;
-            }
-
-            // Now we move outside point to intersection point to clip
-            // and get ready for next pass.
-            if outcode_out == outcode_0 {
-                x_0 = x;
-                y_0 = y;
-                z_0 = z;
-                outcode_0 = compute_outcode_3d(
-                    &array![x_0, y_0, z_0],
-                    x_min, x_max, y_min, y_max, z_min, z_max
-                );
-            } else {
-                x_1 = x;
-                y_1 = y;
-                z_1 = z;
-                outcode_1 = compute_outcode_3d(
-                    &array![x_1, y_1, z_1],
-                    x_min, x_max, y_min, y_max, z_min, z_max
-                );
-            }
-        }
-    }
-}
-
-pub fn cohen_sutherland_4d(cam: &Camera, line: (Array1<f64>, Array1<f64>)) ->
-        Option<(Array1<f64>, Array1<f64>)> {
-    // Clip to a "unit" (-1 to +1 on each axis) hyperfrustum.
-    let (x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max) =
-        (-1., 1., -1., 1., -1., 1., -1., 1.);
-
-    let mut outcode_0 = compute_outcode_4d(
-        &line.0, x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
-    );
-    let mut outcode_1 = compute_outcode_4d(
-        &line.1, x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
-    );
-
-    let mut x_0 = line.0[0];
-    let mut y_0 = line.0[1];
-    let mut z_0 = line.0[2];
-    let mut u_0 = line.0[3];
-    let mut x_1 = line.1[0];
-    let mut y_1 = line.1[1];
-    let mut z_1 = line.1[2];
-    let mut u_1 = line.1[3];
-//    return Some((array![x_0, y_0, z_0, u_0], array![x_1, y_1, z_1, u_1]));
-    loop {
-        if outcode_0 | outcode_1 == 0 {
-            // bitwise OR is 0: both points inside window; trivially accept and
-            // exit the loop.
-            return Some((array![x_0, y_0, z_0, u_0], array![x_1, y_1, z_1, u_1]));
-        } else if outcode_0 & outcode_1 > 0 {
-            // bitwise AND is not 0: both points share an outside zone, so the
-            // line won't intersect the frustum; trivially reject.
-            return None
-        } else {
-            let x: f64;
-            let y: f64;
-            let z: f64;
-            let u: f64;
-            // At least one endpoint is outside the clip rectangle; pick it.
-            let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
-
-            // See notes in 2d cohen-sutherland function.  The calculations
-            // follow this pattern: x = x_0 + dx/dy * dy, etc.
-            if outcode_out & TOP > 0 {
-                // point is above the clip window
-                let clip_ratio = (y_1 - y_0) / (y_max - y_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_max;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & BOTTOM > 0 {
-                // point is below the clip window
-                let clip_ratio = (y_1 - y_0) / (y_min - y_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_min;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & RIGHT > 0 {
-                // point is to the right of the clip window
-                let clip_ratio = (x_1 - x_0) / (x_max - x_0);
-                x = x_max;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & LEFT > 0 {
-                // point is to the left of the clip window
-                let clip_ratio = (x_1 - x_0) / (x_min - x_0);
-                x = x_min;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & FORWARD > 0 {
-                // point is to the foward part of the clip window
-                let clip_ratio = (z_1 - z_0) / (z_max - z_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_max;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & BACK > 0 {
-                // point is in the back of the clip window
-                let clip_ratio = (z_1 - z_0) / (z_min - z_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_min;
-                u = u_0 + (u_1 - u_0) / clip_ratio;
-            } else if outcode_out & SKY > 0 {
-                // point is in the sky of the clip window
-                let clip_ratio = (u_1 - u_0) / (u_max - u_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_max;
-            } else {
-                // point is in the earth of the clip window
-                let clip_ratio = (u_1 - u_0) * (u_min - u_0);
-                x = x_0 + (x_1 - x_0) / clip_ratio;
-                y = y_0 + (y_1 - y_0) / clip_ratio;
-                z = z_0 + (z_1 - z_0) / clip_ratio;
-                u = u_min;
-            }
-
-            // Now we move outside point to intersection point to clip
-            // and get ready for next pass.
-            if outcode_out == outcode_0 {
-                x_0 = x;
-                y_0 = y;
-                z_0 = z;
-                u_0 = u;
-                outcode_0 = compute_outcode_4d(
-                    &array![x_0, y_0, z_0, u_0],
-                    x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
-                );
-            } else {
-                x_1 = x;
-                y_1 = y;
-                z_1 = z;
-                u_0 = u;
-                outcode_1 = compute_outcode_4d(
-                    &array![x_1, y_1, z_1, u_1],
-                    x_min, x_max, y_min, y_max, z_min, z_max, u_min, u_max
-                );
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const ϵ: f64 = 1e-6;
 
     #[test]
     fn outcodes() {
@@ -511,7 +276,6 @@ mod tests {
 
     #[test]
     fn line_intersects_plane() {
-        let epsilon = 1e-6;
         let line = (&array![0.8, 1.3, -0.7], &array![-0.9, -1.2, 0.6]);
         let expected = array![0.596, 1.0, -0.544];
 
@@ -519,42 +283,75 @@ mod tests {
             &array![0., 1., 0.], &array![0., 1., 0.], line
         ).unwrap();
 
-        assert!((expected[0] - actual[0]).abs() < epsilon);
-        assert!((expected[1] - actual[1]).abs() < epsilon);
-        assert!((expected[2] - actual[2]).abs() < epsilon);
+        assert!((expected[0] - actual[0]).abs() < ϵ);
+        assert!((expected[1] - actual[1]).abs() < ϵ);
+        assert!((expected[2] - actual[2]).abs() < ϵ);
     }
 
     #[test]
-    fn line_plane_plel() {
-        let epsilon = 1e-6;
+    fn line_plane_parallel() {
         let line = (&array![0.2, 1.3, -0.7], &array![0.2, -0.2, -0.7]);
 
         let result = line_plane_intersection(
             &array![-1., 0., 0.], &array![-1., 2., -4.], line
         );
-        assert_eq!(result, None);
+        assert_eq!(result.is_none(), true);
     }
 
     #[test]
-    fn line_doesnt_intersect() {
-        let epsilon = 1e-6;
-        // This line never touches the z = +1; it's too short.
+    fn too_short_to_intersect() {
+        // This line never touches the z = +1; it's too short.  And a slightly-
+        // longer example that should intersect.
         let too_short = (&array![0.2, -0.2, -2.7], &array![0.3, 0.4, 0.95]);
+        let too_short_rev = (&array![0.3, 0.4, 0.95], &array![0.2, -0.2, -2.7]);
         let long_enough = (&array![0.2, -0.2, -2.7], &array![0.3, 0.4, 1.05]);
+        let long_enough_rev = (&array![0.3, 0.4, 1.05], &array![0.2, -0.2, -2.7]);
         let expected = array![0.2986667, 0.392, 1.];
 
         let short_intersect = line_plane_intersection(
             &array![0., 0., 1.], &array![-0.2, 67., 1.], too_short
         );
+        let short_intersect_rev = line_plane_intersection(
+            &array![0., 0., 1.], &array![-0.2, 67., 1.], too_short
+        );
         let better = line_plane_intersection(
             &array![0., 0., 1.], &array![-0.2, 67., 1.], long_enough
         ).unwrap();
-
+        let better_rev = line_plane_intersection(
+            &array![0., 0., 1.], &array![-0.2, 67., 1.], long_enough_rev
+        ).unwrap();
 
         // The longer line should intersect; the shorter line should not.
-        assert_eq!(short_intersect, None);
-        assert!((expected[0] - better[0]).abs() < epsilon);
-        assert!((expected[1] - better[1]).abs() < epsilon);
-        assert!((expected[2] - better[2]).abs() < epsilon);
+        assert_eq!(short_intersect.is_none(), true);
+        assert_eq!(short_intersect_rev.is_none(), true);
+
+        assert!((expected[0] - better[0]).abs() < ϵ);
+        assert!((expected[1] - better[1]).abs() < ϵ);
+        assert!((expected[2] - better[2]).abs() < ϵ);
+
+        assert!((expected[0] - better_rev[0]).abs() < ϵ);
+        assert!((expected[1] - better_rev[1]).abs() < ϵ);
+        assert!((expected[2] - better_rev[2]).abs() < ϵ);
+    }
+
+    #[test]
+    fn inside_frus() {
+        let pt = array![-0.5, 0.2, 0.999];
+        assert!(inside_frustum(&pt));
+    }
+
+    #[test]
+    fn outside_frus() {
+        let pt = array![1.2, 0.2, 0.999];
+        assert_eq!(inside_frustum(&pt), false);
+    }
+
+    #[test]
+    fn vec_magnitude() {
+        let pt1 = array![1., 4., -2.];
+        let pt2 = array![-0.5, 1.2, 100.01, -33., -6.7];
+
+        assert!(magnitude(&pt1) < 4.5825757 +  ϵ);
+        assert!(magnitude(&pt1) < 105.534734 +  ϵ);
     }
 }

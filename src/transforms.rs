@@ -215,9 +215,9 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    let is_4d = if shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
+    let is_4d = shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
         shape.rotation_speed[5].abs() > 0. || shape.orientation[3].abs() > 0. ||
-        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0. { true } else { false };
+        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0.
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
@@ -268,7 +268,7 @@ pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
     // [fixed] camera.
     let T = make_translator(&-&(cam.position));
     let R = if is_4d {
-        make_rotator_3d(&-&(cam.θ_3d)).dot(&(make_rotator_4d(&-&(cam.θ_4d))))
+        { make_rotator_4d(&-&(cam.θ_4d)) }
     } else
         { make_rotator_3d(&-&(cam.θ_3d)) };
     let P = make_projector(&cam);
