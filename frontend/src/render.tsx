@@ -9,10 +9,130 @@ import {mat4, glMatrix} from 'gl-matrix'
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 import * as rustClone from './rust_clone'
-import {ProgramInfo, Shape, Camera, Vec5, Array5} from './interfaces'
-import {position_shape} from "./rust_clone";
+import {ProgramInfo, Shape, Camera, Vec5} from './interfaces'
 
 let cubeRotation = 0.0;
+
+// todo global shapes and cam for now
+const τ = 2 * Math.PI
+
+let currentlyPressedKeys = {}
+const moveSensitivity = .1
+const rotateSensitivity = .04
+
+function handleKeyDown(event: any) {
+    currentlyPressedKeys[event.keyCode] = true
+    console.log(event.keyCode)
+    switch(event.keyCode) {
+        case 87:  // w
+            cam.position.vals[2] += moveSensitivity
+            break
+        case 83:  // s
+            cam.position.vals[2] -= moveSensitivity
+            break
+        case 68:  // d
+            cam.position.vals[0] += moveSensitivity
+            break
+        case 65:  // a
+            cam.position.vals[0] -= moveSensitivity
+            break
+        case 32:  // Space
+            cam.position.vals[1] += moveSensitivity
+            break
+        case 67:  // c
+            cam.position.vals[1] -= moveSensitivity
+            break
+        case 17:  // Control
+            cam.position.vals[1] -= moveSensitivity
+            break
+        case 82:  // r
+            cam.position.vals[3] += moveSensitivity
+            break
+        case 70:  // f
+            cam.position.vals[3] -= moveSensitivity
+            break
+
+        case 38:  // Up
+            cam.θ_4d[1] +=rotateSensitivity
+            break
+        case 40:  // Down
+            cam.θ_4d[1] -=rotateSensitivity
+            break
+        case 39:  // Right
+            cam.θ_4d[2] +=rotateSensitivity
+            break
+        case 37:  // Left
+            cam.θ_4d[2] -=rotateSensitivity
+            break
+        case 69:  // E
+            cam.θ_4d[0] +=rotateSensitivity
+            break
+        case 81:  // Q
+            cam.θ_4d[0] -=rotateSensitivity
+            break
+        case 84:  // t
+            cam.θ_4d[3] +=rotateSensitivity
+            break
+        case 71:  // g
+            cam.θ_4d[3] -=rotateSensitivity
+            break
+        case 89:  // y
+            cam.θ_4d[4] +=rotateSensitivity
+            break
+        case 72:  // h
+            cam.θ_4d[4] -=rotateSensitivity
+            break
+        case 85:  // u
+            cam.θ_4d[5] +=rotateSensitivity
+            break
+        case 74:  // j
+            cam.θ_4d[5] -=rotateSensitivity
+            break
+
+        default:
+            break
+    }
+}
+
+function handleKeyUp(event: any) {
+    currentlyPressedKeys[event.keyCode] = false;
+}
+
+let cam = {
+    position: new Vec5([0., 0., -3., 0.]),
+    θ_3d: [0., 0., 0.],
+    θ_4d: [0., -.5, 0., 0., 0., 0.],
+    fov: τ / 4.,
+    aspect: 640 / 480.,
+    aspect_4: 1.,
+    far: 30.,
+    near: 0.9,
+    strange: 1.0,
+}
+
+let shape_list = [
+    rustClone.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]), 1,
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+    rustClone.make_cube(1, new Vec5([2, 0, 5, 0]), 1,
+        [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+
+    // On sky of other cube.
+    rustClone.make_cube(1, new Vec5([2, 0, 5, 4]), 1,
+        [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+
+    rustClone.make_hypercube(1, new Vec5([3, 3, 3, 0]), 1,
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, .005, .005, .004]),
+
+    // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
+    //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+
+]
+
+let shapes = new Map()
+for (let id=0; id < shape_list.length; id++) {
+    shapes.set(id, shape_list[id])
+}
 
 // function glVerticesFromShape(shapes: Map<number, Shape>): number[]{
 //     // WebGL needs us to define a vertex for each face edge; this involves
@@ -62,15 +182,23 @@ function loadShader(gl: any, type: any, source: any) {
 }
 
 function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
-                   deltaTime: number, cam: Camera, shapes: Map<number, Shape>,
-                   vertexCount: number) {
+                   deltaTime: number,
+                   processedShapes: Map<string, Float32Array>, vertexCount: number) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
     gl.clearDepth(1.0)                 // Clear everything
     gl.enable(gl.DEPTH_TEST)           // Enable depth testing
     gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
 
+    // gl.enable(gl.GL_BLEND);  // todo tempt
+    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+    const processedShapes_ = preProcessShapes(cam, shapes)
+    buffers = initBuffers(gl, processedShapes_)
+
+    // console.log(shapes, "S")
 
     // Create a perspective matrix, a special matrix that is
     // used to simulate the distortion of perspective in a camera.
@@ -98,11 +226,11 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
 
     // We've positioned our points rel to their model and the cam already,
     // using 4d transforms; doesn't modify further.
-    const modelViewMatrix = new Float32Array([
+    const I_4 = new Float32Array([
         1, 0, 0, 0,
         0, 1, 0, 0,
-        0, 0, 1, 0,
-        -3, 0, -10, 1
+        0, 0, -1, 0,
+        0, 0, 0, 1
     ])
 
     // Tell WebGL how to pull out the positions from the position
@@ -161,7 +289,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.modelViewMatrix,
         false,
-        modelViewMatrix)
+        I_4)
 
     {
         const type = gl.UNSIGNED_SHORT
@@ -186,20 +314,20 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     // throw "DEBUG"
 }
 
-function preProcessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
+function preProcessShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Float32Array> {
     // Set up shapes rel to their model, and the camera.  The result is
     // T must be done last.
     let result = new Map()
     let positionedModel, positionM
 
-    let negRot = [-cam.θ_4d[0], -cam.θ_4d[1], -cam.θ_4d[2], -cam.θ_4d[3], -cam.θ_4d[4], -cam.θ_4d[5]]
+    let negRot = [-cam_.θ_4d[0], -cam_.θ_4d[1], -cam_.θ_4d[2], -cam_.θ_4d[3], -cam_.θ_4d[4], -cam_.θ_4d[5]]
     const R = rustClone.make_rotator_4d(negRot)
 
-    const negPos = new Vec5([-cam.position.vals[0], -cam.position.vals[1], -cam.position.vals[2],
-        -cam.position.vals[3], 1])
+    const negPos = new Vec5([-cam_.position.vals[0], -cam_.position.vals[1], -cam_.position.vals[2],
+        -cam_.position.vals[3], 1])
     const T = rustClone.make_translator(negPos)
 
-    shapes.forEach(
+    shapes_.forEach(
         (shape, id, map) => {
             positionedModel = rustClone.position_shape(shape)
             positionedModel.forEach(
@@ -213,12 +341,10 @@ function preProcessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, 
             )
         }
     )
-    console.log(result, "R")
     return result
 }
 
-function initBuffers(gl: any, shapes: Map<number, Shape>,
-                     processedShapes: Map<string, Float32Array>) {
+function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
     // Create a buffer for the square's positions and color.
 
     const positionBuffer = gl.createBuffer()
@@ -270,13 +396,46 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
         [1.0,  1.0,  0.0,  0.5],
     ]
 
+    const colorSet24 = [
+        [1.0,  1.0,  1.0,  0.5],
+        [1.0,  0.0,  0.0,  0.5],
+        [0.0,  1.0,  0.0,  0.5],
+        [0.0,  0.0,  1.0,  0.5],
+        [1.0,  1.0,  0.0,  0.5],
+        [1.0,  0.0,  1.0,  0.5],
+
+        [1.0,  1.0,  1.0,  0.5],
+        [0.3,  0.0,  0.0,  0.5],
+        [0.5,  0.5,  1.0,  0.5],
+        [0.7,  0.4,  1.0,  0.5],
+        [0.8,  1.0,  0.4,  0.5],
+        [1.0,  0.2,  1.0,  0.5],
+
+        [0.3,  0.3,  1.0,  0.5],
+        [1.0,  0.1,  0.7,  0.5],
+        [0.0,  0.2,  0.0,  0.5],
+        [0.7,  1.0,  0.5,  0.5],
+        [1.0,  1.0,  0.2,  0.5],
+        [1.0,  0.0,  1.0,  0.5],
+
+        [1.0,  0.2,  1.0,  0.5],
+        [1.0,  0.0,  0.0,  0.5],
+        [0.4,  0.4,  0.4,  0.5],
+        [0.0,  0.0,  0.4,  0.5],
+        [0.2,  0.3,  0.0,  0.5],
+        [0.3,  0.2,  1.0,  0.5],
+    ]
+
     let faceColors: number[] = []
     shapes.forEach(
         (shape, s_id, map) => {
-            if (shape.faces.length === 6) {
+            if (shape.faces_vert.length === 6) {
                 faceColors.push(...colorSet6 as any)
-            } else if (shape.faces.length === 5) {
+            } else if (shape.faces_vert.length === 5) {
                 faceColors.push(...colorSet5 as any)
+            } else if (shape.faces_vert.length === 24) {
+                faceColors.push(...colorSet24 as any)
+
             }
         }
     )
@@ -305,7 +464,7 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
     let indexModifier = 0
     let tri_indices
     shapes.forEach(
-        (shape, s_i, map) => {
+        (shape: Shape, s_i, map) => {
             tri_indices = shape.make_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
             indexModifier += shape.numFaceVerts()
@@ -322,7 +481,7 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
     }
 }
 
-export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
+export function gl_main(cam_: Camera) {
     // Initialize WebGL rendering.
 
     const canvas = document.getElementById("glCanvas")
@@ -331,6 +490,9 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
+
+    document.onkeydown = handleKeyDown
+    document.onkeyup = handleKeyUp
 
     // Vertex shader program
     const vsSource = `
@@ -380,7 +542,7 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
     // objects we'll be drawing.
     const processedShapes = preProcessShapes(cam, shapes)
 
-    const buffers = initBuffers(gl, shapes, processedShapes)
+    const buffers = initBuffers(gl, processedShapes)
 
     let vertexCount = 0
     shapes.forEach(
@@ -395,7 +557,7 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
         const deltaTime = now - then;
         then = now;
 
-        drawScene(gl, programInfo, buffers, deltaTime, cam, shapes, vertexCount);
+        drawScene(gl, programInfo, buffers, deltaTime, processedShapes, vertexCount);
 
         requestAnimationFrame(render)
     }

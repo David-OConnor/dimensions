@@ -30,14 +30,18 @@ interface MainState {
     camera: Camera
 }
 
-export class Main extends React.Component<any, any> {
+class Controls extends React.Component<any, any> {
+
+}
+
+class Main extends React.Component<any, any> {
     constructor(props: MainProps) {
         super(props)
         this.state = {
             shapes: new Map(), // todo may need to initialize with one shape.
 
             camera: {
-                position: new Vec5([-5., 1., -8., -2.]),
+                position: new Vec5([0., 1., -8., -2.]),
                 θ_3d: [0., 0., 0.],
                 θ_4d: [0., -.5, 0., 0., 0., 0.],
                 fov: τ / 4.,
@@ -77,12 +81,15 @@ export class Main extends React.Component<any, any> {
     //     });
 
     componentDidMount() {
-        let shape_list = [
-            rustClone.make_box([1, 2, 1], new Vec5([-1, 3, -4, 0]), 1,
-                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+        let shape_list: Shape[] = [
+            // rustClone.make_box([1, 2, 1], new Vec5([-1, 3, -4, 0]), 1,
+            //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+            //
+            // rustClone.make_cube(1, new Vec5([2, 0, -5, 0]), 1,
+            //     [0, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-            rustClone.make_box([1, 1, 1], new Vec5([2, 0, -5, 0]), 1,
-                [0, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+            // rustClone.make_hypercube(1, new Vec5([3, 3, -3, 0]), 1,
+            //     [0, τ/3, 0, τ/2.5, τ/3, τ/3], [0, 0, 0, 0, 0, 0]),
 
                 // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
                 //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
@@ -98,7 +105,7 @@ export class Main extends React.Component<any, any> {
     }
 
     render() {
-        render.gl_main(this.state.camera, this.state.shapes)
+        render.gl_main(this.state.camera)
 
         return (
             <div>
@@ -107,3 +114,5 @@ export class Main extends React.Component<any, any> {
         )
     }
 }
+
+export default Main

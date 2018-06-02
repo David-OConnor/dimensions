@@ -25,11 +25,10 @@ export function make_box(lens: [number, number, number],
     ];
 
     let nodes = new Map()
-
     for (let id=0; id < coords.length; id++) {
-        let coord = coords[id]
+        let coord = coords[id];
         nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
-            coord[2] * lens[2], coord[3]])))
+            coord[2] * lens[2], coord[3]])));
     }
 
     const edges = [
@@ -50,7 +49,7 @@ export function make_box(lens: [number, number, number],
         new Edge(1, 5),
         new Edge(2, 6),
         new Edge(3, 7)
-    ]
+    ];
 
     let faces = [
         // Front
@@ -65,20 +64,160 @@ export function make_box(lens: [number, number, number],
         new Face([edges[3], edges[8], edges[7], edges[11]]),
         // Right
         new Face([edges[1], edges[9], edges[5], edges[10]]),
-    ]
+    ];
 
-    let faces_vert = [  // Vertex indices for each face.
+    const faces_vert = [  // Vertex indices for each face.
         [0, 1, 2, 3],  // Front
         [4, 5, 6, 7],  // Back
         [3, 2, 6, 7],  // Top
         [0, 1, 5, 4],  // Bottom
         [0, 4, 7, 3],  // Left
         [1, 5, 6, 2],  // Right
-
-    ]
+    ];
 
     return new Shape(nodes, edges, faces, faces_vert, position,
         scale, orientation, rotation_speed)
+}
+
+export function make_cube(side_len: number,
+                          position: Vec5, scale: number, orientation: number[],
+                          rotation_speed: number[]): Shape {
+    // Convenience function.
+    // We'll still treat the center as the center of the base portion.
+    return make_box([side_len, side_len, side_len], position, scale, orientation, rotation_speed)
+}
+
+export function make_hyperrect(lens: [number, number, number, number],
+                               position: Vec5, scale: number, orientation: number[],
+                               rotation_speed: number[]): Shape {
+    // Make a 4d hypercube.
+
+    const coords = [
+        // Front inner
+        [-1., -1., -1., -1.],
+        [1., -1., -1., -1.],
+        [1., 1., -1., -1.],
+        [-1., 1., -1., -1.],
+
+        // Back inner
+        [-1., -1., 1., -1.],
+        [1., -1., 1., -1.],
+        [1., 1., 1., -1.],
+        [-1., 1., 1., -1.],
+
+        // Front outer
+        [-1., -1., -1., 1.],
+        [1., -1., -1., 1.],
+        [1., 1., -1., 1.],
+        [-1., 1., -1., 1.],
+
+        // Back outer
+        [-1., -1., 1., 1.],
+        [1., -1., 1., 1.],
+        [1., 1., 1., 1.],
+        [-1., 1., 1., 1.],
+    ];
+
+    let nodes = new Map()
+    for (let id=0; id < coords.length; id++) {
+        let coord = coords[id]
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
+            coord[2] * lens[2], coord[3] * lens[3]])))
+    }
+
+    let edges = [
+        // Front inner
+        new Edge(0, 1),
+        new Edge(1, 2),
+        new Edge(2, 3),
+        new Edge(3, 0),
+
+        // Back inner
+        new Edge(4, 5),
+        new Edge(5, 6),
+        new Edge(6, 7),
+        new Edge(7, 4),
+
+        // Connect front to back inner
+        new Edge(0, 4),
+        new Edge(1, 5),
+        new Edge(2, 6),
+        new Edge(3, 7),
+
+        // Front outer
+        new Edge(8, 9),
+        new Edge(9, 10),
+        new Edge(10, 11),
+        new Edge(11, 8),
+
+        // Back Outer
+        new Edge(12, 13),
+        new Edge(13, 14),
+        new Edge(14, 15),
+        new Edge(15, 12),
+
+        // Connect front to back outer
+        new Edge(8, 12),
+        new Edge(9, 13),
+        new Edge(10, 14),
+        new Edge(11, 15),
+
+        // Connect front inner to front outer
+        new Edge(0, 8),
+        new Edge(1, 9),
+        new Edge(2, 10),
+        new Edge(3, 11),
+
+        // Connect back inner to back outer
+        new Edge(4, 12),
+        new Edge(5, 13),
+        new Edge(6, 14),
+        new Edge(7, 15),
+    ];
+
+    const faces: Face[] = [];
+    // Drawing a picture helps!
+    const faces_vert = [  // Vertex indices for each face.
+        [0, 1, 2, 3],  // Front inner
+        [4, 5, 6, 7],  // Back inner
+        [3, 2, 6, 7],  // Top inner
+        [0, 1, 5, 4],  // Bottom inner
+        [0, 4, 7, 3],  // Left inner
+        [1, 5, 6, 2],  // Right inner
+
+        [8, 9, 10, 11],  // Front outer
+        [12, 13, 14, 15],  // Back outer
+        [11, 10, 14, 15],  // Top outer
+        [8, 9, 13, 12],  // Bottom outer
+        [8, 12, 15, 11],  // Left outer
+        [9, 13, 14, 10],  // Right outer
+
+        [8, 9, 1, 0],  // Front bottom
+        [12, 13, 5, 4],  // Back bottom
+        [12, 8, 0, 4],  // Left bottom
+        [9, 13, 5, 1],  // Right bottom
+
+        [11, 10, 2, 3],  // Front top
+        [15, 14, 6, 7],  // Back top
+        [5, 11, 3, 7],  // Left top
+        [14, 10, 2, 6],  // Right top
+
+        [11, 8, 0, 3],  // Left forward
+        [15, 12, 4, 7],  // Left back
+        [10, 9, 1, 2],  // Right forward
+        [14, 13, 5, 6],  // Right back
+
+    ];
+
+    return new Shape(nodes, edges, faces, faces_vert, position, scale, orientation, rotation_speed)
+}
+
+export function make_hypercube(side_len: number,
+                               position: Vec5, scale: number, orientation: number[],
+                               rotation_speed: number[]): Shape {
+    // Convenience function.
+    return make_hyperrect([side_len, side_len, side_len, side_len],
+        position, scale, orientation, rotation_speed)
 }
 
 export function make_origin(len: number, position: Vec5, scale: number,
