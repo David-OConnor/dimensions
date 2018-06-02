@@ -98,18 +98,11 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
 
     // We've positioned our points rel to their model and the cam already,
     // using 4d transforms; doesn't modify further.
-    // const modelViewMatrix = new Float32Array([
-    //     1, 0, 0, 0,
-    //     0, 1, 0, 0,
-    //     0, 0, 1, 0,
-    //     0, 1, cam.position.vals[2], 1
-    // ])
-
     const modelViewMatrix = new Float32Array([
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        0, 1, -7, 1
+        -3, 0, -10, 1
     ])
 
     // Tell WebGL how to pull out the positions from the position
@@ -193,18 +186,22 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     // throw "DEBUG"
 }
 
-function preprocessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
+function preProcessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
     // Set up shapes rel to their model, and the camera.  The result is
     // T must be done last.
     let result = new Map()
     let positionedModel, positionM
 
-    const R = rustClone.make_rotator_4d(cam.θ_4d)
-    const T = rustClone.make_translator(cam.position)
+    let negRot = [-cam.θ_4d[0], -cam.θ_4d[1], -cam.θ_4d[2], -cam.θ_4d[3], -cam.θ_4d[4], -cam.θ_4d[5]]
+    const R = rustClone.make_rotator_4d(negRot)
+
+    const negPos = new Vec5([-cam.position.vals[0], -cam.position.vals[1], -cam.position.vals[2],
+        -cam.position.vals[3], 1])
+    const T = rustClone.make_translator(negPos)
+
     shapes.forEach(
         (shape, id, map) => {
             positionedModel = rustClone.position_shape(shape)
-            // console.log("PM", positionedModel)
             positionedModel.forEach(
                 (node, nid, _map) => {
                     // For cam transform, position first; then rotate.
@@ -216,6 +213,7 @@ function preprocessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, 
             )
         }
     )
+    console.log(result, "R")
     return result
 }
 
@@ -232,36 +230,22 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
 
     // Now create an array of positions for the square.
 
-    let node0
+    let node
     let positions: number[] = []
-    console.log(processedShapes, "PS")
     // Set up vertices.
     shapes.forEach(
         (shape, s_id, map) => {
-            for (let face of shape.faces) {
-                for (let edge of face.edges) {
+            for (let face of shape.faces_vert) {
+                for (let vertex_i of face) {
                     // Map doesn't like tuples as keys :/
-                    node0 = processedShapes.get([s_id, edge.node0].join(',')) as any
-                    // node0 = (shapes.get(s_id) as any).nodes.get(edge.node0)
-                    // node0 = node0.a.vals
-                    positions.push(node0[0])
-                    positions.push(node0[1])
-                    positions.push(node0[2])
-
-                    // GL likes nodes per face, while we iterate over
-                    // edges in our model's faces... There's duplication either way.
-                    // By only including the first node of each edge, do we
-                    // get what we want?
-
-                    // positions.push(node1[0])
-                    // positions.push(node1[1])
-                    // positions.push(node1[2])
+                    node = processedShapes.get([s_id, vertex_i].join(',')) as any
+                    positions.push(node[0])
+                    positions.push(node[1])
+                    positions.push(node[2])
                 }
             }
         }
     )
-
-    console.log(positions, "P")
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -322,9 +306,9 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
     let tri_indices
     shapes.forEach(
         (shape, s_i, map) => {
-            tri_indices = shape.tri_indices.map(ind => ind + indexModifier)
+            tri_indices = shape.make_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
-            indexModifier += shape.nodes.size
+            indexModifier += shape.numFaceVerts()
         }
     )
     // Now send the element array to GL
@@ -394,14 +378,14 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
 
     // Here's where we call the routine that builds all the
     // objects we'll be drawing.
-    const processedShapes = preprocessShapes(cam, shapes)
+    const processedShapes = preProcessShapes(cam, shapes)
 
     const buffers = initBuffers(gl, shapes, processedShapes)
 
     let vertexCount = 0
     shapes.forEach(
         (shape, id, map) => {
-            vertexCount += shape.tri_indices.length
+            vertexCount += shape.make_tris().length
         }
     )
     let then = 0

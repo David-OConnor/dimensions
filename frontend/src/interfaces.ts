@@ -118,26 +118,68 @@ export class Shape {
     nodes: Map<number, Node2>
     edges: Edge[]
     faces: Face[]
-    tri_indices: number[]  // For webGL triangles; corresponds to nodes.
+    // Corresponds to faces, but uses vertices rather than edges.  This corresponds
+    // to WebGl's implementation of faces.  We can't implicitly create this by
+    // iterating over over faces/edges due to edges being used in multiple directions.
+    faces_vert: number[][]
+    // tri_indices: number[]  // For webGL triangles; corresponds to nodes.
     position: Vec5
     scale: number
     orientation: number[]
     rotation_speed: number[]
 
-    constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
-                tri_indices: number[],
+    constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[], faces_vert: number[][],
                 position: Vec5, scale: number, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
         this.faces = faces
-        this.tri_indices = tri_indices
+        this.faces_vert = faces_vert
+        // this.tri_indices = tri_indices
         this.position = position
         this.scale = scale
         this.orientation = orientation
         this.rotation_speed = rotation_speed
     }
+
+    make_tris(): number[] {
+        // Divide faces into triangles of indices. These indices aren't of node
+        // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
+        // Result is a 1d array; Float32array-style.
+        let result = []
+        let current_i = 0
+        for (let face of this.faces_vert) {
+            if (face.length === 3) {
+                // Only one triangle.
+                result.push(current_i)
+                result.push(current_i + 1)
+                result.push(current_i + 2)
+            } else if (face.length === 4) {
+                // First triangle
+                result.push(current_i)
+                result.push(current_i + 1)
+                result.push(current_i + 2)
+                // Second triangle
+                result.push(current_i)
+                result.push(current_i + 2)
+                result.push(current_i + 3)
+            } else if (face.length === 2) {
+                throw "Faces must have len 3 or more."
+            } else {
+                throw "Error: Haven't implemented faces with vertex counds higher than four."
+            }
+            current_i += face.length
+        }
+        return result
+    }
+
+    numFaceVerts(): number {
+        // Find the number of vertices used in drawing faces.  Ie for a box,
+        // it's 6 faces x 4 vertices/face.
+        return this.faces_vert.reduce((acc, face) => acc + face.length, 0)
+    }
 }
+
 //
 // export interface ShapeArgs {
 //     // Ref struct of same name in lib.rs.

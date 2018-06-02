@@ -67,16 +67,18 @@ export function make_box(lens: [number, number, number],
         new Face([edges[1], edges[9], edges[5], edges[10]]),
     ]
 
-    let tri_indices = [
-        0,  1,  2,      0,  2,  3,
-        4,  5,  6,      4,  6,  7,
-        8,  9,  10,     8,  10, 11,
-        12, 13, 14,     12, 14, 15,
-        16, 17, 18,     16, 18, 19,
-        20, 21, 22,     20, 22, 23
+    let faces_vert = [  // Vertex indices for each face.
+        [0, 1, 2, 3],  // Front
+        [4, 5, 6, 7],  // Back
+        [3, 2, 6, 7],  // Top
+        [0, 1, 5, 4],  // Bottom
+        [0, 4, 7, 3],  // Left
+        [1, 5, 6, 2],  // Right
+
     ]
 
-    return new Shape(nodes, edges, faces, tri_indices, position, scale, orientation, rotation_speed)
+    return new Shape(nodes, edges, faces, faces_vert, position,
+        scale, orientation, rotation_speed)
 }
 
 export function make_origin(len: number, position: Vec5, scale: number,
@@ -193,52 +195,6 @@ export function make_rotator_4d(θ: number[]): Array5 {
     return R_1.dotM(R_2)
 }
 
-export function make_rotator_3d(θ: number[]): Array5 {
-    // Compute a 3-dimensional rotation matrix.
-    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    // We return 5x5 matrices for compatibility with other transforms, and to
-    // reduce repetition between 4d and 3d vectors.
-
-    // Note that we might accept a rotation vector of len 6, but only the
-    // first 3 values will be used.
-
-    // cache trig computations
-    let cos_x = Math.cos(θ[0])
-    let sin_x = Math.sin(θ[0])
-    let cos_y = Math.cos(θ[1])
-    let sin_y = Math.sin(θ[1])
-    let cos_z = Math.cos(θ[2])
-    let sin_z = Math.sin(θ[2])
-
-    // R matrices rotate a vector around a single axis.
-    let R_x = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., cos_x, -sin_x, 0., 0.],
-        [0., sin_x, cos_x, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ]);
-
-    let R_y = new Array5([
-        [cos_y, 0., sin_y, 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [-sin_y, 0., cos_y, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    let R_z = new Array5([
-        [cos_z, -sin_z, 0., 0., 0.],
-        [sin_z, cos_z, 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    // Combine the three rotations.
-    return R_x.dotM(R_y.dotM(R_z))
-}
-
 export function make_translator(position: Vec5): Array5 {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
@@ -309,27 +265,6 @@ export function make_projector(cam: Camera): Array5 {
         // This row allows us to divide by z after taking the dot product,
         // as part of our scaling operation.
         [0., 0., 1., 0., 1.],
-    ])
-}
-
-export function make_projector_3d(cam: Camera): Float32Array {
-    // This will still be used for 4d objects; the interesting 4d things happen
-    // during the translation and rotation.
-
-    let y_scale = 1. / Math.tan(cam.fov / 2.)
-    let x_scale = y_scale / cam.aspect
-
-    // The negative value on teh last row, third col is different from our
-    // conventions in the Rust program; OpenGl seems to want it this way.
-    return Float32Array.from([
-        x_scale, 0., 0., 0.,
-        0., y_scale, 0., 0.,
-        0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-            (-2. * cam.far * cam.near) / (cam.far - cam.near),
-        // u_scale is, ultimately, not really used.
-        // This row allows us to divide by z after taking the dot product,
-        // as part of our scaling operation.
-        0., 0., -1., 1.,
     ])
 }
 
