@@ -34,19 +34,14 @@ export class Main extends React.Component<any, any> {
     constructor(props: MainProps) {
         super(props)
         this.state = {
-            shapes: new Map( // todo temp
-                [[0, rustClone.make_box(
-                    [1, 2, 1], new Vec5([2, 0, 2, 0]), 1,
-                        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]
-                    )
-            ]]),
+            shapes: new Map(), // todo may need to initialize with one shape.
 
             camera: {
-                position: new Vec5([0., 1., -2., -2.]),
+                position: new Vec5([0., 1., -7., -2.]),
                 θ_3d: [0., 0., 0.],
-                θ_4d: [0., -2., 0., 0., 0., 0.],
-                fov: τ / 6.,
-                aspect: 1.,
+                θ_4d: [0., -.5, 0., 0., 0., 0.],
+                fov: τ / 4.,
+                aspect: 640 / 480.,
                 aspect_4: 1.,
                 far: 30.,
                 near: 0.9,
@@ -83,11 +78,14 @@ export class Main extends React.Component<any, any> {
 
     componentDidMount() {
         let shape_list = [
-            rustClone.make_box([1, 2, 1], new Vec5([2, 0, 2, 0]), 1,
+            rustClone.make_box([1, 2, 1], new Vec5([-1, 0, 6, 0]), 1,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-                rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
-                    [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+            rustClone.make_box([1, 1, 1], new Vec5([2, 0, 2, 0]), 1,
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+                // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
+                //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 
         ]
 

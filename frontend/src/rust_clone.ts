@@ -67,7 +67,16 @@ export function make_box(lens: [number, number, number],
         new Face([edges[1], edges[9], edges[5], edges[10]]),
     ]
 
-    return new Shape(nodes, edges, faces, position, scale, orientation, rotation_speed)
+    let tri_indices = [
+        0,  1,  2,      0,  2,  3,
+        4,  5,  6,      4,  6,  7,
+        8,  9,  10,     8,  10, 11,
+        12, 13, 14,     12, 14, 15,
+        16, 17, 18,     16, 18, 19,
+        20, 21, 22,     20, 22, 23
+    ]
+
+    return new Shape(nodes, edges, faces, tri_indices, position, scale, orientation, rotation_speed)
 }
 
 export function make_origin(len: number, position: Vec5, scale: number,
@@ -99,7 +108,8 @@ export function make_origin(len: number, position: Vec5, scale: number,
         new Edge(6, 7),
     ];
 
-    return new Shape(nodes, edges, [], position as any, scale, orientation as any, rotation_speed as any)
+    return new Shape(nodes, edges, [], [], position as any, scale,
+        orientation, rotation_speed)
 }
 
 export function make_rotator_4d(θ: number[]): Array5 {
@@ -327,14 +337,9 @@ export function position_shape(shape: Shape): Map<number, Vec5> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
-    const is_4d = Math.abs(shape.rotation_speed[3]) > 0. || Math.abs(shape.rotation_speed[4]) > 0. ||
-        Math.abs(shape.rotation_speed[5]) > 0. || Math.abs(shape.orientation[3]) > 0. ||
-        Math.abs(shape.orientation[4]) > 0. || Math.abs(shape.orientation[5]) > 0.
-
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    const R = is_4d ? make_rotator_4d(shape.orientation) : make_rotator_3d(shape.orientation)
-
+    const R = make_rotator_4d(shape.orientation)
     const S = make_scaler(new Vec5([shape.scale, shape.scale, shape.scale, shape.scale]))
     const T = make_translator(shape.position)
 

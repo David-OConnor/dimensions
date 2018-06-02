@@ -62,7 +62,8 @@ function loadShader(gl: any, type: any, source: any) {
 }
 
 function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
-                   deltaTime: number, cam: Camera, shapes: Map<number, Shape>) {
+                   deltaTime: number, cam: Camera, shapes: Map<number, Shape>,
+                   vertexCount: number) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
     gl.clearDepth(1.0)                 // Clear everything
     gl.enable(gl.DEPTH_TEST)           // Enable depth testing
@@ -79,12 +80,12 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     // and 100 units away from the camera.
 
     // const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-    let projectionMatrixOld = mat4.create()
+    let projectionMatrix = mat4.create()
 
     // note: glmatrix.js always has the first argument
     // as the destination to receive the result.
     mat4.perspective(
-        projectionMatrixOld,
+        projectionMatrix,
         cam.fov,
         cam.aspect,
         cam.near,
@@ -94,42 +95,27 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
-    // const modelViewMatrixOld = mat4.create()
-    //
-    // // Now move the drawing position a bit to where we want to
-    // // start drawing the square.
-    //
-    // mat4.translate(
-    //     modelViewMatrixOld,  // destination matrix
-    //     modelViewMatrixOld,  // matrix to translate
-    //     [-0.0, 0.0, -6.0]  // amount to translate
-    // )
-    // mat4.rotate(
-    //     modelViewMatrixOld,  // destination matrix
-    //     modelViewMatrixOld,  // matrix to rotate
-    //     cubeRotation,     // amount to rotate in radians
-    //     [0, 0, 1]         // axis to rotate around (Z)
-    // )
-    // mat4.rotate(
-    //     modelViewMatrixOld,  // destination matrix
-    //     modelViewMatrixOld,  // matrix to rotate
-    //     cubeRotation * .7,// amount to rotate in radians
-    //     [0, 1, 0]         // axis to rotate around (X)
-    // )
 
     // We've positioned our points rel to their model and the cam already,
     // using 4d transforms; doesn't modify further.
-    const I_4 = new Float32Array([
+    // const modelViewMatrix = new Float32Array([
+    //     1, 0, 0, 0,
+    //     0, 1, 0, 0,
+    //     0, 0, 1, 0,
+    //     0, 1, cam.position.vals[2], 1
+    // ])
+
+    const modelViewMatrix = new Float32Array([
         1, 0, 0, 0,
         0, 1, 0, 0,
         0, 0, 1, 0,
-        0, 0, 0, 1
+        0, 1, -7, 1
     ])
 
     // Tell WebGL how to pull out the positions from the position
     // buffer into the vertexPosition attribute.
     {
-        const numComponents = 4  // pull out 3 values per iteration
+        const numComponents = 3  // pull out 3 values per iteration
         const type = gl.FLOAT    // the data in the buffer is 32bit floats
         const normalize = false  // don't normalize
         const stride = 0         // how many bytes to get from one set of values to the next
@@ -178,21 +164,21 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.projectionMatrix,
         false,
-        projectionMatrixOld)
+        projectionMatrix)
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.modelViewMatrix,
         false,
-        I_4)
+        modelViewMatrix)
 
     {
-        const vertexCount = 36
         const type = gl.UNSIGNED_SHORT
         const offset = 0
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
+        // gl.drawArrays(gl.TRIANGLES, 0, 3)
     }
 
     // Update the rotation for the next draw
-    cubeRotation += deltaTime
+    cubeRotation += deltaTime/4
     shapes.forEach(
         (shape, id, map) => {
             // todo need vector addition to simplify...
@@ -215,10 +201,10 @@ function preprocessShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, 
 
     const R = rustClone.make_rotator_4d(cam.θ_4d)
     const T = rustClone.make_translator(cam.position)
-
     shapes.forEach(
         (shape, id, map) => {
             positionedModel = rustClone.position_shape(shape)
+            // console.log("PM", positionedModel)
             positionedModel.forEach(
                 (node, nid, _map) => {
                     // For cam transform, position first; then rotate.
@@ -246,66 +232,36 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
 
     // Now create an array of positions for the square.
 
-    let node0, node1
-    let positions: any = []
-
+    let node0
+    let positions: number[] = []
+    console.log(processedShapes, "PS")
+    // Set up vertices.
     shapes.forEach(
         (shape, s_id, map) => {
             for (let face of shape.faces) {
                 for (let edge of face.edges) {
-                    // map doesn't like tuples as keys :/
+                    // Map doesn't like tuples as keys :/
                     node0 = processedShapes.get([s_id, edge.node0].join(',')) as any
-                    node1 = processedShapes.get([s_id, edge.node1].join(',')) as any
+                    // node0 = (shapes.get(s_id) as any).nodes.get(edge.node0)
+                    // node0 = node0.a.vals
                     positions.push(node0[0])
                     positions.push(node0[1])
                     positions.push(node0[2])
-                    positions.push(node1[0])
-                    positions.push(node1[1])
-                    positions.push(node1[2])
+
+                    // GL likes nodes per face, while we iterate over
+                    // edges in our model's faces... There's duplication either way.
+                    // By only including the first node of each edge, do we
+                    // get what we want?
+
+                    // positions.push(node1[0])
+                    // positions.push(node1[1])
+                    // positions.push(node1[2])
                 }
             }
         }
     )
 
-    // const positions = [
-    //     // Front face
-    //     -1.0, -1.0,  1.0,
-    //     1.0, -1.0,  1.0,
-    //     1.0,  1.0,  1.0,
-    //     -1.0,  1.0,  1.0,
-    //
-    //     // Back face
-    //     -1.0, -1.0, -1.0,
-    //     -1.0,  1.0, -1.0,
-    //     1.0,  1.0, -1.0,
-    //     1.0, -1.0, -1.0,
-    //
-    //     // Top face
-    //     -1.0,  1.0, -1.0,
-    //     -1.0,  1.0,  1.0,
-    //     1.0,  1.0,  1.0,
-    //     1.0,  1.0, -1.0,
-    //
-    //     // Bottom face
-    //     -1.0, -1.0, -1.0,
-    //     1.0, -1.0, -1.0,
-    //     1.0, -1.0,  1.0,
-    //     -1.0, -1.0,  1.0,
-    //
-    //     // Right face
-    //     1.0, -1.0, -1.0,
-    //     1.0,  1.0, -1.0,
-    //     1.0,  1.0,  1.0,
-    //     1.0, -1.0,  1.0,
-    //
-    //     // Left face
-    //     -1.0, -1.0, -1.0,
-    //     -1.0, -1.0,  1.0,
-    //     -1.0,  1.0,  1.0,
-    //     -1.0,  1.0, -1.0,
-    // ]
-
-    console.log("POS", positions)
+    console.log(positions, "P")
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -314,14 +270,32 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
         new Float32Array(positions),
         gl.STATIC_DRAW)
 
-    const faceColors = [
-        [1.0,  1.0,  1.0,  1.0],    // Front face: white
-        [1.0,  0.0,  0.0,  1.0],    // Back face: red
-        [0.0,  1.0,  0.0,  1.0],    // Top face: green
-        [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-        [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-        [1.0,  0.0,  1.0,  1.0],    // Left face: purple
+    const colorSet6 = [
+        [1.0,  1.0,  1.0,  0.5],
+        [1.0,  0.0,  0.0,  0.5],
+        [0.0,  1.0,  0.0,  0.5],
+        [0.0,  0.0,  1.0,  0.5],
+        [1.0,  1.0,  0.0,  0.5],
+        [1.0,  0.0,  1.0,  0.5],
     ]
+    const colorSet5 = [
+        [1.0,  1.0,  1.0,  0.5],
+        [1.0,  0.0,  0.0,  0.5],
+        [0.0,  1.0,  0.0,  0.5],
+        [0.0,  0.0,  1.0,  0.5],
+        [1.0,  1.0,  0.0,  0.5],
+    ]
+
+    let faceColors: number[] = []
+    shapes.forEach(
+        (shape, s_id, map) => {
+            if (shape.faces.length === 6) {
+                faceColors.push(...colorSet6 as any)
+            } else if (shape.faces.length === 5) {
+                faceColors.push(...colorSet5 as any)
+            }
+        }
+    )
 
     // Convert the array of colors into a table for all the vertices.
 
@@ -343,15 +317,16 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
     // This array defines each face as two triangles, using the
     // indices into the vertex array to specify each triangle's
     // position.
-    const indices = [
-        0,  1,  2,      0,  2,  3,    // front
-        4,  5,  6,      4,  6,  7,    // back
-        8,  9,  10,     8,  10, 11,   // top
-        12, 13, 14,     12, 14, 15,   // bottom
-        16, 17, 18,     16, 18, 19,   // right
-        20, 21, 22,     20, 22, 23,   // left
-    ]
-
+    let indices: number[] = []
+    let indexModifier = 0
+    let tri_indices
+    shapes.forEach(
+        (shape, s_i, map) => {
+            tri_indices = shape.tri_indices.map(ind => ind + indexModifier)
+            indices.push(...tri_indices)
+            indexModifier += shape.nodes.size
+        }
+    )
     // Now send the element array to GL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(indices), gl.STATIC_DRAW)
@@ -366,7 +341,7 @@ function initBuffers(gl: any, shapes: Map<number, Shape>,
 export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
     // Initialize WebGL rendering.
 
-    let canvas = document.getElementById("glCanvas")
+    const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
 
     if (!gl) {
@@ -423,6 +398,12 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
 
     const buffers = initBuffers(gl, shapes, processedShapes)
 
+    let vertexCount = 0
+    shapes.forEach(
+        (shape, id, map) => {
+            vertexCount += shape.tri_indices.length
+        }
+    )
     let then = 0
     // Draw the scene repeatedly
     function render(now: number) {
@@ -430,7 +411,7 @@ export function gl_main(cam: Camera, shapes: Map<number, Shape>) {
         const deltaTime = now - then;
         then = now;
 
-        drawScene(gl, programInfo, buffers, deltaTime, cam, shapes);
+        drawScene(gl, programInfo, buffers, deltaTime, cam, shapes, vertexCount);
 
         requestAnimationFrame(render)
     }

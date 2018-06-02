@@ -71,7 +71,7 @@ export class Array5 {
 
         for (let i=0; i < 5; i++) {
             for (let j=0; j < 5; j++) {
-                result[i] += this.vals[i][j] + other.vals[j]
+                result[i] += this.vals[i][j] * other.vals[j]
             }
         }
 
@@ -118,17 +118,20 @@ export class Shape {
     nodes: Map<number, Node2>
     edges: Edge[]
     faces: Face[]
+    tri_indices: number[]  // For webGL triangles; corresponds to nodes.
     position: Vec5
     scale: number
     orientation: number[]
     rotation_speed: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
+                tri_indices: number[],
                 position: Vec5, scale: number, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
         this.faces = faces
+        this.tri_indices = tri_indices
         this.position = position
         this.scale = scale
         this.orientation = orientation
