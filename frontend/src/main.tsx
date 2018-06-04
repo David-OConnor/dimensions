@@ -9,7 +9,6 @@ import * as React from 'react'
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 import {Shape, Camera, Vec5} from './interfaces'
-import * as rustClone from './rust_clone'
 import * as render from './render'
 
 //

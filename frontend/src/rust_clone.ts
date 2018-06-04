@@ -87,6 +87,96 @@ export function make_cube(side_len: number,
     return make_box([side_len, side_len, side_len], position, scale, orientation, rotation_speed)
 }
 
+export function make_rectangular_pyramid(lens: (f64, f64, f64),
+                                position: Array1<f64>, scale: f64, orientation: Array1<f64>,
+                                rotation_speed: Array1<f64>) -> Shape {
+    let coords = [
+        // Base
+        [-1., 0., -1., 0.],
+        [1., 0., -1., 0.],
+        [1., 0., 1., 0.],
+        [-1., 0., 1., 0.],
+
+        // Top
+        [0., 1., 0., 0.],
+    ];
+
+    let mut nodes = HashMap::new();
+    for (id, coord) in coords.iter().enumerate() {
+        nodes.insert(id as i32, Node {
+            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
+        });
+    }
+
+    let edges = vec![
+        // Front
+        Edge {node0: 0, node1: 1},
+        Edge {node0: 1, node1: 2},
+        Edge {node0: 2, node1: 3},
+        Edge {node0: 3, node1: 0},
+
+        // Bridger
+        Edge {node0: 0, node1: 4},
+        Edge {node0: 1, node1: 4},
+        Edge {node0: 2, node1: 4},
+        Edge {node0: 3, node1: 4},
+    ];
+
+    let faces = vec![
+        // Base
+        Face {edges: vec![edges[0].clone(), edges[1].clone(), edges[2].clone(), edges[3].clone()]},
+        // Front
+        Face {edges: vec![edges[0].clone(), edges[4].clone(), edges[5].clone()]},
+        // Right
+        Face {edges: vec![edges[1].clone(), edges[5].clone(), edges[6].clone()]},
+        // Back
+        Face {edges: vec![edges[2].clone(), edges[6].clone(), edges[7].clone()]},
+        // Left
+        Face {edges: vec![edges[3].clone(), edges[7].clone(), edges[4].clone()]},
+    ];
+
+    Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
+}
+
+ pub fn make_house(lens: (f64, f64, f64),
+                   position: Array1<f64>, scale: f64,
+                   orientation: Array1<f64>,
+                   rotation_speed: Array1<f64>) -> Shape {
+     let empty_array = array![0., 0., 0., 0., 0., 0.];
+
+     // We'll modify base in-place, then return it.
+     let mut base = make_box(lens, position, scale, orientation, rotation_speed);
+
+     let roof = make_rectangular_pyramid(
+         // Let the roof overhang the base by a little.
+         // Make the roof height a portion of the base height.
+         (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
+         empty_array.clone(), 0., empty_array.clone(), empty_array.clone()
+     );
+
+     // Now that we've made the shapes, recompose them to be one shape.
+     // todo make this a separate, (reusable) func?1
+     let id_addition = base.nodes.len() as i32;
+
+     for (id, node) in &roof.nodes {
+         // For the roof, modify the ids to be unique.
+         base.nodes.insert(
+             id + id_addition,
+             Node {a: array![node.a[0], node.a[1] + lens.1, node.a[2], node.a[3]]}
+         );
+     }
+     for edge in &roof.edges {
+         base.edges.push(Edge {
+             node0: edge.node0 + id_addition,
+             node1: edge.node1 + id_addition
+         });
+     }
+     for face in &roof.faces {
+         base.faces.push(face.clone());
+     }
+     base
+ }
+
 export function make_hyperrect(lens: [number, number, number, number],
                                position: Vec5, scale: number, orientation: number[],
                                rotation_speed: number[]): Shape {
@@ -199,7 +289,7 @@ export function make_hyperrect(lens: [number, number, number, number],
 
         [11, 10, 2, 3],  // Front top
         [15, 14, 6, 7],  // Back top
-        [5, 11, 3, 7],  // Left top
+        [15, 11, 3, 7],  // Left top
         [14, 10, 2, 6],  // Right top
 
         [11, 8, 0, 3],  // Left forward

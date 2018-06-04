@@ -17,12 +17,11 @@ let cubeRotation = 0.0;
 const τ = 2 * Math.PI
 
 let currentlyPressedKeys = {}
-const moveSensitivity = .1
+const moveSensitivity = .15
 const rotateSensitivity = .04
 
 function handleKeyDown(event: any) {
     currentlyPressedKeys[event.keyCode] = true
-    console.log(event.keyCode)
     switch(event.keyCode) {
         case 87:  // w
             cam.position.vals[2] += moveSensitivity
@@ -59,10 +58,10 @@ function handleKeyDown(event: any) {
             cam.θ_4d[1] -=rotateSensitivity
             break
         case 39:  // Right
-            cam.θ_4d[2] +=rotateSensitivity
+            cam.θ_4d[2] -=rotateSensitivity
             break
         case 37:  // Left
-            cam.θ_4d[2] -=rotateSensitivity
+            cam.θ_4d[2] +=rotateSensitivity
             break
         case 69:  // E
             cam.θ_4d[0] +=rotateSensitivity
@@ -106,7 +105,7 @@ let cam = {
     aspect: 640 / 480.,
     aspect_4: 1.,
     far: 30.,
-    near: 0.9,
+    near: 0.1,
     strange: 1.0,
 }
 
@@ -123,6 +122,9 @@ let shape_list = [
 
     rustClone.make_hypercube(1, new Vec5([3, 3, 3, 0]), 1,
         [0, 0, 0, 0, 0, 0], [0, 0, 0, .005, .005, .004]),
+
+    rustClone.make_hypercube(1, new Vec5([-3, 0, 3, 0]), 1,
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
     // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
     //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
@@ -185,11 +187,19 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                    deltaTime: number,
                    processedShapes: Map<string, Float32Array>, vertexCount: number) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
-    gl.clearDepth(1.0)                 // Clear everything
-    gl.enable(gl.DEPTH_TEST)           // Enable depth testing
-    gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
 
-    // gl.enable(gl.GL_BLEND);  // todo tempt
+    // These settings affect transparency.
+    gl.clearDepth(1.0)                 // Clear everything
+    // gl.enable(gl.DEPTH_TEST)           // Enable depth testing
+    // gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
+    gl.disable(gl.DEPTH_TEST);
+    // gl.disable(gl.CULL_FACE)  // transparency TS
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
     // Clear the canvas before we start drawing on it.
@@ -333,7 +343,7 @@ function preProcessShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string
             positionedModel.forEach(
                 (node, nid, _map) => {
                     // For cam transform, position first; then rotate.
-                    positionM = T.dotM(R)
+                    positionM = R.dotM(T)
 
                     // Map doesn't like tuples/arrays as keys :/
                     result.set([id, nid].join(','), positionM.dotV(node).toGl())
@@ -404,7 +414,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         [1.0,  1.0,  0.0,  0.5],
         [1.0,  0.0,  1.0,  0.5],
 
-        [1.0,  1.0,  1.0,  0.5],
+        [1.0,  0.3,  0.4,  0.5],
         [0.3,  0.0,  0.0,  0.5],
         [0.5,  0.5,  1.0,  0.5],
         [0.7,  0.4,  1.0,  0.5],
@@ -415,13 +425,13 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         [1.0,  0.1,  0.7,  0.5],
         [0.0,  0.2,  0.0,  0.5],
         [0.7,  1.0,  0.5,  0.5],
-        [1.0,  1.0,  0.2,  0.5],
-        [1.0,  0.0,  1.0,  0.5],
+        [1.0,  .7,  0.2,  0.5],
+        [0.8,  0.0,  0.3,  0.5],
 
-        [1.0,  0.2,  1.0,  0.5],
+        [0.3,  0.2,  1.0,  0.5],
         [1.0,  0.0,  0.0,  0.5],
         [0.4,  0.4,  0.4,  0.5],
-        [0.0,  0.0,  0.4,  0.5],
+        [0.3,  0.0,  0.4,  0.5],
         [0.2,  0.3,  0.0,  0.5],
         [0.3,  0.2,  1.0,  0.5],
     ]
