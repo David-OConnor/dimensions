@@ -5,7 +5,7 @@ import {Shape, Edge, Face, Node2, Camera, Vec5, Array5} from './interfaces'
 // toddo: Not specifying njnew Vec5 return types since TS doesn't like it.
 
 export function make_box(lens: [number, number, number],
-                         position: Vec5, scale: number, orientation: number[],
+                         position: Vec5, orientation: number[],
                          rotation_speed: number[]): Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
@@ -76,21 +76,21 @@ export function make_box(lens: [number, number, number],
     ];
 
     return new Shape(nodes, edges, faces, faces_vert, position,
-        scale, orientation, rotation_speed)
+        orientation, rotation_speed)
 }
 
 export function make_cube(side_len: number,
-                          position: Vec5, scale: number, orientation: number[],
+                          position: Vec5, orientation: number[],
                           rotation_speed: number[]): Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
-    return make_box([side_len, side_len, side_len], position, scale, orientation, rotation_speed)
+    return make_box([side_len, side_len, side_len], position, orientation, rotation_speed)
 }
 
-export function make_rectangular_pyramid(lens: (f64, f64, f64),
-                                position: Array1<f64>, scale: f64, orientation: Array1<f64>,
-                                rotation_speed: Array1<f64>) -> Shape {
-    let coords = [
+export function make_rectangular_pyramid(lens: [number, number, number],
+                                         position: Vec5, orientation: number[],
+                                         rotation_speed: number[]): Shape {
+    const coords = [
         // Base
         [-1., 0., -1., 0.],
         [1., 0., -1., 0.],
@@ -101,84 +101,96 @@ export function make_rectangular_pyramid(lens: (f64, f64, f64),
         [0., 1., 0., 0.],
     ];
 
-    let mut nodes = HashMap::new();
-    for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as i32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
-        });
+    let nodes = new Map()
+    for (let id=0; id < coords.length; id++) {
+        let coord = coords[id];
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
+            coord[2] * lens[2], coord[3]])));
     }
 
-    let edges = vec![
-        // Front
-        Edge {node0: 0, node1: 1},
-        Edge {node0: 1, node1: 2},
-        Edge {node0: 2, node1: 3},
-        Edge {node0: 3, node1: 0},
-
-        // Bridger
-        Edge {node0: 0, node1: 4},
-        Edge {node0: 1, node1: 4},
-        Edge {node0: 2, node1: 4},
-        Edge {node0: 3, node1: 4},
-    ];
-
-    let faces = vec![
+    const edges = [
         // Base
-        Face {edges: vec![edges[0].clone(), edges[1].clone(), edges[2].clone(), edges[3].clone()]},
-        // Front
-        Face {edges: vec![edges[0].clone(), edges[4].clone(), edges[5].clone()]},
-        // Right
-        Face {edges: vec![edges[1].clone(), edges[5].clone(), edges[6].clone()]},
-        // Back
-        Face {edges: vec![edges[2].clone(), edges[6].clone(), edges[7].clone()]},
-        // Left
-        Face {edges: vec![edges[3].clone(), edges[7].clone(), edges[4].clone()]},
+        new Edge(0, 1),
+        new Edge(1, 2),
+        new Edge(2, 3),
+        new Edge(3, 0),
+
+        // Connect base to tip
+        new Edge(0, 4),
+        new Edge(1, 4),
+        new Edge(2, 4),
+        new Edge(3, 4)
     ];
 
-    Shape {nodes, edges, faces, position, scale, orientation, rotation_speed}
+    const faces = [
+        // Base
+        new Face([edges[0], edges[1], edges[2], edges[3]]),
+        // Front
+        new Face([edges[0], edges[4], edges[5]]),
+        // Right
+        new Face([edges[0], edges[4], edges[5]]),
+        // Back
+        new Face([edges[2], edges[6], edges[7]]),
+        // Left
+        new Face([edges[3], edges[7], edges[4]])
+    ];
+
+    const faces_vert = [  // Vertex indices for each face.
+        [0, 1, 2, 3],  // Base
+        [0, 1, 4],  // Front
+        [1, 2, 4],  // Right
+        [2, 3, 4],  // Back
+        [3, 0, 4],  // Left
+    ];
+
+    return new Shape(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
- pub fn make_house(lens: (f64, f64, f64),
-                   position: Array1<f64>, scale: f64,
-                   orientation: Array1<f64>,
-                   rotation_speed: Array1<f64>) -> Shape {
-     let empty_array = array![0., 0., 0., 0., 0., 0.];
+export function make_house(lens: [number, number, number],
+                           position: Vec5,
+                           orientation: number[],
+                           rotation_speed: number[]): Shape {
+    const empty_array = [0., 0., 0., 0., 0., 0.];
 
-     // We'll modify base in-place, then return it.
-     let mut base = make_box(lens, position, scale, orientation, rotation_speed);
+    // We'll modify base in-place, then return it.
+    let base = make_box(lens, position, orientation, rotation_speed);
 
-     let roof = make_rectangular_pyramid(
-         // Let the roof overhang the base by a little.
-         // Make the roof height a portion of the base height.
-         (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
-         empty_array.clone(), 0., empty_array.clone(), empty_array.clone()
-     );
+    let roof = make_rectangular_pyramid(
+        // Let the roof overhang the base by a little.
+        // Make the roof height a portion of the base height.
+        [lens[0] * 1.2, lens[1] / 3., lens[2] * 1.2],
+        new Vec5([0, 0, 0, 0]), empty_array, empty_array
+    );
 
-     // Now that we've made the shapes, recompose them to be one shape.
-     // todo make this a separate, (reusable) func?1
-     let id_addition = base.nodes.len() as i32;
+    // Now that we've made the shapes, recompose them to be one shape.
+    // todo make this a separate, (reusable) func?1
+    let id_addition = base.nodes.size;
 
-     for (id, node) in &roof.nodes {
-         // For the roof, modify the ids to be unique.
-         base.nodes.insert(
-             id + id_addition,
-             Node {a: array![node.a[0], node.a[1] + lens.1, node.a[2], node.a[3]]}
-         );
-     }
-     for edge in &roof.edges {
-         base.edges.push(Edge {
-             node0: edge.node0 + id_addition,
-             node1: edge.node1 + id_addition
-         });
-     }
-     for face in &roof.faces {
-         base.faces.push(face.clone());
-     }
-     base
- }
+    roof.nodes.forEach(
+        (node, id, map) => {
+            base.nodes.set(
+                id + id_addition,
+                new Node2([node.a.vals[0], node.a.vals[1] + lens[1], node.a.vals[2], node.a.vals[3]] as any)
+            )
+        }
+    )
+
+    for (let edge of roof.edges) {
+        base.edges.push(new Edge(edge.node0 + id_addition, edge.node1 + id_addition))
+    }
+
+    for (let face of roof.faces) {
+        base.faces.push(face)
+    }
+    for (let face of roof.faces_vert) {
+        base.faces_vert.push([face[0] + id_addition, face[1] + id_addition,
+            face[2] + id_addition, face[3] + id_addition]);
+    }
+    return base
+}
 
 export function make_hyperrect(lens: [number, number, number, number],
-                               position: Vec5, scale: number, orientation: number[],
+                               position: Vec5, orientation: number[],
                                rotation_speed: number[]): Shape {
     // Make a 4d hypercube.
 
@@ -299,18 +311,18 @@ export function make_hyperrect(lens: [number, number, number, number],
 
     ];
 
-    return new Shape(nodes, edges, faces, faces_vert, position, scale, orientation, rotation_speed)
+    return new Shape(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 export function make_hypercube(side_len: number,
-                               position: Vec5, scale: number, orientation: number[],
+                               position: Vec5, orientation: number[],
                                rotation_speed: number[]): Shape {
     // Convenience function.
     return make_hyperrect([side_len, side_len, side_len, side_len],
-        position, scale, orientation, rotation_speed)
+        position, orientation, rotation_speed)
 }
 
-export function make_origin(len: number, position: Vec5, scale: number,
+export function make_origin(len: number, position: Vec5,
                             orientation: number[], rotation_speed: number[]): Shape {
     // A 4-dimensional cross, for marking the origin.
     const coords = [
@@ -339,8 +351,7 @@ export function make_origin(len: number, position: Vec5, scale: number,
         new Edge(6, 7),
     ];
 
-    return new Shape(nodes, edges, [], [], position as any, scale,
-        orientation, rotation_speed)
+    return new Shape(nodes, edges, [], [], position, orientation, rotation_speed)
 }
 
 export function make_rotator_4d(θ: number[]): Array5 {

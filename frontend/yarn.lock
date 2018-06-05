@@ -42,6 +42,12 @@
   dependencies:
     "@types/ndarray" "*"
 
+"@types/react-bootstrap@^0.32.9":
+  version "0.32.9"
+  resolved "https://registry.yarnpkg.com/@types/react-bootstrap/-/react-bootstrap-0.32.9.tgz#0691c37047e20a4647e16060bf94c5e64c61cb4e"
+  dependencies:
+    "@types/react" "*"
+
 "@types/react-dom@^16.0.5":
   version "16.0.5"
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-16.0.5.tgz#a757457662e3819409229e8f86795ff37b371f96"

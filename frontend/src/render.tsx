@@ -11,7 +11,7 @@ import {mat4, glMatrix} from 'gl-matrix'
 import * as rustClone from './rust_clone'
 import {ProgramInfo, Shape, Camera, Vec5} from './interfaces'
 
-let cubeRotation = 0.0;
+const colorMax = 15  // At this z distance, our blue/red shift fully saturated.
 
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
@@ -20,37 +20,53 @@ let currentlyPressedKeys = {}
 const moveSensitivity = .15
 const rotateSensitivity = .04
 
+function moveCam(unitVec: number[]) {
+    // Modifies the global camera
+    const direc = rustClone.make_rotator_4d(cam.θ_4d).dotV(new Vec5(unitVec))
+    const amount = direc.mul(moveSensitivity)
+    cam.position = cam.position.add(amount)
+}
+
 function handleKeyDown(event: any) {
     currentlyPressedKeys[event.keyCode] = true
     switch(event.keyCode) {
         case 87:  // w
-            cam.position.vals[2] += moveSensitivity
+            // cam.position.vals[2] -= moveSensitivity
+            moveCam([0, 0, 1, 0])
             break
         case 83:  // s
-            cam.position.vals[2] -= moveSensitivity
+            // cam.position.vals[2] -= moveSensitivity
+            moveCam([0, 0, -1, 0])
             break
         case 68:  // d
-            cam.position.vals[0] += moveSensitivity
+            // cam.position.vals[0] += moveSensitivity
+            moveCam([1, 0, 0, 0])
             break
         case 65:  // a
-            cam.position.vals[0] -= moveSensitivity
+            // cam.position.vals[0] -= moveSensitivity
+            moveCam([-1, 0, 0, 0])
             break
         case 32:  // Space
-            cam.position.vals[1] += moveSensitivity
+            // cam.position.vals[1] += moveSensitivity
+            moveCam([0, 1, 0, 0])
             break
         case 67:  // c
-            cam.position.vals[1] -= moveSensitivity
+            // cam.position.vals[1] -= moveSensitivity
+            moveCam([0, -1, 0, 0])
             break
         case 17:  // Control
-            cam.position.vals[1] -= moveSensitivity
+            // cam.position.vals[1] -= moveSensitivity
+            moveCam([0, -1, 0, 0])
             break
         case 82:  // r
-            cam.position.vals[3] += moveSensitivity
+            // cam.position.vals[3] += moveSensitivity
+            moveCam([0, 0, 0, 1])
             break
         case 70:  // f
-            cam.position.vals[3] -= moveSensitivity
+            // cam.position.vals[3] -= moveSensitivity
+            moveCam([0, 0, 0, -1])
             break
-
+    // todo add deltaTime!
         case 38:  // Up
             cam.θ_4d[1] +=rotateSensitivity
             break
@@ -110,20 +126,26 @@ let cam = {
 }
 
 let shape_list = [
-    rustClone.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]), 1,
+    rustClone.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-    rustClone.make_cube(1, new Vec5([2, 0, 5, 0]), 1,
+    // rustClone.make_house([1, 1, 1], new Vec5([-1, -4, 3, 5]),
+    //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+    rustClone.make_rectangular_pyramid([3, 2, 3], new Vec5([-2, -4, 3, 5]),
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+    rustClone.make_cube(1, new Vec5([2, 0, 5, 0]),
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
-    // On sky of other cube.
-    rustClone.make_cube(1, new Vec5([2, 0, 5, 4]), 1,
+    // On ana of other cube.
+    rustClone.make_cube(1, new Vec5([2, 0, 5, 10]),
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
-    rustClone.make_hypercube(1, new Vec5([3, 3, 3, 0]), 1,
+    rustClone.make_hypercube(1, new Vec5([3, 3, 3, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, .005, .005, .004]),
 
-    rustClone.make_hypercube(1, new Vec5([-3, 0, 3, 0]), 1,
+    rustClone.make_hypercube(1, new Vec5([-3, 0, 3, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
     // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
@@ -134,6 +156,24 @@ let shape_list = [
 let shapes = new Map()
 for (let id=0; id < shape_list.length; id++) {
     shapes.set(id, shape_list[id])
+}
+
+function findColor(dist: number): number[] {
+    // produce a color ranging from red to blue, based on how close a point is
+    // to the edge.
+    let portion_through = Math.abs(dist)  / colorMax
+
+    if (portion_through > 1.) {
+        portion_through = 1.
+    }
+    const baseGray = .2
+    const colorVal = (baseGray + portion_through * 1. - baseGray)
+
+    if (dist > 0) {
+        return [baseGray, baseGray, colorVal, .3]  // Blue
+    } else {
+        return [colorVal, baseGray, baseGray, .3]  // Red
+    }
 }
 
 // function glVerticesFromShape(shapes: Map<number, Shape>): number[]{
@@ -185,7 +225,7 @@ function loadShader(gl: any, type: any, source: any) {
 
 function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                    deltaTime: number,
-                   processedShapes: Map<string, Float32Array>, vertexCount: number) {
+                   processedShapes: Map<string, Vec5>, vertexCount: number) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
 
     // These settings affect transparency.
@@ -204,11 +244,6 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
 
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    const processedShapes_ = preProcessShapes(cam, shapes)
-    buffers = initBuffers(gl, processedShapes_)
-
-    // console.log(shapes, "S")
 
     // Create a perspective matrix, a special matrix that is
     // used to simulate the distortion of perspective in a camera.
@@ -309,7 +344,6 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     }
 
     // Update the rotation for the next draw
-    cubeRotation += deltaTime/4
     shapes.forEach(
         (shape, id, map) => {
             // todo need vector addition to simplify...
@@ -321,14 +355,13 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
             shape.orientation[5] += shape.rotation_speed[5]
         }
     )
-    // throw "DEBUG"
 }
 
-function preProcessShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Float32Array> {
+function processShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Vec5> {
     // Set up shapes rel to their model, and the camera.  The result is
     // T must be done last.
     let result = new Map()
-    let positionedModel, positionM
+    let positionedModel
 
     let negRot = [-cam_.θ_4d[0], -cam_.θ_4d[1], -cam_.θ_4d[2], -cam_.θ_4d[3], -cam_.θ_4d[4], -cam_.θ_4d[5]]
     const R = rustClone.make_rotator_4d(negRot)
@@ -336,17 +369,16 @@ function preProcessShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string
     const negPos = new Vec5([-cam_.position.vals[0], -cam_.position.vals[1], -cam_.position.vals[2],
         -cam_.position.vals[3], 1])
     const T = rustClone.make_translator(negPos)
+    // For cam transform, position first; then rotate.
+    const M = R.dotM(T)
 
     shapes_.forEach(
         (shape, id, map) => {
             positionedModel = rustClone.position_shape(shape)
             positionedModel.forEach(
                 (node, nid, _map) => {
-                    // For cam transform, position first; then rotate.
-                    positionM = R.dotM(T)
-
                     // Map doesn't like tuples/arrays as keys :/
-                    result.set([id, nid].join(','), positionM.dotV(node).toGl())
+                    result.set([id, nid].join(','), M.dotV(node))
                 }
             )
         }
@@ -354,7 +386,7 @@ function preProcessShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string
     return result
 }
 
-function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
+function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     // Create a buffer for the square's positions and color.
 
     const positionBuffer = gl.createBuffer()
@@ -366,7 +398,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
 
     // Now create an array of positions for the square.
 
-    let node
+    let vertex
     let positions: number[] = []
     // Set up vertices.
     shapes.forEach(
@@ -374,10 +406,10 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
             for (let face of shape.faces_vert) {
                 for (let vertex_i of face) {
                     // Map doesn't like tuples as keys :/
-                    node = processedShapes.get([s_id, vertex_i].join(',')) as any
-                    positions.push(node[0])
-                    positions.push(node[1])
-                    positions.push(node[2])
+                    vertex = processedShapes.get([s_id, vertex_i].join(',')) as any
+                    positions.push(vertex.vals[0])
+                    positions.push(vertex.vals[1])
+                    positions.push(vertex.vals[2])
                 }
             }
         }
@@ -436,17 +468,24 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         [0.3,  0.2,  1.0,  0.5],
     ]
 
-    let faceColors: number[] = []
+    let faceColors: number[][] = []
+
     shapes.forEach(
         (shape, s_id, map) => {
-            if (shape.faces_vert.length === 6) {
-                faceColors.push(...colorSet6 as any)
-            } else if (shape.faces_vert.length === 5) {
-                faceColors.push(...colorSet5 as any)
-            } else if (shape.faces_vert.length === 24) {
-                faceColors.push(...colorSet24 as any)
-
+            for (let face of shape.faces_vert) {
+                for (let vertI of face) {
+                    let zDist = (processedShapes.get([s_id, vertI].join(',')) as any).vals[3] - cam.position.vals[3]
+                    faceColors.push(findColor(zDist))
+                }
             }
+
+            // if (shape.faces_vert.length === 6) {
+            //     faceColors.push(...colorSet6)
+            // } else if (shape.faces_vert.length === 5) {
+            //     faceColors.push(...colorSet5)
+            // } else if (shape.faces_vert.length === 24) {
+            //     faceColors.push(...colorSet24)
+            // }
         }
     )
 
@@ -489,6 +528,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         color: colorBuffer,
         indices: indexBuffer,
     }
+
 }
 
 export function gl_main(cam_: Camera) {
@@ -548,12 +588,6 @@ export function gl_main(cam_: Camera) {
         },
     }
 
-    // Here's where we call the routine that builds all the
-    // objects we'll be drawing.
-    const processedShapes = preProcessShapes(cam, shapes)
-
-    const buffers = initBuffers(gl, processedShapes)
-
     let vertexCount = 0
     shapes.forEach(
         (shape, id, map) => {
@@ -566,6 +600,11 @@ export function gl_main(cam_: Camera) {
         now *= 0.001;  // convert to seconds
         const deltaTime = now - then;
         then = now;
+
+            // Here's where we call the routine that builds all the
+    // objects we'll be drawing.
+        const processedShapes = processShapes(cam, shapes)
+        const buffers = initBuffers(gl, processedShapes)
 
         drawScene(gl, programInfo, buffers, deltaTime, processedShapes, vertexCount);
 

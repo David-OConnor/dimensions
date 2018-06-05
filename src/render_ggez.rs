@@ -274,11 +274,11 @@ impl event::EventHandler for MainState {
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::F => {
-                let move_vec = move_camera(MoveDirection::Earth, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Kata, &self.camera.θ_4d);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::R => {
-                let move_vec = move_camera(MoveDirection::Sky, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Ana, &self.camera.θ_4d);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 

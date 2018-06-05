@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@types/react-bootstrap": "^0.32.9",
     "gl-matrix": "^2.6.1",
     "history": "^4.7.2",
     "react": "^16.3.2",

@@ -357,8 +357,8 @@ pub enum MoveDirection{
     Right,
     Up,
     Down,
-    Sky,
-    Earth,
+    Ana,
+    Kata,
 }
 
 pub fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
@@ -370,8 +370,8 @@ pub fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
         MoveDirection::Right => array![1., 0., 0., 0.],
         MoveDirection::Up => array![0., 1., 0., 0.],
         MoveDirection::Down => array![0., -1., 0., 0.],
-        MoveDirection::Sky => array![0., 0., 0., 1.],
-        MoveDirection::Earth => array![0., 0., 0., -1.],
+        MoveDirection::Ana => array![0., 0., 0., 1.],
+        MoveDirection::Kata => array![0., 0., 0., -1.],
     };
 
     unit_vec

@@ -27,6 +27,17 @@ export class Vec5 {
         return new Vec5(newVals)
     }
 
+    mul(val: number): Vec5 {
+        // Multiply by a constant
+        return new Vec5([
+            this.vals[0] * val,
+            this.vals[1] * val,
+            this.vals[2] * val,
+            this.vals[3] * val,
+            this.vals[4] * val
+        ])
+    }
+
     toGl(): Float32Array {
         // Convert to the linear, 4-element Float32Array WebGl uses.
         // u is discarded.
@@ -121,6 +132,7 @@ export class Shape {
     // Corresponds to faces, but uses vertices rather than edges.  This corresponds
     // to WebGl's implementation of faces.  We can't implicitly create this by
     // iterating over over faces/edges due to edges being used in multiple directions.
+    // Vertex indices for each face.
     faces_vert: number[][]
     // tri_indices: number[]  // For webGL triangles; corresponds to nodes.
     position: Vec5
@@ -129,7 +141,7 @@ export class Shape {
     rotation_speed: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[], faces_vert: number[][],
-                position: Vec5, scale: number, orientation: number[],
+                position: Vec5, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
@@ -137,7 +149,7 @@ export class Shape {
         this.faces_vert = faces_vert
         // this.tri_indices = tri_indices
         this.position = position
-        this.scale = scale
+        this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
     }

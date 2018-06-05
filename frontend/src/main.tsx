@@ -2,8 +2,8 @@ import * as React from 'react'
 
 // import * as Rust from './unitalgebra'
 
-// import {Button, Grid, Row, Col,
-//     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
+import {Button, Grid, Row, Col,
+    Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -31,7 +31,40 @@ interface MainState {
 
 class Controls extends React.Component<any, any> {
 
+    render() {
+        return (
+            <Form>
+
+                <Button>There's no place like home</Button>
+            </Form>
+        )
+    }
 }
+
+const Instructions = () => (
+    <div>
+        <h3>Controls:</h3>
+        <ul>
+            <li>Forward: W</li>
+            <li>Back: S</li>
+            <li>Left: A</li>
+            <li>Right: D</li>
+            <li>Ana: R</li>
+            <li>Kata: F</li>
+
+            <li>Look left: Left arrow</li>
+            <li>Look right: Right arrow</li>
+            <li>Look up: Up arrow</li>
+            <li>Look down: Down arrow</li>
+
+            <li>Look left/right: Left/right arrows</li>
+            <li>Look up/down: Up/down arrows</li>
+            <li>Look ana/kata: T/G</li>
+            <li>Look ana/kata: Y/H</li>
+            <li>Look ana/kata: U/J</li>
+        </ul>
+    </div>
+)
 
 class Main extends React.Component<any, any> {
     constructor(props: MainProps) {
