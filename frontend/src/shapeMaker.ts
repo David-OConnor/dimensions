@@ -1,8 +1,8 @@
-// Code in this file was intended to be in Rust/WASM. Here since I've given up
-// on getting ASM working for now.
-import {Shape, Edge, Face, Node2, Camera, Vec5, Array5} from './interfaces'
+// This file mirrors shape_maker.rs  Uses _ naming conventions in some case for
+// interoperability. Uses semicolons in many places, other like other parts
+// of the frontend.
 
-// toddo: Not specifying njnew Vec5 return types since TS doesn't like it.
+import {Shape, Node2, Edge, Face, Vec5} from "./interfaces";
 
 export function make_box(lens: [number, number, number],
                          position: Vec5, orientation: number[],
@@ -27,8 +27,8 @@ export function make_box(lens: [number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
-            coord[2] * lens[2], coord[3]])));
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+            coord[2] * lens[2]/2, coord[3]])));
     }
 
     const edges = [
@@ -104,8 +104,8 @@ export function make_rectangular_pyramid(lens: [number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
-            coord[2] * lens[2], coord[3]])));
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+            coord[2] * lens[2]/2, coord[3]/2])));
     }
 
     const edges = [
@@ -164,28 +164,37 @@ export function make_house(lens: [number, number, number],
 
     // Now that we've made the shapes, recompose them to be one shape.
     // todo make this a separate, (reusable) func?1
-    let id_addition = base.nodes.size;
+    const base_node_count = base.nodes.size;
 
     roof.nodes.forEach(
         (node, id, map) => {
+            let lifted_node = node;
+            // Raise the roof
+            lifted_node.a.vals[1] += lens[1] / 2.
             base.nodes.set(
-                id + id_addition,
-                new Node2([node.a.vals[0], node.a.vals[1] + lens[1], node.a.vals[2], node.a.vals[3]] as any)
+                id + base_node_count,
+                lifted_node
             )
         }
     )
 
     for (let edge of roof.edges) {
-        base.edges.push(new Edge(edge.node0 + id_addition, edge.node1 + id_addition))
+        base.edges.push(new Edge(edge.node0 + base_node_count, edge.node1 + base_node_count))
     }
 
     for (let face of roof.faces) {
         base.faces.push(face)
     }
+
+    let updated_fv
     for (let face of roof.faces_vert) {
-        base.faces_vert.push([face[0] + id_addition, face[1] + id_addition,
-            face[2] + id_addition, face[3] + id_addition]);
+        updated_fv = []
+        for (let vertex of face) {
+            updated_fv.push(vertex + base_node_count)
+        }
+        base.faces_vert.push(updated_fv);
     }
+
     return base
 }
 
@@ -223,8 +232,8 @@ export function make_hyperrect(lens: [number, number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0], coord[1] * lens[1],
-            coord[2] * lens[2], coord[3] * lens[3]])))
+        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+            coord[2] * lens[2]/2, coord[3] * lens[3]/2])))
     }
 
     let edges = [
@@ -354,183 +363,67 @@ export function make_origin(len: number, position: Vec5,
     return new Shape(nodes, edges, [], [], position, orientation, rotation_speed)
 }
 
-export function make_rotator_4d(θ: number[]): Array5 {
-    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
-    // http://eusebeia.dyndns.org/4d/vis/10-rot-1
+export function make_terrain(dims: [number, number], res: [number, number],
+                             heightmap: number[][], position: Vec5): Shape {
+    // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
+    // We could make a 4d terrain too... id a volume of u-mappings... or have
+    // u and y mappings for each x/z point...
+    // dims refers to the size of the terrain. res is the number of cells
+    // dividing our terrain in each direction. Perhaps replace this argument with
+    // something more along the traditional def of resolution?
 
-    // We rotation around each of six planes; the combinations of the 4
-    // dimensions.
+    // Note: When visually setting up a heighmap array, the z position
+    // appears backwards from what you might expect.
 
-    // cache trig computations
-    const cos_xy = Math.cos(θ[0])
-    const sin_xy = Math.sin(θ[0])
-    const cos_yz = Math.cos(θ[1])
-    const sin_yz = Math.sin(θ[1])
-    const cos_xz = Math.cos(θ[2])
-    const sin_xz = Math.sin(θ[2])
-    const cos_xu = Math.cos(θ[3])
-    const sin_xu = Math.sin(θ[3])
-    const cos_yu = Math.cos(θ[4])
-    const sin_yu = Math.sin(θ[4])
-    const cos_zu = Math.cos(θ[5])
-    const sin_zu = Math.sin(θ[5])
-
-    // Potentially there exist 4 hyperrotations as well? ie combinations of
-    // 3 axes ?  xyz  yzu  zux  uxy
-
-    // Rotations around the xy, yz, and xz planes should appear normal.
-    let R_xy = new Array5([
-        [cos_xy, sin_xy, 0., 0., 0.],
-        [-sin_xy, cos_xy, 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    const R_yz = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., cos_yz, sin_yz, 0., 0.],
-        [0., -sin_yz, cos_yz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    const R_xz = new Array5([
-        [cos_xz, 0., -sin_xz, 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [sin_xz, 0., cos_xz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    // Rotations involving u, the fourth dimension, should distort 3d objects.
-    const R_xu = new Array5([
-        [cos_xu, 0., 0., sin_xu, 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [-sin_xu, 0., 0., cos_xu, 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    const R_yu = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., cos_yu, 0., -sin_yu, 0.],
-        [0., 0., 1., 0., 0.],
-        [0., sin_yu, 0., cos_yu, 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    const R_zu = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., cos_zu, -sin_zu, 0.],
-        [0., 0., sin_zu, cos_zu, 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-
-    // Combine the rotations.
-    const R_1 = R_xy.dotM(R_yz.dotM(R_xz))
-    const R_2 = R_xu.dotM(R_yu.dotM(R_zu))
-    return R_1.dotM(R_2)
-}
-
-export function make_translator(position: Vec5): Array5 {
-    // Return a translation matrix; the pt must have 1 appended to its end.
-    // We do this augmentation so we can add a constant term.  Scale and
-    // rotation matrices may have this as well for matrix compatibility.
-    return new Array5([
-        [1., 0., 0., 0., position.vals[0]],
-        [0., 1., 0., 0., position.vals[1]],
-        [0., 0., 1., 0., position.vals[2]],
-        [0., 0., 0., 1., position.vals[3]],
-        [0., 0., 0., 0., 1.]
-    ])
-}
-
-export function make_scaler(scale: Vec5): Array5 {
-    // Return a scale matrix; the pt must have 1 appended to its end.
-    return new Array5([
-        [scale.vals[0], 0., 0., 0., 0.],
-        [0., scale.vals[1], 0., 0., 0.],
-        [0., 0., scale.vals[2], 0., 0.],
-        [0., 0., 0., scale.vals[3], 0.],
-        [0., 0., 0., 0., 1.]
-    ])
-}
-
-export function make_projector(cam: Camera): Array5 {
-    // Create the projection matrix, used to transform translated and
-    // rotated points.
-
-    // Let's compile the different versions you've seen:
-    // 1: http://learnwebgl.brown37.net/08_projections/projections_perspective.html
-    // 2: https://en.wikipedia.org/wiki/3D_projection
-    // 3: https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
-    // 4: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
-    // projection-matrix/building-basic-perspective-projection-matrix
-    // 5: https://github.com/brendanzab/cgmath/blob/master/src/projection.rs
-    // 6: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_model_view_projection
-    // 7: http://www.songho.ca/opengl/gl_projectionmatrix.html
-
-    // 7's on point with my calcs, although stated in terms of right/top.
-
-    let y_scale = 1. / Math.tan(cam.fov / 2.)
-    let x_scale = y_scale / cam.aspect
-    let u_scale = y_scale / cam.aspect_4  // depth for 4d
-
-    // We are defining z as the axis that determines how x and y points are
-    // scaled, for both 4d and 3d projections. U points don't play a factor
-    // in our final result; their data is only included during rotations;
-    // This function transforms them, but that ultimately is not projected to
-    // 2d screens.
-
-    // Insight: z (or u, depending on which convention we settle on) is used
-    // for two things: Determining how we should scale x and y (The vars that
-
-    // I've derived these matrices myself; none of the ones described in the
-    // above links seem to produce a unit cube for easy clipping.
-    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
-    // along each axis.
-    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
-    // as a decaying exponential from -1 to +1.
-
-    return new Array5([
-        [x_scale, 0., 0., 0., 0.],
-        [0., y_scale, 0., 0., 0.],
-        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-            (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
-        // u_scale is, ultimately, not really used.
-        [0., 0., 0., u_scale, 0.],
-        // This row allows us to divide by z after taking the dot product,
-        // as part of our scaling operation.
-        [0., 0., 1., 0., 1.],
-    ])
-}
-
-export function position_shape(shape: Shape): Map<number, Vec5> {
-    // Position a shape's nodes in 3 or 4d space, based on its position
-    // and rotation parameters.
-
-    // T must be done last, since we scale and rotate with respect to the orgin,
-    // defined in the shape's initial nodes. S may be applied at any point.
-    const R = make_rotator_4d(shape.orientation)
-    const S = make_scaler(new Vec5([shape.scale, shape.scale, shape.scale, shape.scale]))
-    const T = make_translator(shape.position)
-
-    let positioned_nodes = new Map()
-    for (let id=0; id < shape.nodes.size; id++) {
-
-        let node: any = shape.nodes.get(id)
-        // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
-        // then rotate, then translate.
-        const homogenous = new Vec5([node.a.vals[0], node.a.vals[1],
-            node.a.vals[2], node.a.vals[3], 1.])
-
-        const transform = T.dotM(R.dotM(S))
-        const new_pt = transform.dotV(homogenous)
-        positioned_nodes.set(id, new_pt)
+    let nodes = new Map()
+    let id = 0
+    // Instantiate x and like this so the center of the mesh is at the
+    // position argument.
+    let z
+    let height
+    let x = -dims[0] / 2.
+    for (let i=0; i < res[0]; i++) {  // x
+         z = -dims[1] / 2.
+        for (let j=0; j < res[1]; j++) {  // z
+            height = heightmap[i][j]
+            if (isNaN(height)) {
+                throw "Missing value(s) in heightmap grid."
+            }
+            nodes.set(id, new Node2(new Vec5([
+                x,
+                height,
+                z,
+                0
+            ])))
+            z += dims[1] / res[1]
+            id += 1
+        }
+        x += dims[0] / res[0]
     }
 
-    return positioned_nodes
+    let edges = [];
+    let faces_vert = [];
+    let row_adder = 0;
+
+    // todo need front and right edges of overall terrain.
+    for (let i=0; i < res[0] - 1; i++) {
+        for (let j=0; j < res[1] - 1; j++) {
+            edges.push(new Edge(row_adder + j, row_adder + j + 1));  // edges across constant x
+            edges.push(new Edge(row_adder + j, row_adder + j + res[0]));  // edges across constant z
+
+            // Build from the back-left corner of each face.
+            faces_vert.push([
+                row_adder + j,  // back left
+                row_adder + j + 1,  // back right
+                row_adder + j + res[0],  // front right
+                row_adder + j + res[0] + 1  // front left
+            ]);
+        }
+        row_adder += res[0];
+    }
+
+    let faces: Face[] = [];  // todo later
+
+    return new Shape(nodes, edges, faces, faces_vert, position,
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }

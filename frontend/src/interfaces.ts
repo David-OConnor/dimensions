@@ -134,11 +134,11 @@ export class Shape {
     // iterating over over faces/edges due to edges being used in multiple directions.
     // Vertex indices for each face.
     faces_vert: number[][]
-    // tri_indices: number[]  // For webGL triangles; corresponds to nodes.
     position: Vec5
     scale: number
     orientation: number[]
     rotation_speed: number[]
+    tris: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[], faces_vert: number[][],
                 position: Vec5, orientation: number[],
@@ -147,12 +147,20 @@ export class Shape {
         this.edges = edges
         this.faces = faces
         this.faces_vert = faces_vert
-        // this.tri_indices = tri_indices
         this.position = position
         this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
+        this.tris = []
     }
+
+    get_tris(): number[] {
+        // get cached triangles if avail; if not, create and cache.
+        if (!this.tris.length) {
+            this.tris = this.make_tris()
+        }
+        return this.tris
+}
 
     make_tris(): number[] {
         // Divide faces into triangles of indices. These indices aren't of node

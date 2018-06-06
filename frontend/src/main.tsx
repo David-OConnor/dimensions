@@ -1,7 +1,5 @@
 import * as React from 'react'
 
-// import * as Rust from './unitalgebra'
-
 import {Button, Grid, Row, Col,
     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
 

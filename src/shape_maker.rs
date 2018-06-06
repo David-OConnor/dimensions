@@ -33,7 +33,8 @@ pub fn make_box(lens: (f64, f64, f64),
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
+            a: array![coord[0] * lens.0, coord[1] * lens.1,
+                      coord[2] * lens.2, coord[3]] / 2.
         });
     }
 
@@ -92,7 +93,8 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3]]
+            a: array![coord[0] * lens.0, coord[1] * lens.1,
+                      coord[2] * lens.2, coord[3]] / 2.
         });
     }
 
@@ -150,7 +152,8 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
          // For the roof, modify the ids to be unique.
          base.nodes.insert(
              id + id_addition,
-             Node {a: array![node.a[0], node.a[1] + lens.1, node.a[2], node.a[3]]}
+             // Raise the roof.
+             Node {a: array![node.a[0], node.a[1] + lens.1 / 2., node.a[2], node.a[3]]}
          );
      }
      for edge in &roof.edges {
@@ -262,7 +265,8 @@ pub fn make_hyperrect(lens: (f64, f64, f64, f64),
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
         nodes.insert(id as i32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1, coord[2] * lens.2, coord[3] * lens.3]
+            a: array![coord[0] * lens.0, coord[1] * lens.1,
+                      coord[2] * lens.2, coord[3] * lens.3] / 2.
         });
     }
 

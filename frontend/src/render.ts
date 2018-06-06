@@ -1,6 +1,4 @@
-import {mat4, glMatrix} from 'gl-matrix'
-
-// import * as Rust from './unitalgebra'
+import {mat4} from 'gl-matrix'
 
 // import {Button, Grid, Row, Col,
 //     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -8,8 +6,10 @@ import {mat4, glMatrix} from 'gl-matrix'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-import * as rustClone from './rust_clone'
+import * as shapeMaker from './shapeMaker'
+import * as rustClone from './transforms'
 import {ProgramInfo, Shape, Camera, Vec5} from './interfaces'
+import {make_terrain} from "./shapeMaker";
 
 const colorMax = 15  // At this z distance, our blue/red shift fully saturated.
 
@@ -17,8 +17,8 @@ const colorMax = 15  // At this z distance, our blue/red shift fully saturated.
 const τ = 2 * Math.PI
 
 let currentlyPressedKeys = {}
-const moveSensitivity = .15
-const rotateSensitivity = .04
+const moveSensitivity = .1
+const rotateSensitivity = .03
 
 function moveCam(unitVec: number[]) {
     // Modifies the global camera
@@ -125,33 +125,50 @@ let cam = {
     strange: 1.0,
 }
 
+let heightMap = [
+    [1.3, 1.3, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
+    [1.3, 1.2, 0, 0, 0, 0, 0, 1.1, 1.2, 1.2],
+    [0, 1.2, 1.2, 0, 0, 0, 0, 1.1, 1.2, 0],
+    [0, 1.1, 0, 0, 0, 0, 0, 0, 1.1, 1.2],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1.2],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1.2],
+    [0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 1.2],
+    [0, 1.1, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
+    [0, 1.1, 1.1, 1.1, 1.1, 0, 1.3, 1.3, 2.4, 2.2],
+    [0, 1.1, 1.1, 1.1, 1.2, 1.3, 1.3, 1.4, 2.4, 2.8],
+]
+
 let shape_list = [
-    rustClone.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]),
+    shapeMaker.make_terrain([20, 20], [10, 10], heightMap, new Vec5([0, 0, 0, 0])),
+
+    shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-    // rustClone.make_house([1, 1, 1], new Vec5([-1, -4, 3, 5]),
-    //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
-
-    rustClone.make_rectangular_pyramid([3, 2, 3], new Vec5([-2, -4, 3, 5]),
+    shapeMaker.make_house([1, 1, 1], new Vec5([4, -1, 0, 5]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-    rustClone.make_cube(1, new Vec5([2, 0, 5, 0]),
+    shapeMaker.make_rectangular_pyramid([3, 2, 3], new Vec5([-2, -4, 3, 5]),
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 0]),
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
     // On ana of other cube.
-    rustClone.make_cube(1, new Vec5([2, 0, 5, 10]),
+    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 10]),
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
-    rustClone.make_hypercube(1, new Vec5([3, 3, 3, 0]),
+    shapeMaker.make_hypercube(1, new Vec5([3, 3, 3, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, .005, .005, .004]),
 
-    rustClone.make_hypercube(1, new Vec5([-3, 0, 3, 0]),
+    shapeMaker.make_hypercube(1, new Vec5([-3, 0, 3, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
     // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
     //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 
 ]
+console.log(shape_list[0], "TER")
+console.log(shape_list[0].nodes, "N")
 
 let shapes = new Map()
 for (let id=0; id < shape_list.length; id++) {
@@ -166,7 +183,7 @@ function findColor(dist: number): number[] {
     if (portion_through > 1.) {
         portion_through = 1.
     }
-    const baseGray = .2
+    const baseGray = .0
     const colorVal = (baseGray + portion_through * 1. - baseGray)
 
     if (dist > 0) {
@@ -514,7 +531,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     let tri_indices
     shapes.forEach(
         (shape: Shape, s_i, map) => {
-            tri_indices = shape.make_tris().map(ind => ind + indexModifier)
+            tri_indices = shape.get_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
             indexModifier += shape.numFaceVerts()
         }
@@ -528,7 +545,6 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
         color: colorBuffer,
         indices: indexBuffer,
     }
-
 }
 
 export function gl_main(cam_: Camera) {
@@ -591,7 +607,7 @@ export function gl_main(cam_: Camera) {
     let vertexCount = 0
     shapes.forEach(
         (shape, id, map) => {
-            vertexCount += shape.make_tris().length
+            vertexCount += shape.get_tris().length
         }
     )
     let then = 0
