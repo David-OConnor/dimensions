@@ -16,6 +16,35 @@ mod transforms;
 mod shape_maker;
 mod clipping;
 
+// Vulkano
+extern crate cgmath;
+#[macro_use]
+extern crate vulkano;
+#[macro_use]
+extern crate vulkano_shader_derive;
+extern crate winit;
+extern crate vulkano_win;
+
+use vulkano_win::VkSurfaceBuild;
+
+use vulkano::device::Device;
+use vulkano::instance::Instance;
+use vulkano::swapchain;
+use vulkano::swapchain::PresentMode;
+use vulkano::swapchain::SurfaceTransform;
+use vulkano::swapchain::Swapchain;
+use vulkano::swapchain::AcquireError;
+use vulkano::swapchain::SwapchainCreationError;
+use vulkano::sync::now;
+use vulkano::sync::GpuFuture;
+
+use cgmath::Matrix4;
+use cgmath::SquareMatrix;
+use cgmath::Vector3;
+
+use std::mem;
+
+
 use std::collections::HashMap;
 
 fn main() {
@@ -49,7 +78,7 @@ fn main() {
 
     let mut shapes = HashMap::new();
     for (id, shape) in shape_vec.into_iter().enumerate() {
-        shapes.insert(id as i32, shape);
+        shapes.insert(id as u32, shape);
     }
 
     render_ggez::run(shapes);

@@ -32,7 +32,7 @@ pub fn make_box(lens: (f64, f64, f64),
 
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as i32, Node {
+        nodes.insert(id as u32, Node {
             a: array![coord[0] * lens.0, coord[1] * lens.1,
                       coord[2] * lens.2, coord[3]] / 2.
         });
@@ -73,7 +73,9 @@ pub fn make_box(lens: (f64, f64, f64),
         Face {edges: vec![edges[1].clone(), edges[9].clone(), edges[5].clone(), edges[10].clone()]},
     ];
 
-    Shape {nodes, edges, faces, position, scale: 1., orientation, rotation_speed}
+    let faces_vert = Vec::new();
+
+    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
@@ -92,7 +94,7 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
 
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as i32, Node {
+        nodes.insert(id as u32, Node {
             a: array![coord[0] * lens.0, coord[1] * lens.1,
                       coord[2] * lens.2, coord[3]] / 2.
         });
@@ -125,7 +127,9 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
         Face {edges: vec![edges[3].clone(), edges[7].clone(), edges[4].clone()]},
     ];
 
-    Shape {nodes, edges, faces, position, scale: 1., orientation, rotation_speed}
+    let faces_vert = Vec::new();
+
+    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
  pub fn make_house(lens: (f64, f64, f64),
@@ -146,7 +150,7 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
 
      // Now that we've made the shapes, recompose them to be one shape.
      // todo make this a separate, (reusable) func?1
-     let id_addition = base.nodes.len() as i32;
+     let id_addition = base.nodes.len() as u32;
 
      for (id, node) in &roof.nodes {
          // For the roof, modify the ids to be unique.
@@ -193,7 +197,7 @@ pub fn make_origin(len: f64, position: Array1<f64>, orientation: Array1<f64>,
 
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as i32, Node {
+        nodes.insert(id as u32, Node {
             a: Array::from_vec(coord.to_vec()) * len
         });
     }
@@ -205,7 +209,10 @@ pub fn make_origin(len: f64, position: Array1<f64>, orientation: Array1<f64>,
         Edge {node0: 6, node1: 7},
     ];
 
-    Shape {nodes, edges, faces: vec![], position, scale: 1., orientation, rotation_speed}
+    let faces = vec![];
+    let faces_vert = Vec::new();
+
+    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 //pub fn make_street(width: f64, position: Array1<f64>, scale: f64, orientation: Array1<f64>,
@@ -264,7 +271,7 @@ pub fn make_hyperrect(lens: (f64, f64, f64, f64),
 
     let mut nodes = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as i32, Node {
+        nodes.insert(id as u32, Node {
             a: array![coord[0] * lens.0, coord[1] * lens.1,
                       coord[2] * lens.2, coord[3] * lens.3] / 2.
         });
@@ -320,10 +327,10 @@ pub fn make_hyperrect(lens: (f64, f64, f64, f64),
         Edge {node0: 7, node1: 15},
     ];
 
-    let faces = vec![
-    ];
+    let faces = vec![];
+    let faces_vert = Vec::new();
 
-    Shape {nodes, edges, faces, position, scale: 1., orientation, rotation_speed}
+    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 pub fn make_hypercube(side_len: f64,

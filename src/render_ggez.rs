@@ -39,19 +39,17 @@ fn DEFAULT_CAMERA() -> Camera {
 }
 
 struct MainState {
-    shapes: HashMap<i32, Shape>,
+    shapes: HashMap<u32, Shape>,
     zoomlevel: f32,
     camera: Camera,
-    is_4d: bool,
 }
 
 impl MainState {
-    fn new(_ctx: &mut Context, shapes: HashMap<i32, Shape>, is_4d: bool) -> GameResult<MainState> {  
+    fn new(_ctx: &mut Context, shapes: HashMap<u32, Shape>) -> GameResult<MainState> {
         let s = MainState {
             shapes,
             zoomlevel: 1.0,
             camera: DEFAULT_CAMERA(),
-            is_4d,
         };
 
         Ok(s)
@@ -93,8 +91,8 @@ fn find_thickness(min_width: f32, max_width: f32,
 // }
 
 fn build_mesh(ctx: &mut Context, 
-              projected: HashMap<(i32, i32), Array1<f64>>,
-              shapes: &HashMap<i32, Shape>,
+              projected: HashMap<(u32, u32), Array1<f64>>,
+              shapes: &HashMap<u32, Shape>,
               cam_posit: &Array1<f64>,
     ) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
@@ -201,8 +199,7 @@ impl event::EventHandler for MainState {
             shape.orientation = &shape.orientation + &shape.rotation_speed;
         }
 
-        let projected;
-
+        let projected = transforms::project_shapes(&self.shapes, &self.camera);
         let mesh = build_mesh(ctx,
                               projected,
                               &self.shapes,
@@ -314,7 +311,7 @@ impl event::EventHandler for MainState {
     }
 }
 
-pub fn run(shapes: HashMap<i32, Shape>) {
+pub fn run(shapes: HashMap<u32, Shape>) {
     // Render lines using ggez.
     let c = conf::Conf {
         window_mode: conf::WindowMode {
@@ -345,7 +342,7 @@ pub fn run(shapes: HashMap<i32, Shape>) {
     
     println!("{}", graphics::get_renderer_info(ctx).unwrap());
 
-    let state = &mut MainState::new(ctx, shapes, is_4d).unwrap();
+    let state = &mut MainState::new(ctx, shapes).unwrap();
     
     if let Err(e) = event::run(ctx, state) {
         println!("Error encountered: {}", e);

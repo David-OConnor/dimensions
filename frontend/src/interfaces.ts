@@ -157,12 +157,12 @@ export class Shape {
     get_tris(): number[] {
         // get cached triangles if avail; if not, create and cache.
         if (!this.tris.length) {
-            this.tris = this.make_tris()
+            this.make_tris()
         }
         return this.tris
-}
+    }
 
-    make_tris(): number[] {
+    make_tris() {
         // Divide faces into triangles of indices. These indices aren't of node
         // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
         // Result is a 1d array; Float32array-style.
@@ -190,7 +190,7 @@ export class Shape {
             }
             current_i += face.length
         }
-        return result
+        this.tris = result
     }
 
     numFaceVerts(): number {

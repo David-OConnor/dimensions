@@ -25,8 +25,8 @@ impl Node {
 // We derive clone, so we can clone edges when creating faces.
 #[derive(Debug, Clone)]
 pub struct Edge {
-    pub node0: i32,  // The node's id
-    pub node1: i32,
+    pub node0: u32,  // The node's id
+    pub node1: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -47,13 +47,66 @@ impl Face {
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
-    pub nodes: HashMap<i32, Node>,
+    pub nodes: HashMap<u32, Node>,
     pub edges: Vec<Edge>,
     pub faces: Vec<Face>,
+    pub faces_vert: Vec<Array1<u32>>,
     pub position: Array1<f64>,
     pub scale: f64,
     pub orientation: Array1<f64>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f64>,  // 6 items, as with rotation.  Radians/s ?
+    tris: Array1<u32>,
+}
+
+impl Shape {
+    pub fn new(nodes: HashMap<u32, Node>, edges: Vec<Edge>, faces: Vec<Face>,
+               faces_vert: Vec<Array1<u32>>,
+               position: Array1<f64>, orientation: Array1<f64>,
+               rotation_speed: Array1<f64>) -> Shape {
+        Shape{nodes, edges, faces, faces_vert, position, scale: 1., orientation, rotation_speed, tris: array![]}
+    }
+
+    pub fn get_tris(&mut self) -> &Array1<u32> {
+        // get cached triangles if avail; if not, create and cache.
+        if !self.tris.len() > 0 {
+            self.make_tris()
+        }
+        &self.tris
+    }
+
+    pub fn make_tris(&mut self) {
+        // Divide faces into triangles of indices. These indices aren't of node
+        // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
+        // Result is a 1d array; Float32array-style.
+        let mut result = Vec::new();
+        let mut current_i = 0;
+
+        for face in &self.faces_vert {
+            match face.len() {
+                3 => {
+                // Only one triangle.
+                result.push(current_i as u32);
+                result.push(current_i as u32 + 1);
+                result.push(current_i as u32 + 2);
+            },
+                4 => {
+                // First triangle
+                result.push(current_i as u32);
+                result.push(current_i as u32 + 1);
+                result.push(current_i as u32 + 2);
+                // Second triangle
+                result.push(current_i as u32);
+                result.push(current_i as u32 + 2);
+                result.push(current_i as u32 + 3);
+            },
+                2 => panic!("Faces must have length 3 or more."),
+                _ => panic!("Error: Haven't implemented faces with vertex counds higher than four.")
+
+            }
+            current_i += face.len();
+        }
+        self.tris = Array::from_vec(result)
+    }
 }
 
 #[derive(Debug)]

@@ -439,7 +439,6 @@ export function make_terrain(dims: [number, number], res: [number, number],
 //
 // }
 
-//
-// export function make_skybox(len: number, position: Vec5): Shape {
-//
-// }
+export function make_skybox(len: number, position: Vec5): Shape {
+    return make_cube(len, position, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+}

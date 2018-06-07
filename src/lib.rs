@@ -43,8 +43,8 @@ use types::{Camera, Shape};
 pub struct ProjectedPt3d {
     // This includes the id tuple as separate items, since wasm_bindgen can't
     // handle HashMaps  or JS Maps.
-    shape_id: i32,
-    node_id: i32,
+    shape_id: u32,
+    node_id: u32,
     x: f64,
     y: f64,
     z: f64,

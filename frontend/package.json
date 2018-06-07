@@ -2,7 +2,7 @@
   "name": "frontend",
   "license": "MIT",
   "version": "0.1.0",
-  "homepage": "https://David-OConnor.github.io/dimensions",
+  "homepage": "https://deepershadows.com",
   "private": true,
   "dependencies": {
     "@types/react-bootstrap": "^0.32.9",

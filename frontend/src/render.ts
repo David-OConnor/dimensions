@@ -42,6 +42,8 @@ function moveCam(unitVec: number[], fps: boolean) {
     const direc = transforms.make_rotator(θ).dotV(new Vec5(unitVec))
     const amount = direc.mul(moveSensitivity)
     cam.position = cam.position.add(amount)
+    // The skybox moves with the camera, but doesn't rotate with it.
+    skybox.position.add(amount)
 }
 
 function handleKeyDown(event: any, scene_: number) {
@@ -330,7 +332,9 @@ let shapeTownList = [
     ...houses
 ]
 
-// let skybox = shapeMaker.make_skybox(100, cam.position)
+const skybox = shapeMaker.make_skybox(100, cam.position)
+skybox.make_tris()
+const processedSkybox = transforms.processShapes(cam, new Map([[0, skybox]]))
 
 function setScene(scene_: number) {
     document.onkeydown = e => handleKeyDown(e, scene_)
@@ -341,7 +345,7 @@ function setScene(scene_: number) {
             τ / 5.5,
             4 / 3.,
             1.,
-            100.,
+            200.,
             0.1,
             1.0,
         )
@@ -361,7 +365,7 @@ function setScene(scene_: number) {
             τ / 4.,
             4 / 3.,
             1.,
-            100.,
+            200.,
             0.1,
             1.0,
         );
@@ -530,8 +534,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
             normalize,
             stride,
             offset)
-        gl.enableVertexAttribArray(
-            programInfo.attribLocations.vertexPosition)
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
     }
 
     // Tell WebGL how to pull out the colors from the color buffer
@@ -551,7 +554,21 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
             stride,
             offset)
         gl.enableVertexAttribArray(
-            programInfo.attribLocations.vertexColor);
+            programInfo.attribLocations.vertexColor)
+    }
+
+    // Skybox
+    {
+        // We'll supply texcoords as floats.
+        gl.vertexAttribPointer(
+            programInfo.attribLocations.skyboxTexCoords,
+            2,
+            gl.FLOAT,
+            false,
+            0,
+            0
+        )
+        gl.enableVertexAttribArray(programInfo.attribLocations.skyboxTexCoords)
     }
 
     // Tell WebGL which indices to use to index the vertices
@@ -592,17 +609,13 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
 }
 
 function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
-    // Create a buffer for the square's positions and color.
-
+    // Create a buffer for our shapes' positions and color.
     const positionBuffer = gl.createBuffer()
-
     // Select the positionBuffer as the one to apply buffer
     // operations to from here out.
-
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
 
-    // Now create an array of positions for the square.
-
+    // Now create an array of positions for the shapes.
     let vertex
     let positions: number[] = []
     // Set up vertices.
@@ -619,6 +632,12 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
             }
         }
     )
+    skybox.faces_vert.map(face => face.map(vertex_i => {
+        vertex = processedSkybox.get([0, vertex_i].join(',')) as any
+        positions.push(vertex.vals[0])
+        positions.push(vertex.vals[1])
+        positions.push(vertex.vals[2])
+    }))
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -706,6 +725,36 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
 
+    // todo skybox texture wip
+    // look up where the vertex data needs to go.
+    // const positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
+    // consttexcoordLocation = gl.getAttribLocation(program, "a_texcoords");
+    // Create a buffer for texcoords.
+
+    const skyboxBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, skyboxBuffer)
+    // Set Texcoords.
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([
+            // left column front
+            0, 0,
+            0, 1,
+            1, 0,
+            0, 1,
+            1, 1,
+            1, 0,
+
+            // top rung front
+            0, 0,
+            0, 1,
+            1, 0,
+            0, 1,
+            1, 1,
+            1, 0,
+        ]),
+        gl.STATIC_DRAW)
+
     // Build the element array buffer; this specifies the indices
     // into the vertex arrays for each face's vertices.
     const indexBuffer = gl.createBuffer()
@@ -752,24 +801,43 @@ export function gl_main(scene_: number) {
     const vsSource = `
         attribute vec4 aVertexPosition;
         attribute vec4 aVertexColor;
-    
+        
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
+        
+        // For the skybox
+        attribute vec4 a_position;
+        attribute vec2 a_texcoord;
+        uniform mat4 u_matrix;
         
         varying lowp vec4 vColor;
     
         void main() {
           gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
           vColor = aVertexColor;
+          
+          // Skybox
+          // Multiply the position by the matrix.
+          gl_PositionSb = u_matrix * a_position;
+          // Pass the texcoord to the fragment shader.
+          v_texcoord = a_texcoord;
         }
     `
 
     // Fragment shader program
     const fsSource = `
         varying lowp vec4 vColor;
-    
+        
+        // Skybox
+        precision mediump float;
+        varying vec2 v_texcoord;
+        // The texture.
+        uniform sampler2D u_texture;
+ 
         void main() {
           gl_FragColor = vColor;
+          
+          gl_FragSb = texture2D(u_texture, v_texcoord);
         }
     `
 
@@ -785,6 +853,7 @@ export function gl_main(scene_: number) {
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
+            skyboxTexCoords: gl.getAttribLocation(shaderProgram, 'a_texcoord'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),

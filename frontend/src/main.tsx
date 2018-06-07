@@ -22,11 +22,6 @@ interface MainProps {
     dispatch: Function
 }
 
-interface MainState {
-    shapes: Map<number, Shape>
-    camera: Camera
-}
-
 class Controls extends React.Component<any, any> {
     constructor(props: any) {
         super(props)
@@ -73,6 +68,8 @@ const InstructionsFreeMove = () => (
             <li>Back: S</li>
             <li>Left: A</li>
             <li>Right: D</li>
+            <li>Up: Space</li>
+            <li>Down: ctrl or c</li>
             <li>Ana: R</li>
             <li>Kata: F</li>
         </ul>

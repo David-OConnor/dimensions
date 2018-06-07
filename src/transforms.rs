@@ -165,7 +165,7 @@ pub fn make_projector(cam: &Camera) -> Array2<f64> {
         ]
 }
 
-pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
+pub fn position_shape(shape: &Shape) -> HashMap<u32, Array1<f64>> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
@@ -175,10 +175,7 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    let R = if is_4d
-        { make_rotator(&shape.orientation) } else
-        { make_rotator_3d(&shape.orientation) };
-
+    let R = make_rotator(&shape.orientation);
     let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
     let T = make_translator(&shape.position);
 
@@ -212,8 +209,8 @@ fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
     array![f[0] / f[4], -f[1] / f[4], f[2] / f[4], f[3] / f[4]]
 }
 
-pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera)
-        -> HashMap<(i32, i32), Array1<f64>> {
+pub fn project_shapes(shapes: &HashMap<u32, Shape>, cam: &Camera)
+        -> HashMap<(u32, u32), Array1<f64>> {
     // Position and rotate shapes relative to the camera; project into a
     // clipspace [hyper]frustum.
     // The HashMap key is (shape_index, node_index), so we can tie back to the
@@ -222,7 +219,7 @@ pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera)
     // [fixed] camera.
     let T = make_translator(&-&(cam.position));
     let R = make_rotator(&-&(cam.θ));
-   let P = make_projector(&cam);
+    let P = make_projector(&cam);
 
     let mut result = HashMap::new();
 
