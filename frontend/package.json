@@ -2,6 +2,7 @@
   "name": "frontend",
   "license": "MIT",
   "version": "0.1.0",
+  "homepage": "https://David-OConnor.github.io/dimensions",
   "private": true,
   "dependencies": {
     "@types/react-bootstrap": "^0.32.9",
@@ -20,7 +21,10 @@
     "start": "react-scripts-ts start",
     "build": "react-scripts-ts build",
     "test": "react-scripts-ts test --env=jsdom",
-    "eject": "react-scripts-ts eject"
+    "eject": "react-scripts-ts eject",
+
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "devDependencies": {
     "@types/gl-matrix": "^2.4.0",
@@ -32,6 +36,7 @@
     "@types/react-redux": "^5.0.15",
     "@types/react-spinkit": "^3.0.3",
     "@types/redux-first-router": "^1.10.2",
+    "gh-pages": "^1.2.0",
     "typescript": "^2.8.3"
   }
 }
