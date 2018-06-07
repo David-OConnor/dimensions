@@ -13,188 +13,225 @@ import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
 const τ = 2 * Math.PI
 
 let colorMax = 15  // At this z distance, our blue/red shift fully saturated.
-let currentlyPressedKeys = {}
+let currentlyPressedKeys: number[] = []
 const moveSensitivity = .1
-const rotateSensitivity = .03
+const rotateSensitivity = .017
 
-function moveCam(unitVec: number[]) {
+let scene = 0
+
+let shapes = new Map()
+
+const defaultCam = new Camera (
+    new Vec5([0., 0., 0., 0.]),
+    [0., 0., 0., 0., 0., 0.],
+    τ / 4.,
+    4 / 3.,
+    1.,
+    100.,
+    0.1,
+    1.0,
+)
+let cam = defaultCam
+
+function moveCam(unitVec: number[], fps: boolean) {
     // Modifies the global camera
-    const direc = transforms.make_rotator(cam.θ).dotV(new Vec5(unitVec))
+    // With first-person-shooter controls, ignore all input except rotation
+    // around the y axis.
+    const θ = fps ? [0, 0, cam.θ[2], 0, 0, 0] : cam.θ
+
+    const direc = transforms.make_rotator(θ).dotV(new Vec5(unitVec))
     const amount = direc.mul(moveSensitivity)
     cam.position = cam.position.add(amount)
 }
 
-function handleKeyDown(event: any) {
-    currentlyPressedKeys[event.keyCode] = true
-    switch(event.keyCode) {
-        case 87:  // w
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, 0, 1, 0])
-            }
-            event.preventDefault()
-            break
-        case 83:  // s
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, 0, -1, 0])
-            }
-            break
-        case 68:  // d
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([1, 0, 0, 0])
-            }
-            break
-        case 65:  // a
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([-1, 0, 0, 0])
-            }
-            break
-        case 32:  // Space
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, 1, 0, 0])
-            }
-            event.preventDefault()
-            break
-        case 67:  // c
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, -1, 0, 0])
-            }
-            break
-        case 17:  // Control
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, -1, 0, 0])
-            }
-            break
-        case 82:  // r
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, 0, 0, 1])
-            }
-            break
-        case 70:  // f
-            if (scene === 0) {
-                console.log()
-            } else {
-                moveCam([0, 0, 0, -1])
-            }
-            break
-        // todo add deltaTime!
-        case 38:  // Up
-            if (scene === 0) {
-                shapes.get(0).orientation[1] -=rotateSensitivity
-            } else {
-                cam.θ[1] +=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 40:  // Down
-            if (scene === 0) {
-                shapes.get(0).orientation[1] +=rotateSensitivity
-            } else {
-                cam.θ[1] -=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 39:  // Right
+function handleKeyDown(event: any, scene_: number) {
+    // Add if it's not already there.
+    if (currentlyPressedKeys.indexOf(event.keyCode) === -1) {
+        currentlyPressedKeys.push(event.keyCode)
+    }
 
-            if (scene === 0) {
-                shapes.get(0).orientation[2] +=rotateSensitivity
-            } else {
-                cam.θ[2] -=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 37:  // Left
-            if (scene === 0) {
-                shapes.get(0).orientation[2] -=rotateSensitivity
-            } else {
-                cam.θ[2] +=rotateSensitivity
+    for (let code of currentlyPressedKeys) {
+        switch(code) {
+            case 87:  // w
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    moveCam([0, 0, 1, 0], true)
+                } else {
+                    moveCam([0, 0, 1, 0], false)
+                }
+                event.preventDefault()
+                break
+            case 83:  // s
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam([0, 0, -1, 0], false)
+                }
+                break
+            case 68:  // d
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam([1, 0, 0, 0], false)
+                }
+                break
+            case 65:  // a
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam([-1, 0, 0, 0], false)
+                }
+                break
+            case 32:  // Space
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam([0, 1, 0, 0], false)
+                }
+                event.preventDefault()
+                break
+            case 67:  // c
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam([0, -1, 0, 0], false)
+                }
+                break
+            case 17:  // Control
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam([0, -1, 0, 0], false)
+                }
+                break
+            case 82:  // r
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam([0, 0, 0, 1], false)
+                }
+                break
+            case 70:  // f
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam([0, 0, 0, -1], false)
+                }
+                break
+            // todo add deltaTime!
+            case 38:  // Up
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[1] -= rotateSensitivity
+                } else {
+                    cam.θ[1] += rotateSensitivity
+                }
                 event.preventDefault();
-            }
-            break
-        case 69:  // E
-            if (scene === 0) {
-                shapes.get(0).orientation[0] +=rotateSensitivity
-            } else {
-                cam.θ[0] +=rotateSensitivity
-            }
-            break
-        case 81:  // Q
-            if (scene === 0) {
-                shapes.get(0).orientation[0] -=rotateSensitivity
-
-            } else {
-                cam.θ[0] -=rotateSensitivity
-            }
-            break
-        case 45:  // Ins
-            if (scene === 0) {
-                shapes.get(0).orientation[3] +=rotateSensitivity
-            } else {
-                cam.θ[3] +=rotateSensitivity
-            }
-            break
-        case 46:  // Del
-            if (scene === 0) {
-                shapes.get(0).orientation[3] -=rotateSensitivity
-            } else {
-                cam.θ[3] -=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 36:  // Home
-            if (scene === 0) {
-                shapes.get(0).orientation[4] +=rotateSensitivity
-            } else {
-                cam.θ[4] +=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 35:  // End
-            if (scene === 0) {
-                shapes.get(0).orientation[4] -=rotateSensitivity
-            } else {
-                cam.θ[4] -=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 33:  // Pgup
-            if (scene === 0) {
-                shapes.get(0).orientation[5] +=rotateSensitivity
-            } else {
-                cam.θ[5] +=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        case 34:  // Pgdn
-            if (scene === 0) {
-                shapes.get(0).orientation[5] -=rotateSensitivity
-            } else {
-                cam.θ[5] -=rotateSensitivity
-            }
-            event.preventDefault();
-            break
-        default:
-            break
+                break
+            case 40:  // Down
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[1] += rotateSensitivity
+                } else {
+                    cam.θ[1] -= rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 39:  // Right
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[2] += rotateSensitivity
+                } else {
+                    cam.θ[2] -= rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 37:  // Left
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[2] -= rotateSensitivity
+                } else {
+                    cam.θ[2] += rotateSensitivity
+                    event.preventDefault();
+                }
+                break
+            case 69:  // E
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[0] += rotateSensitivity
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    cam.θ[0] += rotateSensitivity
+                }
+                break
+            case 81:  // Q
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[0] -= rotateSensitivity
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    cam.θ[0] -= rotateSensitivity
+                }
+                break
+            case 45:  // Ins
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[3] += rotateSensitivity
+                } else {
+                    cam.θ[3] += rotateSensitivity
+                }
+                break
+            case 46:  // Del
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[3] -= rotateSensitivity
+                } else {
+                    cam.θ[3] -= rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 36:  // Home
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[4] += rotateSensitivity
+                } else {
+                    cam.θ[4] += rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 35:  // End
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[4] -= rotateSensitivity
+                } else {
+                    cam.θ[4] -= rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 33:  // Pgup
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[5] += rotateSensitivity
+                } else {
+                    cam.θ[5] += rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 34:  // Pgdn
+                if (scene_ === 0) {
+                    shapes.get(0).orientation[5] -= rotateSensitivity
+                } else {
+                    cam.θ[5] -= rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            default:
+                break
+        }
     }
 }
 
 function handleKeyUp(event: any) {
-    currentlyPressedKeys[event.keyCode] = false;
+    let index = currentlyPressedKeys.indexOf(event.keyCode)
+    if (index !== -1) { currentlyPressedKeys.splice(index, 1) }
 }
 
 let heightMap = [
@@ -223,19 +260,16 @@ let spissMap = [
     [7, 7, 7, 3.5, 2, 0, 0, 0, 2, 2.5],
 ]
 
-let shape_list = [
+let shapeList0 = [
     shapeMaker.make_terrain([20, 20], [10, 10], heightMap, spissMap, new Vec5([0, 0, 0, 0])),
 
-    shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]),
+    shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 1]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-    shapeMaker.make_house([1, 1, 1], new Vec5([4, -1, 0, 5]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+    shapeMaker.make_rectangular_pyramid([2, 1, 2], new Vec5([-2, 3, 3, -1]),
+        [τ/6, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-    shapeMaker.make_rectangular_pyramid([3, 2, 3], new Vec5([-2, -4, 3, 5]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
-
-    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 0]),
+    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 2]),
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
     // On ana of other cube.
@@ -243,34 +277,63 @@ let shape_list = [
         [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
     shapeMaker.make_hypercube(1, new Vec5([3, 3, 3, 0]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, .005, .005, .004]),
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, .002, .0005, .001]),
 
-    shapeMaker.make_hypercube(1, new Vec5([-3, 0, 3, 0]),
+    shapeMaker.make_hypercube(1, new Vec5([-3, 1, 0, 1.5]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
     // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
     //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 ]
 
+let mapFlat = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+// todo you could generate these with a loop
+const housePositions = [
+    [-8., 2, 0., 0.],
+    [-8., 2, 12., 0.],
+    [-8., 2, 24., 0.],
+    [-8., 2, 36., 0.],
+
+    [8., 2, 0., 0.],
+    [8., 2, 12., 0.],
+    [8., 2, 24., 0.],
+    [8., 2, 36., 0.],
+
+    [-8., 2, 0., 4.],
+    [-8., 2, 12., 4.],
+    [-8., 2, 24., 4.],
+    [-8., 2, 36., 4.],
+
+    [8., 2, 0., 4.],
+    [8., 2, 12., 4.],
+    [8., 2, 24., 4.],
+    [8., 2, 36., 4.],
+]
+
+const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
+    new Vec5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]) )
+
+let shapeTownList = [
+    shapeMaker.make_terrain([1000, 1000], [10, 10], mapFlat, mapFlat, new Vec5([0, 0, 0, 0])),
+    ...houses
+]
+
 // let skybox = shapeMaker.make_skybox(100, cam.position)
 
-let scene = 0
-
-let shapes = new Map()
-
-const defaultCam = new Camera (
-    new Vec5([0., 0., 0., 0.]),
-    [0., 0., 0., 0., 0., 0.],
-    τ / 4.,
-    4 / 3.,
-    1.,
-    100.,
-    0.1,
-    1.0,
-)
-let cam = defaultCam
-
 function setScene(scene_: number) {
+    document.onkeydown = e => handleKeyDown(e, scene_)
     if (scene_ === 0) {  // Single hypercube
         cam = new Camera (
             new Vec5([0., 0., -2., 0.]),
@@ -293,7 +356,7 @@ function setScene(scene_: number) {
         colorMax = 1.5;
     } else if (scene_ === 1) {  // Terain with shapes
         cam = new Camera (
-            new Vec5([0., 0., -3., 0.]),
+            new Vec5([0., 2., -3., 0.]),
             [0., -.5, 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
@@ -304,15 +367,33 @@ function setScene(scene_: number) {
         );
 
         shapes = new Map()
-        for (let id=0; id < shape_list.length; id++) {
-            shapes.set(id, shape_list[id])
+        for (let id=0; id < shapeList0.length; id++) {
+            shapes.set(id, shapeList0[id])
         }
 
-        colorMax = 15
+        colorMax = 10
+    } else if (scene_ === 2) {  // Terain with shapes
+        cam = new Camera (
+            new Vec5([0., 3., -3., 0.]),
+            [0., 0., 0., 0., 0., 0.],
+            τ / 4.,
+            4 / 3.,
+            1.,
+            1000.,
+            0.1,
+            1.0,
+        );
+
+        shapes = new Map()
+        for (let id=0; id < shapeTownList.length; id++) {
+            shapes.set(id, shapeTownList[id])
+        }
+
+        colorMax = 30
     } else {
         cam = defaultCam
         shapes = new Map()
-        colorMax = 15
+        colorMax = 25
     }
 }
 
@@ -328,9 +409,9 @@ function findColor(dist: number): number[] {
     const colorVal = (baseGray + portion_through * 1. - baseGray)
 
     if (dist > 0) {
-        return [baseGray, baseGray, colorVal, .3]  // Blue
+        return [baseGray, baseGray, colorVal, 0.2]  // Blue
     } else {
-        return [colorVal, baseGray, baseGray, .3]  // Red
+        return [colorVal, baseGray, baseGray, 0.2]  // Red
     }
 }
 
@@ -665,7 +746,6 @@ export function gl_main(scene_: number) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-    document.onkeydown = handleKeyDown
     document.onkeyup = handleKeyUp
 
     // Vertex shader program

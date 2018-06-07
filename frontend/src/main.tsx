@@ -28,25 +28,34 @@ interface MainState {
 }
 
 class Controls extends React.Component<any, any> {
-
+    constructor(props: any) {
+        super(props)
+    }
     render() {
         return (
             <Form>
+                <ButtonGroup style={{marginTop: 20}}>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(0)}>Hypercube</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(1)}>Small world</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(2)}>Small town</Button>
 
-                <Button>There's no place like home</Button>
+                </ButtonGroup>
+                <br />
+
+                {/*<Button bsStyle="primary">There's no place like home</Button>*/}
             </Form>
         )
     }
 }
 
-const InstructionsScene0 = () => (
+const InstructionsOneShape = () => (
     <div>
-        <h3>Controls:</h3>
-        <h4>Rotate hypercube</h4>
+        <h3>Controls</h3>
+        <h4>Rotate</h4>
         <ul>
 
             <li>Left / right / up / down: Arrow keys</li>
-            <li>Roll left / right: Q / E</li>
+            <li>Roll: Q / E</li>
             <li>4D A: Ins / Del</li>
             <li>4D B: Home / End</li>
             <li>4D C: PgUp / PgDn</li>
@@ -54,9 +63,9 @@ const InstructionsScene0 = () => (
     </div>
 )
 
-const InstructionsScene1 = () => (
+const InstructionsFreeMove = () => (
     <div>
-        <h3>Controls:</h3>
+        <h3>Controls</h3>
         <h4>Move</h4>
         <ul>
 
@@ -71,7 +80,30 @@ const InstructionsScene1 = () => (
         <h4>Look</h4>
         <ul>
             <li>Left / right / up / down: Arrow keys</li>
-            <li>Roll left / right: Q / E</li>
+            <li>Roll: Q / E</li>
+            <li>4D A: Ins / Del</li>
+            <li>4D B: Home / End</li>
+            <li>4D C: PgUp / PgDn</li>
+        </ul>
+    </div>
+)
+
+const InstructionsFps = () => (
+    <div>
+        <h3>Controls</h3>
+        <h4>Move</h4>
+        <ul>
+            <li>Forward: W</li>
+            <li>Back: S</li>
+            <li>Left: A</li>
+            <li>Right: D</li>
+            <li>Ana: R</li>
+            <li>Kata: F</li>
+        </ul>
+
+        <h4>Look</h4>
+        <ul>
+            <li>Left / right / up / down: Arrow keys</li>
             <li>4D A: Ins / Del</li>
             <li>4D B: Home / End</li>
             <li>4D C: PgUp / PgDn</li>
@@ -85,23 +117,33 @@ class Main extends React.Component<any, any> {
         this.state = {
             scene: 0
         }
+
+        this.setScene = this.setScene.bind(this)
+    }
+
+    setScene(scene: number) {
+        this.setState({scene: scene})
     }
 
     render() {
         render.gl_main(this.state.scene)
         let instructions
         if (this.state.scene === 0) {
-            instructions = <InstructionsScene0 />
+            instructions = <InstructionsOneShape />
         } else if (this.state.scene === 1) {
-            instructions = <InstructionsScene1 />
+            instructions = <InstructionsFreeMove />
+        } else if (this.state.scene === 2) {
+            instructions = <InstructionsFps />
         } else {
             throw "Oops!"
         }
 
         return (
             <div>
+                <Controls setScene={this.setScene} />
                 {instructions}
-                <Controls />
+                <br />
+                <a href="http://www.youtube.com/watch?v=UnURElCzGc0&t=0m3s"><h4>Huh‽</h4></a>
             </div>
         )
     }
