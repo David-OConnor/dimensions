@@ -1,6 +1,8 @@
 import {mat4} from 'gl-matrix'
 import * as shapeMaker from './shapeMaker'
 import * as transforms from './transforms'
+import * as state from './state'
+import * as util from './util'
 import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
 
 // import {Button, Grid, Row, Col,
@@ -9,232 +11,7 @@ import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-// todo global shapes and cam for now
 const τ = 2 * Math.PI
-
-let colorMax = 15  // At this z distance, our blue/red shift fully saturated.
-let currentlyPressedKeys: number[] = []
-const moveSensitivity = .1
-const rotateSensitivity = .017
-
-let scene = 0
-
-let shapes = new Map()
-
-const defaultCam = new Camera (
-    new Vec5([0., 0., 0., 0.]),
-    [0., 0., 0., 0., 0., 0.],
-    τ / 4.,
-    4 / 3.,
-    1.,
-    100.,
-    0.1,
-    1.0,
-)
-let cam = defaultCam
-
-function moveCam(unitVec: number[], fps: boolean) {
-    // Modifies the global camera
-    // With first-person-shooter controls, ignore all input except rotation
-    // around the y axis.
-    const θ = fps ? [0, 0, cam.θ[2], 0, 0, 0] : cam.θ
-
-    const direc = transforms.make_rotator(θ).dotV(new Vec5(unitVec))
-    const amount = direc.mul(moveSensitivity)
-    cam.position = cam.position.add(amount)
-    // The skybox moves with the camera, but doesn't rotate with it.
-    skybox.position.add(amount)
-}
-
-function handleKeyDown(event: any, scene_: number) {
-    // Add if it's not already there.
-    if (currentlyPressedKeys.indexOf(event.keyCode) === -1) {
-        currentlyPressedKeys.push(event.keyCode)
-    }
-
-    for (let code of currentlyPressedKeys) {
-        switch(code) {
-            case 87:  // w
-                if (scene_ === 0) {
-                    console.log()
-                } else if (scene_ === 2) {
-                    moveCam([0, 0, 1, 0], true)
-                } else {
-                    moveCam([0, 0, 1, 0], false)
-                }
-                event.preventDefault()
-                break
-            case 83:  // s
-                if (scene_ === 0) {
-                    console.log()
-                } else {
-                    moveCam([0, 0, -1, 0], false)
-                }
-                break
-            case 68:  // d
-                if (scene_ === 0) {
-                    console.log()
-                } else {
-                    moveCam([1, 0, 0, 0], false)
-                }
-                break
-            case 65:  // a
-                if (scene_ === 0) {
-                    console.log()
-                } else {
-                    moveCam([-1, 0, 0, 0], false)
-                }
-                break
-            case 32:  // Space
-                if (scene_ === 0) {
-                    console.log()
-                } else if (scene_ === 2) {
-                    console.log()
-                } else {
-                    moveCam([0, 1, 0, 0], false)
-                }
-                event.preventDefault()
-                break
-            case 67:  // c
-                if (scene_ === 0) {
-                    console.log()
-                } else if (scene_ === 2) {
-                    console.log()
-                } else {
-                    moveCam([0, -1, 0, 0], false)
-                }
-                break
-            case 17:  // Control
-                if (scene_ === 0) {
-                    console.log()
-                } else if (scene_ === 2) {
-                    console.log()
-                } else {
-                    moveCam([0, -1, 0, 0], false)
-                }
-                break
-            case 82:  // r
-                if (scene_ === 0) {
-                    console.log()
-                } else {
-                    moveCam([0, 0, 0, 1], false)
-                }
-                break
-            case 70:  // f
-                if (scene_ === 0) {
-                    console.log()
-                } else {
-                    moveCam([0, 0, 0, -1], false)
-                }
-                break
-            // todo add deltaTime!
-            case 38:  // Up
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[1] -= rotateSensitivity
-                } else {
-                    cam.θ[1] += rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 40:  // Down
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[1] += rotateSensitivity
-                } else {
-                    cam.θ[1] -= rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 39:  // Right
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[2] += rotateSensitivity
-                } else {
-                    cam.θ[2] -= rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 37:  // Left
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[2] -= rotateSensitivity
-                } else {
-                    cam.θ[2] += rotateSensitivity
-                    event.preventDefault();
-                }
-                break
-            case 69:  // E
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[0] += rotateSensitivity
-                } else if (scene_ === 2) {
-                    console.log()
-                } else {
-                    cam.θ[0] += rotateSensitivity
-                }
-                break
-            case 81:  // Q
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[0] -= rotateSensitivity
-                } else if (scene_ === 2) {
-                    console.log()
-                } else {
-                    cam.θ[0] -= rotateSensitivity
-                }
-                break
-            case 45:  // Ins
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[3] += rotateSensitivity
-                } else {
-                    cam.θ[3] += rotateSensitivity
-                }
-                break
-            case 46:  // Del
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[3] -= rotateSensitivity
-                } else {
-                    cam.θ[3] -= rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 36:  // Home
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[4] += rotateSensitivity
-                } else {
-                    cam.θ[4] += rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 35:  // End
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[4] -= rotateSensitivity
-                } else {
-                    cam.θ[4] -= rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 33:  // Pgup
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[5] += rotateSensitivity
-                } else {
-                    cam.θ[5] += rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            case 34:  // Pgdn
-                if (scene_ === 0) {
-                    shapes.get(0).orientation[5] -= rotateSensitivity
-                } else {
-                    cam.θ[5] -= rotateSensitivity
-                }
-                event.preventDefault();
-                break
-            default:
-                break
-        }
-    }
-}
-
-function handleKeyUp(event: any) {
-    let index = currentlyPressedKeys.indexOf(event.keyCode)
-    if (index !== -1) { currentlyPressedKeys.splice(index, 1) }
-}
 
 let heightMap = [
     [1.3, 1.3, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
@@ -262,32 +39,6 @@ let spissMap = [
     [7, 7, 7, 3.5, 2, 0, 0, 0, 2, 2.5],
 ]
 
-let shapeList0 = [
-    shapeMaker.make_terrain([20, 20], [10, 10], heightMap, spissMap, new Vec5([0, 0, 0, 0])),
-
-    shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 1]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
-
-    shapeMaker.make_rectangular_pyramid([2, 1, 2], new Vec5([-2, 3, 3, -1]),
-        [τ/6, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
-
-    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 2]),
-        [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
-
-    // On ana of other cube.
-    shapeMaker.make_cube(1, new Vec5([2, 0, 5, 10]),
-        [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
-
-    shapeMaker.make_hypercube(1, new Vec5([3, 3, 3, 0]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, .002, .0005, .001]),
-
-    shapeMaker.make_hypercube(1, new Vec5([-3, 1, 0, 1.5]),
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
-
-    // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
-    //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
-]
-
 let mapFlat = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -299,6 +50,11 @@ let mapFlat = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+let mapFlat3d = [
+    [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
+    [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
 ]
 
 // todo you could generate these with a loop
@@ -327,19 +83,10 @@ const housePositions = [
 const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
     new Vec5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]) )
 
-let shapeTownList = [
-    shapeMaker.make_terrain([1000, 1000], [10, 10], mapFlat, mapFlat, new Vec5([0, 0, 0, 0])),
-    ...houses
-]
-
-const skybox = shapeMaker.make_skybox(100, cam.position)
-skybox.make_tris()
-const processedSkybox = transforms.processShapes(cam, new Map([[0, skybox]]))
-
-function setScene(scene_: number) {
-    document.onkeydown = e => handleKeyDown(e, scene_)
-    if (scene_ === 0) {  // Single hypercube
-        cam = new Camera (
+function setScene(scene: number, shape: number) {
+    document.onkeydown = e => util.handleKeyDown(e, scene)
+    if (scene === 0) {  // Single hypercube
+        state.setCam(new Camera(
             new Vec5([0., 0., -2., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 5.5,
@@ -348,18 +95,26 @@ function setScene(scene_: number) {
             200.,
             0.1,
             1.0,
-        )
+        ))
 
-        shapes = new Map()
-        shapes.set(
-            0,
-            shapeMaker.make_hypercube(1, new Vec5([0, 0, 0, 0]),
+        let selectedShape
+        if (shape === 0) {
+            selectedShape = shapeMaker.make_hypercube(1, new Vec5([0, 0, 0, 0]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        } else if (shape === 1) {
+            selectedShape = shapeMaker.make_5cell(2, new Vec5([0, 0, 0, 0]),
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        } else {
+            throw "Oops; a non-existant key was selected. :("
+        }
+        state.shapes.set(
+            0,
+            selectedShape
         )
 
-        colorMax = 1.5;
-    } else if (scene_ === 1) {  // Terain with shapes
-        cam = new Camera (
+        state.setColorMax(1.5)
+    } else if (scene === 1) {  // Terain with shapes
+        state.setCam(new Camera(
             new Vec5([0., 2., -3., 0.]),
             [0., -.5, 0., 0., 0., 0.],
             τ / 4.,
@@ -368,16 +123,43 @@ function setScene(scene_: number) {
             200.,
             0.1,
             1.0,
-        );
+        ))
 
-        shapes = new Map()
-        for (let id=0; id < shapeList0.length; id++) {
+        let shapeList0 = [
+            shapeMaker.make_terrain([20, 20], 10, heightMap, spissMap, new Vec5([0, 0, 0, 0])),
+
+            shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 1]),
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+            shapeMaker.make_rectangular_pyramid([2, 1, 2], new Vec5([-2, 3, 3, -1]),
+                [τ/6, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+            shapeMaker.make_cube(1, new Vec5([2, 0, 5, 2]),
+                [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+
+            // On ana of other cube.
+            shapeMaker.make_cube(1, new Vec5([2, 0, 5, 10]),
+                [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+
+            shapeMaker.make_hypercube(1, new Vec5([3, 3, 3, 0]),
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, .002, .0005, .001]),
+
+            shapeMaker.make_hypercube(1, new Vec5([-3, 1, 0, 1.5]),
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+
+            // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
+            //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        ]
+
+        let shapes = new Map()
+        for (let id = 0; id < shapeList0.length; id++) {
             shapes.set(id, shapeList0[id])
         }
+        state.setShapes(shapes)
 
-        colorMax = 10
-    } else if (scene_ === 2) {  // Terain with shapes
-        cam = new Camera (
+        state.setColorMax(10)
+    } else if (scene === 2) {  // Terain with shapes
+        state.setCam(new Camera(
             new Vec5([0., 3., -3., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 4.,
@@ -386,25 +168,55 @@ function setScene(scene_: number) {
             1000.,
             0.1,
             1.0,
-        );
+        ))
 
-        shapes = new Map()
-        for (let id=0; id < shapeTownList.length; id++) {
+        let shapeTownList = [
+            shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat, new Vec5([0, 0, 0, 0])),
+            ...houses
+        ]
+
+        let shapes = new Map()
+        for (let id = 0; id < shapeTownList.length; id++) {
             shapes.set(id, shapeTownList[id])
         }
+        state.setShapes(shapes)
 
-        colorMax = 30
+        state.setColorMax(30)
+    } else if (scene === 3) {  // Hypergrid
+        state.setCam(new Camera(
+            new Vec5([0., 0., 0., 0.]),
+            [0., 0., 0., 0., 0., 0.],
+            τ / 4.,
+            4 / 3.,
+            1.,
+            1000.,
+            0.1,
+            1.0,
+        ))
+
+        let mapTest = [
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]
+        let mapTest3d = [
+            [...mapTest], [...mapTest], [...mapTest], [...mapTest]
+        ]
+
+        state.setShapes(
+            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, mapTest3d, new Vec5([0, 0, 0, 0]))
+        )
+        state.setColorMax(30)
     } else {
-        cam = defaultCam
-        shapes = new Map()
-        colorMax = 25
+        throw "Nonexistant scene selected."
     }
 }
 
 function findColor(dist: number): number[] {
     // produce a color ranging from red to blue, based on how close a point is
     // to the edge.
-    let portion_through = Math.abs(dist)  / colorMax
+    let portion_through = Math.abs(dist)  / state.colorMax
 
     if (portion_through > 1.) {
         portion_through = 1.
@@ -462,23 +274,11 @@ function loadShader(gl: any, type: any, source: any) {
 }
 
 function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
+                   pfBuffers: any,
+                   I_4: Float32Array,
+                   projectionMatrix: Float32Array,
                    deltaTime: number,
                    processedShapes: Map<string, Vec5>, vertexCount: number) {
-    gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
-
-    // These settings affect transparency.
-    gl.clearDepth(1.0)                 // Clear everything
-    // gl.enable(gl.DEPTH_TEST)           // Enable depth testing
-    // gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
-    gl.disable(gl.DEPTH_TEST);
-    // gl.disable(gl.CULL_FACE)  // transparency TS
-
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-    // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -490,31 +290,11 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     // and we only want to see objects between 0.1 units
     // and 100 units away from the camera.
 
-    // const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-    let projectionMatrix = mat4.create()
-
-    // note: glmatrix.js always has the first argument
-    // as the destination to receive the result.
-    mat4.perspective(
-        projectionMatrix,
-        cam.fov,
-        cam.aspect,
-        cam.near,
-        cam.far
-    )
-    // todo add in Rview and Tview later.
-
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
 
     // We've positioned our points rel to their model and the cam already,
     // using 4d transforms; doesn't modify further.
-    const I_4 = new Float32Array([
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, -1, 0,
-        0, 0, 0, 1
-    ])
 
     // Tell WebGL how to pull out the positions from the position
     // buffer into the vertexPosition attribute.
@@ -526,7 +306,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                                  // 0 = use type and numComponents above
         const offset = 0         // how many bytes inside the buffer to start from
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position)
+        gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.position)
         gl.vertexAttribPointer(
             programInfo.attribLocations.vertexPosition,
             numComponents,
@@ -545,7 +325,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
         const normalize = false
         const stride = 0
         const offset = 0
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color)
+        gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.color)
         gl.vertexAttribPointer(
             programInfo.attribLocations.vertexColor,
             numComponents,
@@ -558,18 +338,18 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     }
 
     // Skybox
-    {
-        // We'll supply texcoords as floats.
-        gl.vertexAttribPointer(
-            programInfo.attribLocations.skyboxTexCoords,
-            2,
-            gl.FLOAT,
-            false,
-            0,
-            0
-        )
-        gl.enableVertexAttribArray(programInfo.attribLocations.skyboxTexCoords)
-    }
+    // {
+    //     // We'll supply texcoords as floats.
+    //     gl.vertexAttribPointer(
+    //         programInfo.attribLocations.skyboxTexCoords,
+    //         2,
+    //         gl.FLOAT,
+    //         false,
+    //         0,
+    //         0
+    //     )
+    //     gl.enableVertexAttribArray(programInfo.attribLocations.skyboxTexCoords)
+    // }
 
     // Tell WebGL which indices to use to index the vertices
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices)
@@ -593,23 +373,9 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
         // gl.drawArrays(gl.TRIANGLES, 0, 3)
     }
-
-    // Update the rotation for the next draw
-    shapes.forEach(
-        (shape, id, map) => {
-            // todo need vector addition to simplify...
-            shape.orientation[0] += shape.rotation_speed[0]
-            shape.orientation[1] += shape.rotation_speed[1]
-            shape.orientation[2] += shape.rotation_speed[2]
-            shape.orientation[3] += shape.rotation_speed[3]
-            shape.orientation[4] += shape.rotation_speed[4]
-            shape.orientation[5] += shape.rotation_speed[5]
-        }
-    )
 }
 
-function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
-    // Create a buffer for our shapes' positions and color.
+function perFrameBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     const positionBuffer = gl.createBuffer()
     // Select the positionBuffer as the one to apply buffer
     // operations to from here out.
@@ -619,7 +385,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     let vertex
     let positions: number[] = []
     // Set up vertices.
-    shapes.forEach(
+    state.shapes.forEach(
         (shape, s_id, map) => {
             for (let face of shape.faces_vert) {
                 for (let vertex_i of face) {
@@ -632,89 +398,26 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
             }
         }
     )
-    skybox.faces_vert.map(face => face.map(vertex_i => {
-        vertex = processedSkybox.get([0, vertex_i].join(',')) as any
-        positions.push(vertex.vals[0])
-        positions.push(vertex.vals[1])
-        positions.push(vertex.vals[2])
-    }))
 
-    // Now pass the list of positions into WebGL to build the
-    // shape. We do this by creating a Float32Array from the
-    // JavaScript array, then use it to fill the current buffer.
     gl.bufferData(gl.ARRAY_BUFFER,
         new Float32Array(positions),
         gl.STATIC_DRAW)
 
-    const colorSet6 = [
-        [1.0,  1.0,  1.0,  0.5],
-        [1.0,  0.0,  0.0,  0.5],
-        [0.0,  1.0,  0.0,  0.5],
-        [0.0,  0.0,  1.0,  0.5],
-        [1.0,  1.0,  0.0,  0.5],
-        [1.0,  0.0,  1.0,  0.5],
-    ]
-    const colorSet5 = [
-        [1.0,  1.0,  1.0,  0.5],
-        [1.0,  0.0,  0.0,  0.5],
-        [0.0,  1.0,  0.0,  0.5],
-        [0.0,  0.0,  1.0,  0.5],
-        [1.0,  1.0,  0.0,  0.5],
-    ]
-
-    const colorSet24 = [
-        [1.0,  1.0,  1.0,  0.5],
-        [1.0,  0.0,  0.0,  0.5],
-        [0.0,  1.0,  0.0,  0.5],
-        [0.0,  0.0,  1.0,  0.5],
-        [1.0,  1.0,  0.0,  0.5],
-        [1.0,  0.0,  1.0,  0.5],
-
-        [1.0,  0.3,  0.4,  0.5],
-        [0.3,  0.0,  0.0,  0.5],
-        [0.5,  0.5,  1.0,  0.5],
-        [0.7,  0.4,  1.0,  0.5],
-        [0.8,  1.0,  0.4,  0.5],
-        [1.0,  0.2,  1.0,  0.5],
-
-        [0.3,  0.3,  1.0,  0.5],
-        [1.0,  0.1,  0.7,  0.5],
-        [0.0,  0.2,  0.0,  0.5],
-        [0.7,  1.0,  0.5,  0.5],
-        [1.0,  .7,  0.2,  0.5],
-        [0.8,  0.0,  0.3,  0.5],
-
-        [0.3,  0.2,  1.0,  0.5],
-        [1.0,  0.0,  0.0,  0.5],
-        [0.4,  0.4,  0.4,  0.5],
-        [0.3,  0.0,  0.4,  0.5],
-        [0.2,  0.3,  0.0,  0.5],
-        [0.3,  0.2,  1.0,  0.5],
-    ]
-
     let faceColors: number[][] = []
 
-    shapes.forEach(
+    state.shapes.forEach(
         (shape, s_id, map) => {
             for (let face of shape.faces_vert) {
                 for (let vertI of face) {
-                    let zDist = (processedShapes.get([s_id, vertI].join(',')) as any).vals[3] - cam.position.vals[3]
+                    let zDist = (processedShapes.get([s_id, vertI].join(',')) as any).vals[3] -
+                        state.cam.position.vals[3]
                     faceColors.push(findColor(zDist))
                 }
             }
-
-            // if (shape.faces_vert.length === 6) {
-            //     faceColors.push(...colorSet6)
-            // } else if (shape.faces_vert.length === 5) {
-            //     faceColors.push(...colorSet5)
-            // } else if (shape.faces_vert.length === 24) {
-            //     faceColors.push(...colorSet24)
-            // }
         }
     )
 
     // Convert the array of colors into a table for all the vertices.
-
     let colors: any = []
     for (let c of faceColors) {
         // Repeat each color four times for the four vertices of the face
@@ -724,6 +427,32 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     const colorBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
+
+    return {
+        position: positionBuffer,
+        color: colorBuffer,
+    }
+}
+
+function initBuffers(gl: any) {
+    // Create a buffer for our shapes' positions and color.
+    let vertex
+    const sbPositions: any = []
+    state.skybox.faces_vert.map(face => face.map(vertex_i => {
+        vertex = state.processedSkybox.get([0, vertex_i].join(',')) as any
+        sbPositions.push(vertex.vals[0])
+        sbPositions.push(vertex.vals[1])
+        sbPositions.push(vertex.vals[2])
+    }))
+
+    // Now pass the list of positions into WebGL to build the
+    // shape. We do this by creating a Float32Array from the
+    // JavaScript array, then use it to fill the current buffer.
+    const skyboxPositBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, skyboxPositBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER,
+        new Float32Array(sbPositions),
+        gl.STATIC_DRAW)
 
     // todo skybox texture wip
     // look up where the vertex data needs to go.
@@ -757,6 +486,9 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
 
     // Build the element array buffer; this specifies the indices
     // into the vertex arrays for each face's vertices.
+
+    // Build the element array buffer; this specifies the indices
+    // into the vertex arrays for each face's vertices.
     const indexBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
 
@@ -766,7 +498,7 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     let indices: number[] = []
     let indexModifier = 0
     let tri_indices
-    shapes.forEach(
+    state.shapes.forEach(
         (shape: Shape, s_i, map) => {
             tri_indices = shape.get_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
@@ -778,24 +510,41 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
         new Uint16Array(indices), gl.STATIC_DRAW)
 
     return {
-        position: positionBuffer,
-        color: colorBuffer,
         indices: indexBuffer,
+        skybox: skyboxBuffer,
+        skyboxPosits: skyboxPositBuffer
     }
 }
 
-export function gl_main(scene_: number) {
+export function gl_main(scene_: number, shape_: number) {
     // Initialize WebGL rendering.
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
 
-    setScene(scene_)
+    // Overall settings here.
+
+    gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
+
+    // These settings affect transparency.
+    gl.clearDepth(1.0)                 // Clear everything
+    // gl.enable(gl.DEPTH_TEST)           // Enable depth testing
+    // gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
+    gl.disable(gl.DEPTH_TEST);
+    // gl.disable(gl.CULL_FACE)  // transparency TS
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    setScene(scene_, shape_)
 
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-    document.onkeyup = handleKeyUp
+    document.onkeyup = util.handleKeyUp
 
     // Vertex shader program
     const vsSource = `
@@ -804,46 +553,61 @@ export function gl_main(scene_: number) {
         
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
-        
-        // For the skybox
-        attribute vec4 a_position;
-        attribute vec2 a_texcoord;
-        uniform mat4 u_matrix;
-        
+               
         varying lowp vec4 vColor;
     
         void main() {
           gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
           vColor = aVertexColor;
-          
-          // Skybox
-          // Multiply the position by the matrix.
-          gl_PositionSb = u_matrix * a_position;
-          // Pass the texcoord to the fragment shader.
-          v_texcoord = a_texcoord;
         }
     `
 
     // Fragment shader program
     const fsSource = `
         varying lowp vec4 vColor;
-        
-        // Skybox
-        precision mediump float;
-        varying vec2 v_texcoord;
-        // The texture.
-        uniform sampler2D u_texture;
- 
+
         void main() {
           gl_FragColor = vColor;
-          
-          gl_FragSb = texture2D(u_texture, v_texcoord);
+        }
+    `
+
+    // Vertex shader program
+    const vsSkybox = `
+        attribute vec4 a_position;
+        attribute vec2 a_texcoord;
+         
+        uniform mat4 u_matrix;
+         
+        varying vec2 v_texcoord;
+         
+        void main() {
+          // Multiply the position by the matrix.
+          gl_Position = u_matrix * a_position;
+         
+          // Pass the texcoord to the fragment shader.
+          v_texcoord = a_texcoord;
+        }
+    `
+
+    // Fragment shader program
+    const fsSkybox = `
+        precision mediump float;
+         
+        // Passed in from the vertex shader.
+        varying vec2 v_texcoord;
+         
+        // The texture.
+        uniform sampler2D u_texture;
+         
+        void main() {
+           gl_FragColor = texture2D(u_texture, v_texcoord);
         }
     `
 
     // Initialize a shader program; this is where all the lighting
     // for the vertices and so forth is established.
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource)
+    const shaderSkybox = initShaderProgram(gl, vsSkybox, fsSkybox)
 
     // Collect all the info needed to use the shader program.
     // Look up which attribute our shader program is using
@@ -853,7 +617,7 @@ export function gl_main(scene_: number) {
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
-            skyboxTexCoords: gl.getAttribLocation(shaderProgram, 'a_texcoord'),
+            skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -862,12 +626,35 @@ export function gl_main(scene_: number) {
     }
 
     let vertexCount = 0
-    shapes.forEach(
+    state.shapes.forEach(
         (shape, id, map) => {
             vertexCount += shape.get_tris().length
         }
     )
     let then = 0
+    let pfBuffers
+    let buffers = initBuffers(gl)
+
+    const I_4 = new Float32Array([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, -1, 0,
+        0, 0, 0, 1
+    ])
+
+    // Note: If we want dynamically-adjustable FOV, we need to move this,
+    // or part of it to drawScene.
+    let projectionMatrix = mat4.create()
+    // note: glmatrix.js always has the first argument
+    // as the destination to receive the result.
+    mat4.perspective(
+        projectionMatrix,
+        state.cam.fov,
+        state.cam.aspect,
+        state.cam.near,
+        state.cam.far
+    )
+
     // Draw the scene repeatedly
     function render(now: number) {
         now *= 0.001;  // convert to seconds
@@ -876,12 +663,27 @@ export function gl_main(scene_: number) {
 
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
-        const processedShapes = transforms.processShapes(cam, shapes)
-        const buffers = initBuffers(gl, processedShapes)
+        const processedShapes = transforms.processShapes(state.cam, state.shapes)
+        pfBuffers = perFrameBuffers(gl, processedShapes)
 
-        drawScene(gl, programInfo, buffers, deltaTime, processedShapes, vertexCount);
+        drawScene(gl, programInfo, buffers, pfBuffers, I_4, projectionMatrix,
+            deltaTime, processedShapes, vertexCount);
 
         requestAnimationFrame(render)
+
+        // Update the rotation for the next draw
+        state.shapes.forEach(
+            (shape, id, map) => {
+                // todo need vector addition to simplify...
+                shape.orientation[0] += shape.rotation_speed[0]
+                shape.orientation[1] += shape.rotation_speed[1]
+                shape.orientation[2] += shape.rotation_speed[2]
+                shape.orientation[3] += shape.rotation_speed[3]
+                shape.orientation[4] += shape.rotation_speed[4]
+                shape.orientation[5] += shape.rotation_speed[5]
+            }
+        )
+
     }
     requestAnimationFrame(render)
 }

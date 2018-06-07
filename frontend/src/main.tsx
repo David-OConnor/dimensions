@@ -27,14 +27,24 @@ class Controls extends React.Component<any, any> {
         super(props)
     }
     render() {
+        let shapeButtons = (
+            <ButtonGroup style={{marginTop: 20}}>
+                <Button bsStyle="primary" onClick={() => this.props.setShape(0)}>Hypercube</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setShape(1)}>5-Cell</Button>
+            </ButtonGroup>
+        )
+
         return (
             <Form>
                 <ButtonGroup style={{marginTop: 20}}>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(0)}>Hypercube</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(0)}>Singles</Button>
                     <Button bsStyle="primary" onClick={() => this.props.setScene(1)}>Small world</Button>
                     <Button bsStyle="primary" onClick={() => this.props.setScene(2)}>Small town</Button>
-
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(3)}>Hyper grid</Button>
                 </ButtonGroup>
+
+                <br />
+                {this.props.showShapeBtns ? shapeButtons : null}
                 <br />
 
                 {/*<Button bsStyle="primary">There's no place like home</Button>*/}
@@ -112,18 +122,32 @@ class Main extends React.Component<any, any> {
     constructor(props: MainProps) {
         super(props)
         this.state = {
-            scene: 0
+            scene: 0,
+            shape: 0  // The shape to display for scene 0.
         }
 
         this.setScene = this.setScene.bind(this)
+        this.setShape = this.setShape.bind(this)
     }
 
     setScene(scene: number) {
         this.setState({scene: scene})
     }
 
+    setShape(shape: number) {
+        this.setState({shape: shape})
+    }
+
+    // Scene descriptions:
+    // 0: Single 4d shape; controls rotate it
+    // 1: A world with scattered 3d and 4d shapes at varying positions; a terrain
+    // mesh mapped to various points in dimensions 3 and 4.
+    // 2: A small town; doubled up in the 4th dimension
+    // 3: A hyper lattice; currently of cubes.
+
     render() {
-        render.gl_main(this.state.scene)
+        render.gl_main(this.state.scene, this.state.shape)
+
         let instructions
         if (this.state.scene === 0) {
             instructions = <InstructionsOneShape />
@@ -131,13 +155,19 @@ class Main extends React.Component<any, any> {
             instructions = <InstructionsFreeMove />
         } else if (this.state.scene === 2) {
             instructions = <InstructionsFps />
+        } else if (this.state.scene === 3) {
+            instructions = <InstructionsFreeMove />
         } else {
             throw "Oops!"
         }
 
         return (
             <div>
-                <Controls setScene={this.setScene} />
+                <Controls
+                    setScene={this.setScene}
+                    setShape={this.setShape}
+                    showShapeBtns={this.state.scene === 0}
+                />
                 {instructions}
                 <br />
                 <a href="http://www.youtube.com/watch?v=UnURElCzGc0&t=0m3s"><h4>Huh‽</h4></a>

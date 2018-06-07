@@ -202,7 +202,6 @@ export function make_hyperrect(lens: [number, number, number, number],
                                position: Vec5, orientation: number[],
                                rotation_speed: number[]): Shape {
     // Make a 4d hypercube.
-
     const coords = [
         // Front inner
         [-1., -1., -1., -1.],
@@ -363,8 +362,9 @@ export function make_origin(len: number, position: Vec5,
     return new Shape(nodes, edges, [], [], position, orientation, rotation_speed)
 }
 
-export function make_terrain(dims: [number, number], res: [number, number],
-                             heightMap: number[][], spissitudeMap: number[][], position: Vec5): Shape {
+export function make_terrain(dims: [number, number], res: number,
+                             heightMap: number[][], spissitudeMap: number[][],
+                             position: Vec5): Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // u and y mappings for each x/z point...
@@ -384,9 +384,9 @@ export function make_terrain(dims: [number, number], res: [number, number],
     let z
     let height, spissitude
     let x = -dims[0] / 2.
-    for (let i=0; i < res[0]; i++) {  // x
-         z = -dims[1] / 2.
-        for (let j=0; j < res[1]; j++) {  // z
+    for (let i=0; i < res; i++) {  // x
+        z = -dims[1] / 2.
+        for (let j=0; j < res; j++) {  // z
             height = heightMap[i][j]
             spissitude = spissitudeMap[i][j]
             if (isNaN(height) || isNaN(spissitude)) {
@@ -400,13 +400,14 @@ export function make_terrain(dims: [number, number], res: [number, number],
                 z,
                 spissitude,
             ])))
-            z += dims[1] / res[1]
+            z += dims[1] / res
             id += 1
         }
-        x += dims[0] / res[0]
+        x += dims[0] / res
     }
 
     let edges = [];
+    let faces: Face[] = [];  // todo later
     let faces_vert = [];
     let row_adder = 0;
 
@@ -427,17 +428,119 @@ export function make_terrain(dims: [number, number], res: [number, number],
         row_adder += res[0];
     }
 
-    let faces: Face[] = [];  // todo later
-
     return new Shape(nodes, edges, faces, faces_vert, position,
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }
 
-// export function make_cube_hypergrid(dims: [number, number, number],
-//                                     spissitudeMap: number[][][],
-//                                     position: Vec5): Map<number, Shape> {
+export function make_cube_hypergrid(dims: [number, number, number],
+                                    res: number,
+                                    spissitudeMap: number[][][],
+                                    position: Vec5): Map<number, Shape> {
+    console.log("MAKING A GRID")
+    // Position is the center.
+    // todo incorporate position.
+    let result = new Map()
+
+    let x = -dims[0] / 2.
+    let y = -dims[1] / 2.
+    let z = -dims[2] / 2.
+    for (let i=0; i < res; i++) {  // x
+        for (let j=0; j < res; j++) {  // y
+            for (let k=0; k < res; k++) {  // z
+                result.set(
+                    Math.pow(res, 2) * i + res * j + k,
+                    make_cube(.5, new Vec5([x, y, z, spissitudeMap[i][j][k]]),
+                              [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+                )
+                z += dims[2] / res
+            }
+            y += dims[1] / res
+        }
+        x += dims[0] / res
+    }
+    return result
+}
+
+// export function make_hypergrid(dims: [number, number, number],
+//                                spissitudeMap: number[][][],
+//                                position: Vec5): Shape {
 //
 // }
+
+export function make_5cell(radius: number, position: Vec5, orientation: number[],
+                           rotation_speed: number[]): Shape {
+    // AKA pentachoron, or tetrahedral pyramid
+    // https://en.wikipedia.org/wiki/5-cell
+    // todo add to Rust.
+    // radius is the distance from the center; all points lie on a hypersphere of
+    // with the specified radius. Edge length: sqrt(8/3)
+    const coords = [
+        [-Math.sqrt(2./3.), -1./3., -Math.sqrt(2./9.), 0.],  // left base
+        [Math.sqrt(2./3.), -1./3., -Math.sqrt(2./9.), 0.],  // right base
+        [0., -1./3., Math.sqrt(8./9.), 0.],  // Back base
+        [0., 1., 0., 0.],  // Top
+        [0., 0., 0., 1.],  // middle
+    ]
+
+    let nodes = new Map()
+    for (let id=0; id < coords.length; id++) {
+        let coord = coords[id];
+        nodes.set(id, new Node2(new Vec5([coord[0] * radius/2., coord[1] * radius/2.,
+            coord[2] * radius/2., coord[3] * radius/2.])));
+    }
+
+    const edges = [
+        // Base
+        new Edge(0, 1),
+        new Edge(1, 2),
+        new Edge(2, 0),
+
+        // Connect base to top
+        new Edge(0, 3),
+        new Edge(1, 3),
+        new Edge(2, 1),
+
+        // Connect center to corners
+        new Edge(4, 0),
+        new Edge(4, 1),
+        new Edge(4, 2),
+        new Edge(4, 3),
+    ]
+
+    let faces = [
+        // In same order as faces below
+        new Face([edges[0], edges[1], edges[2]]),
+        new Face([edges[0], edges[4], edges[3]]),
+        new Face([edges[1], edges[5], edges[4]]),
+        new Face([edges[2], edges[3], edges[5]]),
+
+        new Face([edges[6], edges[0], edges[7]]),
+        new Face([edges[7], edges[1], edges[8]]),
+        new Face([edges[18], edges[2], edges[6]]),
+
+        new Face([edges[6], edges[3], edges[9]]),
+        new Face([edges[7], edges[4], edges[9]]),
+        new Face([edges[8], edges[5], edges[9]]),
+    ]
+
+    const faces_vert = [  // Vertex indices for each face.
+        [0, 1, 2] , // Base
+        [0, 1, 3],  // Front
+        [1, 2, 3],  // Right
+        [2, 0, 3],  // Left
+
+        [4, 0, 1],  // Center front
+        [4, 1, 2],  // Center right
+        [4, 2, 0],  // Center left
+
+        [4, 0, 3],  // Center left top
+        [4, 1, 3],  // Center right top
+        [4, 2, 3],  // Center back top
+    ]
+
+    return new Shape(nodes, edges, faces, faces_vert, position,
+        orientation, rotation_speed)
+}
 
 export function make_skybox(len: number, position: Vec5): Shape {
     return make_cube(len, position, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
