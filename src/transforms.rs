@@ -5,7 +5,7 @@ use ndarray::prelude::*;
 use clipping;
 use types::{Camera, Shape};
 
-pub fn make_rotator_4d(θ: &Array1<f64>) -> Array2<f64> {
+pub fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -85,52 +85,6 @@ pub fn make_rotator_4d(θ: &Array1<f64>) -> Array2<f64> {
     let R_1 = R_xy.dot(&(R_yz.dot(&R_xz)));
     let R_2 = R_xu.dot(&(R_yu.dot(&R_zu)));
     R_1.dot(&R_2)
-}
-
-pub fn make_rotator_3d(θ: &Array1<f64>) -> Array2<f64> {
-    // Compute a 3-dimensional rotation matrix.
-    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    // We return 5x5 matrices for compatibility with other transforms, and to
-    // reduce repetition between 4d and 3d vectors.
-
-    // Note that we might accept a rotation vector of len 6, but only the
-    // first 3 values will be used.
-
-    // cache trig computations
-    let cos_x = θ[0].cos();
-    let sin_x = θ[0].sin();
-    let cos_y = θ[1].cos();
-    let sin_y = θ[1].sin();
-    let cos_z = θ[2].cos();
-    let sin_z = θ[2].sin();
-
-    // R matrices rotate a vector around a single axis.
-    let R_x = array![
-        [1., 0., 0., 0., 0.],
-        [0., cos_x, -sin_x, 0., 0.],
-        [0., sin_x, cos_x, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_y = array![
-        [cos_y, 0., sin_y, 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [-sin_y, 0., cos_y, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_z = array![
-        [cos_z, -sin_z, 0., 0., 0.],
-        [sin_z, cos_z, 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    // Combine the three rotations.
-    R_x.dot(&(R_y.dot(&R_z)))
 }
 
 pub fn make_translator(position: &Array1<f64>) -> Array2<f64> {
@@ -222,7 +176,7 @@ pub fn position_shape(shape: &Shape) -> HashMap<i32, Array1<f64>> {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     let R = if is_4d
-        { make_rotator_4d(&shape.orientation) } else
+        { make_rotator(&shape.orientation) } else
         { make_rotator_3d(&shape.orientation) };
 
     let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
@@ -258,7 +212,7 @@ fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
     array![f[0] / f[4], -f[1] / f[4], f[2] / f[4], f[3] / f[4]]
 }
 
-pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
+pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera)
         -> HashMap<(i32, i32), Array1<f64>> {
     // Position and rotate shapes relative to the camera; project into a
     // clipspace [hyper]frustum.
@@ -267,11 +221,8 @@ pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
     // We negate R and T, since we're shifting and rotating relative to the
     // [fixed] camera.
     let T = make_translator(&-&(cam.position));
-    let R = if is_4d {
-        { make_rotator_4d(&-&(cam.θ_4d)) }
-    } else
-        { make_rotator_3d(&-&(cam.θ_3d)) };
-    let P = make_projector(&cam);
+    let R = make_rotator(&-&(cam.θ));
+   let P = make_projector(&cam);
 
     let mut result = HashMap::new();
 
@@ -296,59 +247,6 @@ pub fn project_shapes(shapes: &HashMap<i32, Shape>, cam: &Camera, is_4d: bool)
     }
     result
 }
-//
-//pub fn project_shapes_4d(shapes: &HashMap<i32, Shape>, cam: &Camera)
-//         -> HashMap<(i32, i32), Array1<f64>> {
-//    // Project shapes; modify their nodes to be projected on a 2d surface.
-//    let T = make_translator(&-&(cam.position));
-//    let R_4d = make_rotator_4d(&cam.θ_4d);
-//    let R_3d = make_rotator_3d(&cam.θ_3d);
-//    let P = make_projector(&cam);
-//
-//    // Combine our 4d and 3d rotation matrices, to allow for the addition of
-//    // intuitive camera controls.
-//    let R = R_3d.dot(&R_4d);
-//
-//    // todo it may not be necessary to split these project functions into 2 versions...
-//    // todo we're leaving our pts 4d anyway, and projecting into a 4d ndc/clipsace...
-//    // todo probably don't need two passes on project...
-//
-//    let mut projected_3d = HashMap::new();
-//
-//     // todo DRY between here and shapes_3d for now.
-//     for (shape_id, shape) in shapes {
-//        let positioned_pts = position_shape(shape);
-//
-//        // Iterate over edges so we can clip lines.
-//        for edge in &shape.edges {
-//            let pt_0 = &positioned_pts[&edge.node0];
-//            let pt_1 = &positioned_pts[&edge.node1];
-//            let pt_0_clipspace = project(pt_0, &T, &R, &P);
-//            let pt_1_clipspace = project(pt_1, &T, &R, &P);
-//
-//            let clipped = clipping::cohen_sutherland_4d(cam, (pt_0_clipspace, pt_1_clipspace));
-//            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
-//                // We return the full (non-homogenous) projected point, even
-//                // though we only need x and y to display.
-//                projected_3d.insert((*shape_id, edge.node0), pt_0_clipped);
-//                projected_3d.insert((*shape_id, edge.node1), pt_1_clipped);
-//            }
-//        }
-//    }
-//
-//    projected_3d
-//
-
-
-
-//    let mut projected_2d = HashMap::new();
-//    // Now project from 3d to 2d.  We don't need to position or clip again;
-//    // Clipping in a higher dimension clips in all lower ones projected into.
-//    for (ids, pt) in projected_3d {
-//        projected_2d.insert(ids, project(pt, &T, &R_3d, &P_3d));
-//    }
-//    projected_2d
-//}
 
 pub enum MoveDirection{
     Forward,

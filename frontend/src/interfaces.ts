@@ -214,8 +214,7 @@ export class Shape {
 export class Camera {
     // See Rust's Camera struct for information.
     position: Vec5
-    θ_3d: number[]
-    θ_4d: number[]
+    θ: number[]
     fov: number
     aspect: number
     aspect_4: number
@@ -223,12 +222,11 @@ export class Camera {
     far: number
     strange: number
 
-    constructor(position: Vec5, θ_3d: number[], θ_4d: number[],
+    constructor(position: Vec5, θ: number[],
                 fov: number, aspect: number, aspect_4: number,
                 near: number, far: number, strange: number) {
         this.position = position
-        this.θ_3d = θ_3d
-        this.θ_4d = θ_4d
+        this.θ = θ
         this.fov = fov
         this.aspect = aspect
         this.aspect_4 = aspect_4

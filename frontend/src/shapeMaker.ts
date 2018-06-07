@@ -364,7 +364,7 @@ export function make_origin(len: number, position: Vec5,
 }
 
 export function make_terrain(dims: [number, number], res: [number, number],
-                             heightmap: number[][], position: Vec5): Shape {
+                             heightMap: number[][], spissitudeMap: number[][], position: Vec5): Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // u and y mappings for each x/z point...
@@ -375,25 +375,30 @@ export function make_terrain(dims: [number, number], res: [number, number],
     // Note: When visually setting up a heighmap array, the z position
     // appears backwards from what you might expect.
 
+    // todo: Add this to rust.
+
     let nodes = new Map()
     let id = 0
     // Instantiate x and like this so the center of the mesh is at the
     // position argument.
     let z
-    let height
+    let height, spissitude
     let x = -dims[0] / 2.
     for (let i=0; i < res[0]; i++) {  // x
          z = -dims[1] / 2.
         for (let j=0; j < res[1]; j++) {  // z
-            height = heightmap[i][j]
-            if (isNaN(height)) {
-                throw "Missing value(s) in heightmap grid."
+            height = heightMap[i][j]
+            spissitude = spissitudeMap[i][j]
+            if (isNaN(height) || isNaN(spissitude)) {
+                throw "Missing value(s) in heightmap or spissitude grid."
             }
+            // todo you could change which planes this is over by rearranging
+            // todo these node points.
             nodes.set(id, new Node2(new Vec5([
                 x,
                 height,
                 z,
-                0
+                spissitude,
             ])))
             z += dims[1] / res[1]
             id += 1
@@ -427,3 +432,14 @@ export function make_terrain(dims: [number, number], res: [number, number],
     return new Shape(nodes, edges, faces, faces_vert, position,
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }
+
+// export function make_cube_hypergrid(dims: [number, number, number],
+//                                     spissitudeMap: number[][][],
+//                                     position: Vec5): Map<number, Shape> {
+//
+// }
+
+//
+// export function make_skybox(len: number, position: Vec5): Shape {
+//
+// }

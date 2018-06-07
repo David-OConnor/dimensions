@@ -28,8 +28,7 @@ fn DEFAULT_CAMERA() -> Camera {
     Camera {
         // If 3d, the 4th items for position isn't used.
         position: array![0., 1., -6., -2.],
-        θ_3d: array![0., 0., 0.],
-        θ_4d: array![0., 0., 0., 0., 0., 0.],
+        θ: array![0., 0., 0., 0., 0., 0.],
         fov: τ / 5.,
         aspect: 1.,
         aspect_4: 1.,
@@ -204,12 +203,6 @@ impl event::EventHandler for MainState {
 
         let projected;
 
-        if self.is_4d {  // todo simplify this DRY.
-            projected = transforms::project_shapes(&self.shapes, &self.camera, true);
-        } else {
-            projected = transforms::project_shapes(&self.shapes, &self.camera, false);
-        }
-
         let mesh = build_mesh(ctx,
                               projected,
                               &self.shapes,
@@ -228,12 +221,6 @@ impl event::EventHandler for MainState {
         const TURN_SENSITIVITY: f64 = 0.05;
         const ZOOM_SENSITIVITY: f64 = 0.02;
 
-//        let move_θ = if self.is_4d { &(self.camera).θ_4d.clone()) } else { &(self.camera).θ_3d.clone() };
-
-        let move_θ = &match self.is_4d {
-            true => self.camera.θ_4d.clone(),
-            false => self.camera.θ_3d.clone(),
-        };
 
         // todo for now we've removed FPS controls; make the move simply modify
         // todo our position in abs coords. move_θ is unused, in this case.
@@ -242,95 +229,74 @@ impl event::EventHandler for MainState {
         // understand yet.
         match keycode {
             Keycode::W => {
-                let move_vec = move_camera(MoveDirection::Forward, move_θ);
+                let move_vec = move_camera(MoveDirection::Forward, &self.camera.θ);
                 self.camera.position += &(&move_vec * MOVE_SENSITIVITY);
                 // println!("x {}, y {}, z {}", self.camera.position[0], self.camera.position[1], self.camera.position[2]);
-                println!("x {}, y {}, z {}", &move_vec[0], &move_vec[1], &move_vec[2]);
-                println!("Posit: {}", &self.camera.position);
-                println!("θ {}", &self.camera.θ_3d);
             },
             Keycode::S => {
-                let move_vec = move_camera(MoveDirection::Back, move_θ);
+                let move_vec = move_camera(MoveDirection::Back, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::A => {
-                let move_vec = move_camera(MoveDirection::Left, move_θ);
+                let move_vec = move_camera(MoveDirection::Left, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::D => {
-                let move_vec = move_camera(MoveDirection::Right, move_θ);
+                let move_vec = move_camera(MoveDirection::Right, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::C => {
-                let move_vec = move_camera(MoveDirection::Down, move_θ);
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::LCtrl => {
-                let move_vec = move_camera(MoveDirection::Down, move_θ);
+                let move_vec = move_camera(MoveDirection::Down, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::Space => {
-                let move_vec = move_camera(MoveDirection::Up, move_θ);
+                let move_vec = move_camera(MoveDirection::Up, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::F => {
-                let move_vec = move_camera(MoveDirection::Kata, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Kata, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
             Keycode::R => {
-                let move_vec = move_camera(MoveDirection::Ana, &self.camera.θ_4d);
+                let move_vec = move_camera(MoveDirection::Ana, &self.camera.θ);
                 self.camera.position += &(move_vec * MOVE_SENSITIVITY);
             },
 
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
             Keycode::Left => {
-                self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], -TURN_SENSITIVITY);
-                self.camera.θ_4d[2] += TURN_SENSITIVITY;  // todo why reverse?
+                self.camera.θ[2] += TURN_SENSITIVITY;  // todo why reverse?
             },
             Keycode::Right => {
-                self.camera.θ_3d[1] = add_ang_norm(self.camera.θ_3d[1], TURN_SENSITIVITY);
-                self.camera.θ_4d[2] -= TURN_SENSITIVITY;
+                self.camera.θ[2] -= TURN_SENSITIVITY;
             },
             // Don't allow us to look greater than τ/4 up or down.
             Keycode::Down => {
-                self.camera.θ_3d[0] += TURN_SENSITIVITY;
-                if self.camera.θ_3d[0] <= -τ / 4. {
-                    self.camera.θ_3d[0] = -τ / 4.
-                }
-
-                self.camera.θ_4d[1] -= TURN_SENSITIVITY;
+                self.camera.θ[1] -= TURN_SENSITIVITY;
             },
             Keycode::Up => {
-                self.camera.θ_3d[0] -= TURN_SENSITIVITY;
-                if self.camera.θ_3d[0] >= τ / 4. {
-                    self.camera.θ_3d[0] = τ / 4.
-                }
-                self.camera.θ_4d[1] += TURN_SENSITIVITY;
+                self.camera.θ[1] += TURN_SENSITIVITY;
             },
             
             Keycode::Q => {
-                self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], TURN_SENSITIVITY);
-                self.camera.θ_4d[0] -= TURN_SENSITIVITY;
+                self.camera.θ[0] -= TURN_SENSITIVITY;
             },
             Keycode::E => {
-                self.camera.θ_3d[2] = add_ang_norm(self.camera.θ_3d[2], -TURN_SENSITIVITY);
-                self.camera.θ_4d[0] += TURN_SENSITIVITY;
+                self.camera.θ[0] += TURN_SENSITIVITY;
             },
             
             // 4d rotations
-//            Keycode::T => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], TURN_SENSITIVITY),
-//            Keycode::G => self.camera.θ_4d[0] = add_ang_norm(self.camera.θ_4d[0], -TURN_SENSITIVITY),
-//            Keycode::Y => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], TURN_SENSITIVITY),
-//            Keycode::H => self.camera.θ_4d[1] = add_ang_norm(self.camera.θ_4d[1], -TURN_SENSITIVITY),
-//            Keycode::U => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], TURN_SENSITIVITY),
-//            Keycode::J => self.camera.θ_4d[2] = add_ang_norm(self.camera.θ_4d[2], -TURN_SENSITIVITY),
-            Keycode::I => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], TURN_SENSITIVITY),
-            Keycode::K => self.camera.θ_4d[3] = add_ang_norm(self.camera.θ_4d[3], -TURN_SENSITIVITY),
-            Keycode::O => self.camera.θ_4d[4] = add_ang_norm(self.camera.θ_4d[4], TURN_SENSITIVITY),
-            Keycode::L => self.camera.θ_4d[4] = add_ang_norm(self.camera.θ_4d[4], -TURN_SENSITIVITY),
-            Keycode::P => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], TURN_SENSITIVITY),
-            Keycode::Semicolon => self.camera.θ_4d[5] = add_ang_norm(self.camera.θ_4d[5], -TURN_SENSITIVITY),
+
+            Keycode::I => self.camera.θ[3] = add_ang_norm(self.camera.θ[3], TURN_SENSITIVITY),
+            Keycode::K => self.camera.θ[3] = add_ang_norm(self.camera.θ[3], -TURN_SENSITIVITY),
+            Keycode::O => self.camera.θ[4] = add_ang_norm(self.camera.θ[4], TURN_SENSITIVITY),
+            Keycode::L => self.camera.θ[4] = add_ang_norm(self.camera.θ[4], -TURN_SENSITIVITY),
+            Keycode::P => self.camera.θ[5] = add_ang_norm(self.camera.θ[5], TURN_SENSITIVITY),
+            Keycode::Semicolon => self.camera.θ[5] = add_ang_norm(self.camera.θ[5], -TURN_SENSITIVITY),
 
             Keycode::V => self.camera.near -= 1. * ZOOM_SENSITIVITY,
             Keycode::B => self.camera.near += 1. * ZOOM_SENSITIVITY,
@@ -348,7 +314,7 @@ impl event::EventHandler for MainState {
     }
 }
 
-pub fn run(shapes: HashMap<i32, Shape>, is_4d: bool) {
+pub fn run(shapes: HashMap<i32, Shape>) {
     // Render lines using ggez.
     let c = conf::Conf {
         window_mode: conf::WindowMode {

@@ -52,7 +52,7 @@ fn main() {
         shapes.insert(id as i32, shape);
     }
 
-    render_ggez::run(shapes, true);
+    render_ggez::run(shapes);
     // gfx_render::main();
 }
 

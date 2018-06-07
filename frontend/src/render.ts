@@ -1,4 +1,7 @@
 import {mat4} from 'gl-matrix'
+import * as shapeMaker from './shapeMaker'
+import * as transforms from './transforms'
+import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
 
 // import {Button, Grid, Row, Col,
 //     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -6,23 +9,17 @@ import {mat4} from 'gl-matrix'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-import * as shapeMaker from './shapeMaker'
-import * as rustClone from './transforms'
-import {ProgramInfo, Shape, Camera, Vec5} from './interfaces'
-import {make_terrain} from "./shapeMaker";
-
-const colorMax = 15  // At this z distance, our blue/red shift fully saturated.
-
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
 
+let colorMax = 15  // At this z distance, our blue/red shift fully saturated.
 let currentlyPressedKeys = {}
 const moveSensitivity = .1
 const rotateSensitivity = .03
 
 function moveCam(unitVec: number[]) {
     // Modifies the global camera
-    const direc = rustClone.make_rotator_4d(cam.θ_4d).dotV(new Vec5(unitVec))
+    const direc = transforms.make_rotator(cam.θ).dotV(new Vec5(unitVec))
     const amount = direc.mul(moveSensitivity)
     cam.position = cam.position.add(amount)
 }
@@ -31,79 +28,166 @@ function handleKeyDown(event: any) {
     currentlyPressedKeys[event.keyCode] = true
     switch(event.keyCode) {
         case 87:  // w
-            // cam.position.vals[2] -= moveSensitivity
-            moveCam([0, 0, 1, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, 0, 1, 0])
+            }
+            event.preventDefault()
             break
         case 83:  // s
-            // cam.position.vals[2] -= moveSensitivity
-            moveCam([0, 0, -1, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, 0, -1, 0])
+            }
             break
         case 68:  // d
-            // cam.position.vals[0] += moveSensitivity
-            moveCam([1, 0, 0, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([1, 0, 0, 0])
+            }
             break
         case 65:  // a
-            // cam.position.vals[0] -= moveSensitivity
-            moveCam([-1, 0, 0, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([-1, 0, 0, 0])
+            }
             break
         case 32:  // Space
-            // cam.position.vals[1] += moveSensitivity
-            moveCam([0, 1, 0, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, 1, 0, 0])
+            }
+            event.preventDefault()
             break
         case 67:  // c
-            // cam.position.vals[1] -= moveSensitivity
-            moveCam([0, -1, 0, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, -1, 0, 0])
+            }
             break
         case 17:  // Control
-            // cam.position.vals[1] -= moveSensitivity
-            moveCam([0, -1, 0, 0])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, -1, 0, 0])
+            }
             break
         case 82:  // r
-            // cam.position.vals[3] += moveSensitivity
-            moveCam([0, 0, 0, 1])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, 0, 0, 1])
+            }
             break
         case 70:  // f
-            // cam.position.vals[3] -= moveSensitivity
-            moveCam([0, 0, 0, -1])
+            if (scene === 0) {
+                console.log()
+            } else {
+                moveCam([0, 0, 0, -1])
+            }
             break
-    // todo add deltaTime!
+        // todo add deltaTime!
         case 38:  // Up
-            cam.θ_4d[1] +=rotateSensitivity
+            if (scene === 0) {
+                shapes.get(0).orientation[1] -=rotateSensitivity
+            } else {
+                cam.θ[1] +=rotateSensitivity
+            }
+            event.preventDefault();
             break
         case 40:  // Down
-            cam.θ_4d[1] -=rotateSensitivity
+            if (scene === 0) {
+                shapes.get(0).orientation[1] +=rotateSensitivity
+            } else {
+                cam.θ[1] -=rotateSensitivity
+            }
+            event.preventDefault();
             break
         case 39:  // Right
-            cam.θ_4d[2] -=rotateSensitivity
+
+            if (scene === 0) {
+                shapes.get(0).orientation[2] +=rotateSensitivity
+            } else {
+                cam.θ[2] -=rotateSensitivity
+            }
+            event.preventDefault();
             break
         case 37:  // Left
-            cam.θ_4d[2] +=rotateSensitivity
+            if (scene === 0) {
+                shapes.get(0).orientation[2] -=rotateSensitivity
+            } else {
+                cam.θ[2] +=rotateSensitivity
+                event.preventDefault();
+            }
             break
         case 69:  // E
-            cam.θ_4d[0] +=rotateSensitivity
+            if (scene === 0) {
+                shapes.get(0).orientation[0] +=rotateSensitivity
+            } else {
+                cam.θ[0] +=rotateSensitivity
+            }
             break
         case 81:  // Q
-            cam.θ_4d[0] -=rotateSensitivity
-            break
-        case 84:  // t
-            cam.θ_4d[3] +=rotateSensitivity
-            break
-        case 71:  // g
-            cam.θ_4d[3] -=rotateSensitivity
-            break
-        case 89:  // y
-            cam.θ_4d[4] +=rotateSensitivity
-            break
-        case 72:  // h
-            cam.θ_4d[4] -=rotateSensitivity
-            break
-        case 85:  // u
-            cam.θ_4d[5] +=rotateSensitivity
-            break
-        case 74:  // j
-            cam.θ_4d[5] -=rotateSensitivity
-            break
+            if (scene === 0) {
+                shapes.get(0).orientation[0] -=rotateSensitivity
 
+            } else {
+                cam.θ[0] -=rotateSensitivity
+            }
+            break
+        case 45:  // Ins
+            if (scene === 0) {
+                shapes.get(0).orientation[3] +=rotateSensitivity
+            } else {
+                cam.θ[3] +=rotateSensitivity
+            }
+            break
+        case 46:  // Del
+            if (scene === 0) {
+                shapes.get(0).orientation[3] -=rotateSensitivity
+            } else {
+                cam.θ[3] -=rotateSensitivity
+            }
+            event.preventDefault();
+            break
+        case 36:  // Home
+            if (scene === 0) {
+                shapes.get(0).orientation[4] +=rotateSensitivity
+            } else {
+                cam.θ[4] +=rotateSensitivity
+            }
+            event.preventDefault();
+            break
+        case 35:  // End
+            if (scene === 0) {
+                shapes.get(0).orientation[4] -=rotateSensitivity
+            } else {
+                cam.θ[4] -=rotateSensitivity
+            }
+            event.preventDefault();
+            break
+        case 33:  // Pgup
+            if (scene === 0) {
+                shapes.get(0).orientation[5] +=rotateSensitivity
+            } else {
+                cam.θ[5] +=rotateSensitivity
+            }
+            event.preventDefault();
+            break
+        case 34:  // Pgdn
+            if (scene === 0) {
+                shapes.get(0).orientation[5] -=rotateSensitivity
+            } else {
+                cam.θ[5] -=rotateSensitivity
+            }
+            event.preventDefault();
+            break
         default:
             break
     }
@@ -111,18 +195,6 @@ function handleKeyDown(event: any) {
 
 function handleKeyUp(event: any) {
     currentlyPressedKeys[event.keyCode] = false;
-}
-
-let cam = {
-    position: new Vec5([0., 0., -3., 0.]),
-    θ_3d: [0., 0., 0.],
-    θ_4d: [0., -.5, 0., 0., 0., 0.],
-    fov: τ / 4.,
-    aspect: 640 / 480.,
-    aspect_4: 1.,
-    far: 30.,
-    near: 0.1,
-    strange: 1.0,
 }
 
 let heightMap = [
@@ -135,11 +207,24 @@ let heightMap = [
     [0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 1.2],
     [0, 1.1, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
     [0, 1.1, 1.1, 1.1, 1.1, 0, 1.3, 1.3, 2.4, 2.2],
-    [0, 1.1, 1.1, 1.1, 1.2, 1.3, 1.3, 1.4, 2.4, 2.8],
+    [0, 1.1, 1.1, 1.1, 1.2, 1.3, 1.3, 1.4, 2.4, 2.8]
+]
+
+let spissMap = [
+    [5, 4, 2, 1.2, 0, 0, 1, 1, 2, 2.5],
+    [5, 3, 2.5, 1.2, 0, 0, 0, 0, 2, 2.5],
+    [5, 4, 2, 1, 2, 0, 0, 0, 2, 2.5],
+    [4, 3, 2, 1, 0, 0, 0, 0, 2, 2.5],
+    [4, 4, 3, 1, 0, 1, 0, 0, 2, 2.5],
+    [6, 4, 3, 3.5, 1, 0, 0, 0, 2, 2.5],
+    [6, 5.5, 5, 3.5, 2, 0, 0, 0, 2, 2.5],
+    [6, 5.5, 5.5, 4, 2, 0, 0, 1, 2, 2.5],
+    [6, 6, 6, 3.5, 2, 0, 0, 0, 2, 1.5],
+    [7, 7, 7, 3.5, 2, 0, 0, 0, 2, 2.5],
 ]
 
 let shape_list = [
-    shapeMaker.make_terrain([20, 20], [10, 10], heightMap, new Vec5([0, 0, 0, 0])),
+    shapeMaker.make_terrain([20, 20], [10, 10], heightMap, spissMap, new Vec5([0, 0, 0, 0])),
 
     shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 0]),
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
@@ -165,14 +250,70 @@ let shape_list = [
 
     // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
     //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
-
 ]
-console.log(shape_list[0], "TER")
-console.log(shape_list[0].nodes, "N")
+
+// let skybox = shapeMaker.make_skybox(100, cam.position)
+
+let scene = 0
 
 let shapes = new Map()
-for (let id=0; id < shape_list.length; id++) {
-    shapes.set(id, shape_list[id])
+
+const defaultCam = new Camera (
+    new Vec5([0., 0., 0., 0.]),
+    [0., 0., 0., 0., 0., 0.],
+    τ / 4.,
+    4 / 3.,
+    1.,
+    100.,
+    0.1,
+    1.0,
+)
+let cam = defaultCam
+
+function setScene(scene_: number) {
+    if (scene_ === 0) {  // Single hypercube
+        cam = new Camera (
+            new Vec5([0., 0., -2., 0.]),
+            [0., 0., 0., 0., 0., 0.],
+            τ / 5.5,
+            4 / 3.,
+            1.,
+            100.,
+            0.1,
+            1.0,
+        )
+
+        shapes = new Map()
+        shapes.set(
+            0,
+            shapeMaker.make_hypercube(1, new Vec5([0, 0, 0, 0]),
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        )
+
+        colorMax = 1.5;
+    } else if (scene_ === 1) {  // Terain with shapes
+        cam = new Camera (
+            new Vec5([0., 0., -3., 0.]),
+            [0., -.5, 0., 0., 0., 0.],
+            τ / 4.,
+            4 / 3.,
+            1.,
+            100.,
+            0.1,
+            1.0,
+        );
+
+        shapes = new Map()
+        for (let id=0; id < shape_list.length; id++) {
+            shapes.set(id, shape_list[id])
+        }
+
+        colorMax = 15
+    } else {
+        cam = defaultCam
+        shapes = new Map()
+        colorMax = 15
+    }
 }
 
 function findColor(dist: number): number[] {
@@ -192,11 +333,6 @@ function findColor(dist: number): number[] {
         return [colorVal, baseGray, baseGray, .3]  // Red
     }
 }
-
-// function glVerticesFromShape(shapes: Map<number, Shape>): number[]{
-//     // WebGL needs us to define a vertex for each face edge; this involves
-//     // duplicating vertices from shapes.
-// }
 
 function initShaderProgram(gl: any, vsSource: any, fsSource: any) {
     // Initialize a shader program, so WebGL knows how to draw our data
@@ -281,7 +417,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
         cam.near,
         cam.far
     )
-        // todo add in Rview and Tview later.
+    // todo add in Rview and Tview later.
 
     // Set the drawing position to the "identity" point, which is
     // the center of the scene.
@@ -372,35 +508,6 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
             shape.orientation[5] += shape.rotation_speed[5]
         }
     )
-}
-
-function processShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Vec5> {
-    // Set up shapes rel to their model, and the camera.  The result is
-    // T must be done last.
-    let result = new Map()
-    let positionedModel
-
-    let negRot = [-cam_.θ_4d[0], -cam_.θ_4d[1], -cam_.θ_4d[2], -cam_.θ_4d[3], -cam_.θ_4d[4], -cam_.θ_4d[5]]
-    const R = rustClone.make_rotator_4d(negRot)
-
-    const negPos = new Vec5([-cam_.position.vals[0], -cam_.position.vals[1], -cam_.position.vals[2],
-        -cam_.position.vals[3], 1])
-    const T = rustClone.make_translator(negPos)
-    // For cam transform, position first; then rotate.
-    const M = R.dotM(T)
-
-    shapes_.forEach(
-        (shape, id, map) => {
-            positionedModel = rustClone.position_shape(shape)
-            positionedModel.forEach(
-                (node, nid, _map) => {
-                    // Map doesn't like tuples/arrays as keys :/
-                    result.set([id, nid].join(','), M.dotV(node))
-                }
-            )
-        }
-    )
-    return result
 }
 
 function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
@@ -547,11 +654,12 @@ function initBuffers(gl: any, processedShapes: Map<string, Vec5>) {
     }
 }
 
-export function gl_main(cam_: Camera) {
+export function gl_main(scene_: number) {
     // Initialize WebGL rendering.
-
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
+
+    setScene(scene_)
 
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
@@ -617,9 +725,9 @@ export function gl_main(cam_: Camera) {
         const deltaTime = now - then;
         then = now;
 
-            // Here's where we call the routine that builds all the
-    // objects we'll be drawing.
-        const processedShapes = processShapes(cam, shapes)
+        // Here's where we call the routine that builds all the
+        // objects we'll be drawing.
+        const processedShapes = transforms.processShapes(cam, shapes)
         const buffers = initBuffers(gl, processedShapes)
 
         drawScene(gl, programInfo, buffers, deltaTime, processedShapes, vertexCount);

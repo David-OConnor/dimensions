@@ -61,10 +61,7 @@ pub struct Camera {
     // Position shifts all points prior to the camera transform; this is what
     // we adjust with move keys.
     pub position: Array1<f64>,
-
-    // θ_3d is in tait-bryan angles. 3 entries for 3d, 6 for 4d.
-    pub θ_3d: Array1<f64>,
-    pub θ_4d: Array1<f64>,
+    pub θ: Array1<f64>,
 
     pub fov: f64,  // Vertical field of view in radians.
     pub aspect: f64,  // width / height.

@@ -2,7 +2,7 @@
 
 import {Shape, Camera, Vec5, Array5} from './interfaces'
 
-export function make_rotator_4d(θ: number[]): Array5 {
+export function make_rotator(θ: number[]): Array5 {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -162,7 +162,7 @@ export function position_shape(shape: Shape): Map<number, Vec5> {
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    const R = make_rotator_4d(shape.orientation)
+    const R = make_rotator(shape.orientation)
     const S = make_scaler(new Vec5([shape.scale, shape.scale, shape.scale, shape.scale]))
     const T = make_translator(shape.position)
 
@@ -181,4 +181,33 @@ export function position_shape(shape: Shape): Map<number, Vec5> {
     }
 
     return positioned_nodes
+}
+
+export function processShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Vec5> {
+    // Set up shapes rel to their model, and the camera.
+    // T must be done last.
+    let result = new Map()
+    let positionedModel
+
+    let negRot = [-cam_.θ[0], -cam_.θ[1], -cam_.θ[2], -cam_.θ[3], -cam_.θ[4], -cam_.θ[5]]
+    const R = make_rotator(negRot)
+
+    const negPos = new Vec5([-cam_.position.vals[0], -cam_.position.vals[1], -cam_.position.vals[2],
+        -cam_.position.vals[3], 1])
+    const T = make_translator(negPos)
+    // For cam transform, position first; then rotate.
+    const M = R.dotM(T)
+
+    shapes_.forEach(
+        (shape, id, map) => {
+            positionedModel = position_shape(shape)
+            positionedModel.forEach(
+                (node, nid, _map) => {
+                    // Map doesn't like tuples/arrays as keys :/
+                    result.set([id, nid].join(','), M.dotV(node))
+                }
+            )
+        }
+    )
+    return result
 }
