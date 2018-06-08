@@ -1,6 +1,7 @@
-import {Camera, Vec5, Shape} from "./interfaces";
+import {Camera, Shape} from "./interfaces";
 import * as transforms from "./transforms";
 import * as shapeMaker from "./shapeMaker";
+import {makeV5} from './util'
 
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
@@ -13,7 +14,7 @@ export const moveSensitivity = .1
 export const rotateSensitivity = .017
 
 const defaultCam = new Camera (
-    new Vec5([0., 0., 0., 0.]),
+    makeV5([0., 0., 0., 0.]),
     [0., 0., 0., 0., 0., 0.],
     τ / 4.,
     4 / 3.,

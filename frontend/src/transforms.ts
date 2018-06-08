@@ -1,8 +1,24 @@
 // This file mirrors transforms.rs.
 
-import {Shape, Camera, Vec5, Array5} from './interfaces'
+import {dotMM5, dotMV5, mulVConst5, addVecs5, makeV5} from './util'
+import {Shape, Camera} from './interfaces'
+import * as state from "./state";
 
-export function make_rotator(θ: number[]): Array5 {
+export function moveCam(unitVec: Float32Array, fps: boolean) {
+    // Modifies the global camera
+    // With first-person-shooter controls, ignore all input except rotation
+    // around the y axis.
+    const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
+
+    const direc = dotMV5(make_rotator(θ), unitVec)
+    const amount = mulVConst5(direc, state.moveSensitivity)
+
+    state.cam.position = addVecs5(state.cam.position, amount)
+    // The skybox moves with the camera, but doesn't rotate with it.
+    state.skybox.position = addVecs5(state.cam.position, amount)
+}
+
+export function make_rotator(θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -28,86 +44,86 @@ export function make_rotator(θ: number[]): Array5 {
     // 3 axes ?  xyz  yzu  zux  uxy
 
     // Rotations around the xy, yz, and xz planes should appear normal.
-    let R_xy = new Array5([
-        [cos_xy, sin_xy, 0., 0., 0.],
-        [-sin_xy, cos_xy, 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
+    let R_xy = Float32Array.from([
+        cos_xy, sin_xy, 0., 0., 0.,
+        -sin_xy, cos_xy, 0., 0., 0.,
+        0., 0., 1., 0., 0.,
+        0., 0., 0., 1., 0.,
+        0., 0., 0., 0., 1.
     ])
 
-    const R_yz = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., cos_yz, sin_yz, 0., 0.],
-        [0., -sin_yz, cos_yz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
+    const R_yz = Float32Array.from([
+        1., 0., 0., 0., 0.,
+        0., cos_yz, sin_yz, 0., 0.,
+        0., -sin_yz, cos_yz, 0., 0.,
+        0., 0., 0., 1., 0.,
+        0., 0., 0., 0., 1.
     ])
 
-    const R_xz = new Array5([
-        [cos_xz, 0., -sin_xz, 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [sin_xz, 0., cos_xz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
+    const R_xz = Float32Array.from([
+        cos_xz, 0., -sin_xz, 0., 0.,
+        0., 1., 0., 0., 0.,
+        sin_xz, 0., cos_xz, 0., 0.,
+        0., 0., 0., 1., 0.,
+        0., 0., 0., 0., 1.
     ])
 
     // Rotations involving u, the fourth dimension, should distort 3d objects.
-    const R_xu = new Array5([
-        [cos_xu, 0., 0., sin_xu, 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [-sin_xu, 0., 0., cos_xu, 0.],
-        [0., 0., 0., 0., 1.]
+    const R_xu = Float32Array.from([
+        cos_xu, 0., 0., sin_xu, 0.,
+        0., 1., 0., 0., 0.,
+        0., 0., 1., 0., 0.,
+        -sin_xu, 0., 0., cos_xu, 0.,
+        0., 0., 0., 0., 1.
     ])
 
-    const R_yu = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., cos_yu, 0., -sin_yu, 0.],
-        [0., 0., 1., 0., 0.],
-        [0., sin_yu, 0., cos_yu, 0.],
-        [0., 0., 0., 0., 1.]
+    const R_yu = Float32Array.from([
+        1., 0., 0., 0., 0.,
+        0., cos_yu, 0., -sin_yu, 0.,
+        0., 0., 1., 0., 0.,
+        0., sin_yu, 0., cos_yu, 0.,
+        0., 0., 0., 0., 1.
     ])
 
-    const R_zu = new Array5([
-        [1., 0., 0., 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., cos_zu, -sin_zu, 0.],
-        [0., 0., sin_zu, cos_zu, 0.],
-        [0., 0., 0., 0., 1.]
+    const R_zu = Float32Array.from([
+        1., 0., 0., 0., 0.,
+        0., 1., 0., 0., 0.,
+        0., 0., cos_zu, -sin_zu, 0.,
+        0., 0., sin_zu, cos_zu, 0.,
+        0., 0., 0., 0., 1.
     ])
 
     // Combine the rotations.
-    const R_1 = R_xy.dotM(R_yz.dotM(R_xz))
-    const R_2 = R_xu.dotM(R_yu.dotM(R_zu))
-    return R_1.dotM(R_2)
+    const R_1 = dotMM5(R_xy, dotMM5(R_yz, R_xz))
+    const R_2 = dotMM5(R_xu, dotMM5(R_yu, R_zu))
+    return dotMM5(R_1, R_2)
 }
 
-export function make_translator(position: Vec5): Array5 {
+export function make_translator(position: Float32Array): Float32Array {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
-    return new Array5([
-        [1., 0., 0., 0., position.vals[0]],
-        [0., 1., 0., 0., position.vals[1]],
-        [0., 0., 1., 0., position.vals[2]],
-        [0., 0., 0., 1., position.vals[3]],
-        [0., 0., 0., 0., 1.]
+    return Float32Array.from([
+        1., 0., 0., 0., position[0],
+        0., 1., 0., 0., position[1],
+        0., 0., 1., 0., position[2],
+        0., 0., 0., 1., position[3],
+        0., 0., 0., 0., 1.
     ])
 }
 
-export function make_scaler(scale: Vec5): Array5 {
+export function make_scaler(scale: Float32Array): Float32Array {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    return new Array5([
-        [scale.vals[0], 0., 0., 0., 0.],
-        [0., scale.vals[1], 0., 0., 0.],
-        [0., 0., scale.vals[2], 0., 0.],
-        [0., 0., 0., scale.vals[3], 0.],
-        [0., 0., 0., 0., 1.]
+    return Float32Array.from([
+        scale[0], 0., 0., 0., 0.,
+        0., scale[1], 0., 0., 0.,
+        0., 0., scale[2], 0., 0.,
+        0., 0., 0., scale[3], 0.,
+        0., 0., 0., 0., 1.
     ])
 }
 
-export function make_projector(cam: Camera): Array5 {
+export function make_projector(cam: Camera): Float32Array {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -143,27 +159,28 @@ export function make_projector(cam: Camera): Array5 {
     // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
     // as a decaying exponential from -1 to +1.
 
-    return new Array5([
-        [x_scale, 0., 0., 0., 0.],
-        [0., y_scale, 0., 0., 0.],
-        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-            (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
+    return Float32Array.from([
+        x_scale, 0., 0., 0., 0.,
+        0., y_scale, 0., 0., 0.,
+        0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+            (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.,
         // u_scale is, ultimately, not really used.
-        [0., 0., 0., u_scale, 0.],
+        0., 0., 0., u_scale, 0.,
         // This row allows us to divide by z after taking the dot product,
         // as part of our scaling operation.
-        [0., 0., 1., 0., 1.],
+        0., 0., 1., 0., 1.,
     ])
 }
 
-export function position_shape(shape: Shape): Map<number, Vec5> {
+export function position_shape(shape: Shape): Map<number, Float32Array> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     const R = make_rotator(shape.orientation)
-    const S = make_scaler(new Vec5([shape.scale, shape.scale, shape.scale, shape.scale]))
+    const S = make_scaler(Float32Array.from([shape.scale, shape.scale,
+        shape.scale, shape.scale, shape.scale]))
     const T = make_translator(shape.position)
 
     let positioned_nodes = new Map()
@@ -172,42 +189,231 @@ export function position_shape(shape: Shape): Map<number, Vec5> {
         let node: any = shape.nodes.get(id)
         // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
         // then rotate, then translate.
-        const homogenous = new Vec5([node.a.vals[0], node.a.vals[1],
-            node.a.vals[2], node.a.vals[3], 1.])
 
-        const transform = T.dotM(R.dotM(S))
-        const new_pt = transform.dotV(homogenous)
-        positioned_nodes.set(id, new_pt)
+        const transform = dotMM5(T, dotMM5(R, S))
+        const newPt = dotMV5(transform, node.a)
+        positioned_nodes.set(id, newPt)
     }
 
     return positioned_nodes
 }
 
-export function processShapes(cam_: Camera, shapes_: Map<number, Shape>): Map<string, Vec5> {
+export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
     // Set up shapes rel to their model, and the camera.
     // T must be done last.
     let result = new Map()
     let positionedModel
 
-    let negRot = [-cam_.θ[0], -cam_.θ[1], -cam_.θ[2], -cam_.θ[3], -cam_.θ[4], -cam_.θ[5]]
+    let negRot = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
     const R = make_rotator(negRot)
 
-    const negPos = new Vec5([-cam_.position.vals[0], -cam_.position.vals[1], -cam_.position.vals[2],
-        -cam_.position.vals[3], 1])
+    const negPos = Float32Array.from([-cam.position[0],
+        -cam.position[1], -cam.position[2],
+        -cam.position[3], 1])
     const T = make_translator(negPos)
     // For cam transform, position first; then rotate.
-    const M = R.dotM(T)
+    const M = dotMM5(R, T)
 
-    shapes_.forEach(
+    shapes.forEach(
         (shape, id, map) => {
             positionedModel = position_shape(shape)
             positionedModel.forEach(
                 (node, nid, _map) => {
                     // Map doesn't like tuples/arrays as keys :/
-                    result.set([id, nid].join(','), M.dotV(node))
+                    result.set([id, nid].join(','), dotMV5(M, node))
                 }
             )
         }
     )
     return result
+}
+
+export function handleKeyDown(event: any, scene_: number) {
+    // Add if it's not already there.
+    if (state.currentlyPressedKeys.indexOf(event.keyCode) === -1) {
+        state.currentlyPressedKeys.push(event.keyCode)
+    }
+
+    for (let code of state.currentlyPressedKeys) {
+        switch(code) {
+            case 87:  // w
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    moveCam(makeV5([0, 0, 1, 0]), true)
+                } else {
+                    moveCam(makeV5([0, 0, 1, 0]), false)
+                }
+                event.preventDefault()
+                break
+            case 83:  // s
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, 0, -1, 0]), false)
+                }
+                break
+            case 68:  // d
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([1, 0, 0, 0]), false)
+                }
+                break
+            case 65:  // a
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([-1, 0, 0, 0]), false)
+                }
+                break
+            case 32:  // Space
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, 1, 0, 0]), false)
+                }
+                event.preventDefault()
+                break
+            case 67:  // c
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, -1, 0, 0]), false)
+                }
+                break
+            case 17:  // Control
+                if (scene_ === 0) {
+                    console.log()
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, -1, 0, 0]), false)
+                }
+                break
+            case 82:  // r
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, 0, 0, 1]), false)
+                }
+                break
+            case 70:  // f
+                if (scene_ === 0) {
+                    console.log()
+                } else {
+                    moveCam(makeV5([0, 0, 0, -1]), false)
+                }
+                break
+            // todo add deltaTime!
+            case 38:  // Up
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[1] -= state.rotateSensitivity
+                } else {
+                    state.cam.θ[1] += state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 40:  // Down
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[1] += state.rotateSensitivity
+                } else {
+                    state.cam.θ[1] -= state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 39:  // Right
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[2] += state.rotateSensitivity
+                } else {
+                    state.cam.θ[2] -= state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 37:  // Left
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[2] -= state.rotateSensitivity
+                } else {
+                    state.cam.θ[2] += state.rotateSensitivity
+                    event.preventDefault();
+                }
+                break
+            case 69:  // E
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[0] += state.rotateSensitivity
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    state.cam.θ[0] += state.rotateSensitivity
+                }
+                break
+            case 81:  // Q
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[0] -= state.rotateSensitivity
+                } else if (scene_ === 2) {
+                    console.log()
+                } else {
+                    state.cam.θ[0] -= state.rotateSensitivity
+                }
+                break
+            case 45:  // Ins
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[3] += state.rotateSensitivity
+                } else {
+                    state.cam.θ[3] += state.rotateSensitivity
+                }
+                break
+            case 46:  // Del
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[3] -= state.rotateSensitivity
+                } else {
+                    state.cam.θ[3] -= state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 36:  // Home
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[4] += state.rotateSensitivity
+                } else {
+                    state.cam.θ[4] += state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 35:  // End
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[4] -= state.rotateSensitivity
+                } else {
+                    state.cam.θ[4] -= state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 33:  // Pgup
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[5] += state.rotateSensitivity
+                } else {
+                    state.cam.θ[5] += state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            case 34:  // Pgdn
+                if (scene_ === 0) {
+                    state.shapes.get(0).orientation[5] -= state.rotateSensitivity
+                } else {
+                    state.cam.θ[5] -= state.rotateSensitivity
+                }
+                event.preventDefault();
+                break
+            default:
+                break
+        }
+    }
+}
+
+export function handleKeyUp(event: any) {
+    let index = state.currentlyPressedKeys.indexOf(event.keyCode)
+    if (index !== -1) { state.currentlyPressedKeys.splice(index, 1) }
 }

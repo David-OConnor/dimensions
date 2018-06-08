@@ -1,110 +1,102 @@
 
-// Note: This custom matrix and vector types shouldn't be needed; but haven't
-// found a suitable npm package for Vec5s. (Existing ones seem broken).
-export class Vec5 {
-    vals: number[]
-
-    constructor(vals: number[]) {
-        if (vals.length === 4) {
-            this.vals = vals
-            this.vals.push(1)  // Augment
-        } else if (vals.length === 5) {
-            this.vals = vals
-        } else {
-            throw "Must have 4 or 5 elements."
-        }
-
-    }
-
-    add(other: Vec5): Vec5 {
-        const newVals = [
-            this.vals[0] + other.vals[0],
-            this.vals[1] + other.vals[1],
-            this.vals[2] + other.vals[2],
-            this.vals[3] + other.vals[3],
-            this.vals[4] + other.vals[4]
-        ]
-        return new Vec5(newVals)
-    }
-
-    mul(val: number): Vec5 {
-        // Multiply by a constant
-        return new Vec5([
-            this.vals[0] * val,
-            this.vals[1] * val,
-            this.vals[2] * val,
-            this.vals[3] * val,
-            this.vals[4] * val
-        ])
-    }
-
-    toGl(): Float32Array {
-        // Convert to the linear, 4-element Float32Array WebGl uses.
-        // u is discarded.
-        return new Float32Array([this.vals[0], this.vals[1], this.vals[2], 1])
-    }
-}
-
-export class Array5 {
-    vals: number[][]
-
-    constructor(vals: number[][]) {
-        if (vals.length !== 5) {
-            throw ("Array5 must be 5x5")
-        }
-
-        this.vals = vals
-    }
-
-    dotM(other: Array5): Array5 {
-        // Dot with another 5x5 matrix.
-        let result = [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
-        ]
-
-        for (let i0=0; i0 < 5; i0++) {
-            for (let i1 = 0; i1 < 5; i1++) {
-                for (let j = 0; j < 5; j++) {
-                    result[i0][i1] += this.vals[i0][j] * other.vals[j][i1]
-                }
-
-            }
-        }
-        return new Array5(result)
-    }
-
-    dotV(other: Vec5): Vec5 {
-        let result = [0, 0, 0, 0, 0]
-
-        for (let i=0; i < 5; i++) {
-            for (let j=0; j < 5; j++) {
-                result[i] += this.vals[i][j] * other.vals[j]
-            }
-        }
-
-        return new Vec5(result)
-    }
-
-    toGl(): Float32Array {
-        // Convert to the linear, 16-element (4x4) Float32Array WebGl uses.
-        // u is discarded.
-        return new Float32Array([
-            this.vals[0][0], this.vals[0][1], this.vals[0][2], this.vals[0][4],
-            this.vals[1][0], this.vals[1][1], this.vals[1][2], this.vals[1][4],
-            this.vals[2][0], this.vals[2][1], this.vals[2][2], this.vals[2][4],
-            // The 4th row, corresponding to u, is discarded. As is the fourth col.
-            this.vals[4][0], this.vals[4][1], this.vals[4][2], this.vals[4][4]
-        ])
-    }
-}
+// // Note: This custom matrix and vector types shouldn't be needed; but haven't
+// // found a suitable npm package for Vec5s. (Existing ones seem broken).
+// export class Vec5 {
+//     vals: Float32Array
+//
+//     constructor(vals: Float32Array) {
+//         if (vals.length !== 5) {throw "Vec5 length must be 5"}
+//         this.vals = vals
+//     }
+//
+//     add(other: Vec5): Vec5 {
+//         return new Vec5(Float32Array.from([
+//             this.vals[0] + other.vals[0],
+//             this.vals[1] + other.vals[1],
+//             this.vals[2] + other.vals[2],
+//             this.vals[3] + other.vals[3],
+//             this.vals[4] + other.vals[4]
+//         ]))
+//     }
+//
+//     mul(val: number): Vec5 {
+//         // Multiply by a constant
+//         return new Vec5(Float32Array.from([
+//             this.vals[0] * val,
+//             this.vals[1] * val,
+//             this.vals[2] * val,
+//             this.vals[3] * val,
+//             this.vals[4] * val
+//         ]))
+//     }
+//
+//     toGl(): Float32Array {
+//         // Discard u.
+//         return new Float32Array([this.vals[0], this.vals[1], this.vals[2], 1])
+//     }
+// }
+//
+// export class Array5 {
+//     vals: number[][]
+//
+//     constructor(vals: number[][]) {
+//         if (vals.length !== 5) {
+//             throw ("Array5 must be 5x5")
+//         }
+//
+//         this.vals = vals
+//     }
+//
+//     dotM(other: Array5): Array5 {
+//         // Dot with another 5x5 matrix.
+//         let result = [
+//             [0, 0, 0, 0, 0],
+//             [0, 0, 0, 0, 0],
+//             [0, 0, 0, 0, 0],
+//             [0, 0, 0, 0, 0],
+//             [0, 0, 0, 0, 0]
+//         ]
+//
+//         for (let i0=0; i0 < 5; i0++) {
+//             for (let i1 = 0; i1 < 5; i1++) {
+//                 for (let j = 0; j < 5; j++) {
+//                     result[i0][i1] += this.vals[i0][j] * other.vals[j][i1]
+//                 }
+//
+//             }
+//         }
+//         return new Array5(result)
+//     }
+//
+//     dotV(other: Vec5): Vec5 {
+//         // Dot with a vector.
+//         let result = [0, 0, 0, 0, 0]
+//
+//         for (let i=0; i < 5; i++) {
+//             for (let j=0; j < 5; j++) {
+//                 result[i] += this.vals[i][j] * other.vals[j]
+//             }
+//         }
+//
+//         return new Vec5(Float32Array.from(result))
+//     }
+//
+//     toGl(): Float32Array {
+//         // Convert to the linear, 16-element (4x4) Float32Array WebGl uses.
+//         // u is discarded.
+//         return new Float32Array([
+//             this.vals[0][0], this.vals[0][1], this.vals[0][2], this.vals[0][4],
+//             this.vals[1][0], this.vals[1][1], this.vals[1][2], this.vals[1][4],
+//             this.vals[2][0], this.vals[2][1], this.vals[2][2], this.vals[2][4],
+//             // The 4th row, corresponding to u, is discarded. As is the fourth col.
+//             this.vals[4][0], this.vals[4][1], this.vals[4][2], this.vals[4][4]
+//         ])
+//     }
+// }
 
 export class Node2 {
-    a: Vec5
-    constructor(a: Vec5) {
+    a: Float32Array
+    constructor(a: Float32Array) {
         this.a = a
     }
 }
@@ -134,14 +126,14 @@ export class Shape {
     // iterating over over faces/edges due to edges being used in multiple directions.
     // Vertex indices for each face.
     faces_vert: number[][]
-    position: Vec5
+    position: Float32Array
     scale: number
     orientation: number[]
     rotation_speed: number[]
     tris: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[], faces_vert: number[][],
-                position: Vec5, orientation: number[],
+                position: Float32Array, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
@@ -213,7 +205,7 @@ export class Shape {
 
 export class Camera {
     // See Rust's Camera struct for information.
-    position: Vec5
+    position: Float32Array
     θ: number[]
     fov: number
     aspect: number
@@ -222,7 +214,7 @@ export class Camera {
     far: number
     strange: number
 
-    constructor(position: Vec5, θ: number[],
+    constructor(position: Float32Array, θ: number[],
                 fov: number, aspect: number, aspect_4: number,
                 near: number, far: number, strange: number) {
         this.position = position

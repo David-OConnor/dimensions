@@ -2,10 +2,10 @@
 // interoperability. Uses semicolons in many places, other like other parts
 // of the frontend.
 
-import {Shape, Node2, Edge, Face, Vec5} from "./interfaces";
+import {Shape, Node2, Edge, Face} from "./interfaces"
 
 export function make_box(lens: [number, number, number],
-                         position: Vec5, orientation: number[],
+                         position: Float32Array, orientation: number[],
                          rotation_speed: number[]): Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
@@ -27,8 +27,8 @@ export function make_box(lens: [number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
-            coord[2] * lens[2]/2, coord[3]])));
+        nodes.set(id, new Node2(Float32Array.from([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+            coord[2] * lens[2]/2, coord[3]])))
     }
 
     const edges = [
@@ -80,7 +80,7 @@ export function make_box(lens: [number, number, number],
 }
 
 export function make_cube(side_len: number,
-                          position: Vec5, orientation: number[],
+                          position: Float32Array, orientation: number[],
                           rotation_speed: number[]): Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
@@ -88,7 +88,7 @@ export function make_cube(side_len: number,
 }
 
 export function make_rectangular_pyramid(lens: [number, number, number],
-                                         position: Vec5, orientation: number[],
+                                         position: Float32Array, orientation: number[],
                                          rotation_speed: number[]): Shape {
     const coords = [
         // Base
@@ -103,9 +103,9 @@ export function make_rectangular_pyramid(lens: [number, number, number],
 
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
-        let coord = coords[id];
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
-            coord[2] * lens[2]/2, coord[3]/2])));
+        let coord = coords[id]
+        nodes.set(id, new Node2(Float32Array.from([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+            coord[2] * lens[2]/2, coord[3]/2])))
     }
 
     const edges = [
@@ -147,7 +147,7 @@ export function make_rectangular_pyramid(lens: [number, number, number],
 }
 
 export function make_house(lens: [number, number, number],
-                           position: Vec5,
+                           position: Float32Array,
                            orientation: number[],
                            rotation_speed: number[]): Shape {
     const empty_array = [0., 0., 0., 0., 0., 0.];
@@ -159,7 +159,7 @@ export function make_house(lens: [number, number, number],
         // Let the roof overhang the base by a little.
         // Make the roof height a portion of the base height.
         [lens[0] * 1.2, lens[1] / 3., lens[2] * 1.2],
-        new Vec5([0, 0, 0, 0]), empty_array, empty_array
+        Float32Array.from([0, 0, 0, 0]), empty_array, empty_array
     );
 
     // Now that we've made the shapes, recompose them to be one shape.
@@ -170,7 +170,7 @@ export function make_house(lens: [number, number, number],
         (node, id, map) => {
             let lifted_node = node;
             // Raise the roof
-            lifted_node.a.vals[1] += lens[1] / 2.
+            lifted_node.a[1] += lens[1] / 2.
             base.nodes.set(
                 id + base_node_count,
                 lifted_node
@@ -199,7 +199,7 @@ export function make_house(lens: [number, number, number],
 }
 
 export function make_hyperrect(lens: [number, number, number, number],
-                               position: Vec5, orientation: number[],
+                               position: Float32Array, orientation: number[],
                                rotation_speed: number[]): Shape {
     // Make a 4d hypercube.
     const coords = [
@@ -231,7 +231,7 @@ export function make_hyperrect(lens: [number, number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2(new Vec5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+        nodes.set(id, new Node2(Float32Array.from([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3] * lens[3]/2])))
     }
 
@@ -323,14 +323,14 @@ export function make_hyperrect(lens: [number, number, number, number],
 }
 
 export function make_hypercube(side_len: number,
-                               position: Vec5, orientation: number[],
+                               position: Float32Array, orientation: number[],
                                rotation_speed: number[]): Shape {
     // Convenience function.
     return make_hyperrect([side_len, side_len, side_len, side_len],
         position, orientation, rotation_speed)
 }
 
-export function make_origin(len: number, position: Vec5,
+export function make_origin(len: number, position: Float32Array,
                             orientation: number[], rotation_speed: number[]): Shape {
     // A 4-dimensional cross, for marking the origin.
     const coords = [
@@ -349,7 +349,7 @@ export function make_origin(len: number, position: Vec5,
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
         // todo should have better vector arithmetic
-        nodes.set(id, new Node2(new Vec5([coord[0] * len, coord[1] * len,
+        nodes.set(id, new Node2(Float32Array.from([coord[0] * len, coord[1] * len,
             coord[2] * len, coord[3] * len])))
     }
     const edges = [
@@ -364,7 +364,7 @@ export function make_origin(len: number, position: Vec5,
 
 export function make_terrain(dims: [number, number], res: number,
                              heightMap: number[][], spissitudeMap: number[][],
-                             position: Vec5): Shape {
+                             position: Float32Array): Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // u and y mappings for each x/z point...
@@ -394,7 +394,7 @@ export function make_terrain(dims: [number, number], res: number,
             }
             // todo you could change which planes this is over by rearranging
             // todo these node points.
-            nodes.set(id, new Node2(new Vec5([
+            nodes.set(id, new Node2(Float32Array.from([
                 x,
                 height,
                 z,
@@ -408,24 +408,24 @@ export function make_terrain(dims: [number, number], res: number,
 
     let edges = [];
     let faces: Face[] = [];  // todo later
-    let faces_vert = [];
     let row_adder = 0;
 
+    let faces_vert = [];
     // todo need front and right edges of overall terrain.
-    for (let i=0; i < res[0] - 1; i++) {
-        for (let j=0; j < res[1] - 1; j++) {
+    for (let i=0; i < res - 1; i++) {
+        for (let j=0; j < res - 1; j++) {
             edges.push(new Edge(row_adder + j, row_adder + j + 1));  // edges across constant x
-            edges.push(new Edge(row_adder + j, row_adder + j + res[0]));  // edges across constant z
+            edges.push(new Edge(row_adder + j, row_adder + j + res));  // edges across constant z
 
             // Build from the back-left corner of each face.
             faces_vert.push([
                 row_adder + j,  // back left
                 row_adder + j + 1,  // back right
-                row_adder + j + res[0],  // front right
-                row_adder + j + res[0] + 1  // front left
+                row_adder + j + res,  // front right
+                row_adder + j + res + 1  // front left
             ]);
         }
-        row_adder += res[0];
+        row_adder += res;
     }
 
     return new Shape(nodes, edges, faces, faces_vert, position,
@@ -435,21 +435,21 @@ export function make_terrain(dims: [number, number], res: number,
 export function make_cube_hypergrid(dims: [number, number, number],
                                     res: number,
                                     spissitudeMap: number[][][],
-                                    position: Vec5): Map<number, Shape> {
-    console.log("MAKING A GRID")
+                                    position: Float32Array): Map<number, Shape> {
     // Position is the center.
     // todo incorporate position.
     let result = new Map()
 
+    let y, z
     let x = -dims[0] / 2.
-    let y = -dims[1] / 2.
-    let z = -dims[2] / 2.
     for (let i=0; i < res; i++) {  // x
+        y = -dims[1] / 2.
         for (let j=0; j < res; j++) {  // y
+            z = -dims[2] / 2.
             for (let k=0; k < res; k++) {  // z
                 result.set(
                     Math.pow(res, 2) * i + res * j + k,
-                    make_cube(.5, new Vec5([x, y, z, spissitudeMap[i][j][k]]),
+                    make_cube(.5, Float32Array.from([x, y, z, spissitudeMap[i][j][k]]),
                               [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
                 )
                 z += dims[2] / res
@@ -463,11 +463,11 @@ export function make_cube_hypergrid(dims: [number, number, number],
 
 // export function make_hypergrid(dims: [number, number, number],
 //                                spissitudeMap: number[][][],
-//                                position: Vec5): Shape {
+//                                position: Float32Array): Shape {
 //
 // }
 
-export function make_5cell(radius: number, position: Vec5, orientation: number[],
+export function make_5cell(radius: number, position: Float32Array, orientation: number[],
                            rotation_speed: number[]): Shape {
     // AKA pentachoron, or tetrahedral pyramid
     // https://en.wikipedia.org/wiki/5-cell
@@ -485,8 +485,8 @@ export function make_5cell(radius: number, position: Vec5, orientation: number[]
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(new Vec5([coord[0] * radius/2., coord[1] * radius/2.,
-            coord[2] * radius/2., coord[3] * radius/2.])));
+        nodes.set(id, new Node2(Float32Array.from([coord[0] * radius/2., coord[1] * radius/2.,
+            coord[2] * radius/2., coord[3] * radius/2.])))
     }
 
     const edges = [
@@ -542,6 +542,6 @@ export function make_5cell(radius: number, position: Vec5, orientation: number[]
         orientation, rotation_speed)
 }
 
-export function make_skybox(len: number, position: Vec5): Shape {
+export function make_skybox(len: number, position: Float32Array): Shape {
     return make_cube(len, position, [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }

@@ -3,7 +3,9 @@ import * as shapeMaker from './shapeMaker'
 import * as transforms from './transforms'
 import * as state from './state'
 import * as util from './util'
-import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
+import {makeV5} from './util'
+import {Camera, ProgramInfo, Shape} from './interfaces'
+import {types} from "util";
 
 // import {Button, Grid, Row, Col,
 //     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -12,6 +14,7 @@ import {Camera, ProgramInfo, Shape, Vec5} from './interfaces'
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 const τ = 2 * Math.PI
+const empty = makeV5([0, 0, 0, 0])
 
 let heightMap = [
     [1.3, 1.3, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
@@ -81,13 +84,13 @@ const housePositions = [
 ]
 
 const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
-    new Vec5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]) )
+    makeV5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
 
 function setScene(scene: number, shape: number) {
-    document.onkeydown = e => util.handleKeyDown(e, scene)
+    document.onkeydown = e => transforms.handleKeyDown(e, scene)
     if (scene === 0) {  // Single hypercube
         state.setCam(new Camera(
-            new Vec5([0., 0., -2., 0.]),
+            makeV5([0., 0., -2., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 5.5,
             4 / 3.,
@@ -99,23 +102,25 @@ function setScene(scene: number, shape: number) {
 
         let selectedShape
         if (shape === 0) {
-            selectedShape = shapeMaker.make_hypercube(1, new Vec5([0, 0, 0, 0]),
+            selectedShape = shapeMaker.make_hypercube(1, empty,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else if (shape === 1) {
-            selectedShape = shapeMaker.make_5cell(2, new Vec5([0, 0, 0, 0]),
+            selectedShape = shapeMaker.make_5cell(2, empty,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else {
             throw "Oops; a non-existant key was selected. :("
         }
-        state.shapes.set(
+        let shapes = new Map()
+        shapes.set(
             0,
             selectedShape
         )
+        state.setShapes(shapes)
 
         state.setColorMax(1.5)
     } else if (scene === 1) {  // Terain with shapes
         state.setCam(new Camera(
-            new Vec5([0., 2., -3., 0.]),
+            makeV5([0., 2., -3., 0.]),
             [0., -.5, 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
@@ -126,25 +131,25 @@ function setScene(scene: number, shape: number) {
         ))
 
         let shapeList0 = [
-            shapeMaker.make_terrain([20, 20], 10, heightMap, spissMap, new Vec5([0, 0, 0, 0])),
+            shapeMaker.make_terrain([20, 20], 10, heightMap, spissMap, empty),
 
-            shapeMaker.make_box([1, 2, 1], new Vec5([-1, 3, 4, 1]),
+            shapeMaker.make_box([1, 2, 1], makeV5([-1, 3, 4, 1]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-            shapeMaker.make_rectangular_pyramid([2, 1, 2], new Vec5([-2, 3, 3, -1]),
+            shapeMaker.make_rectangular_pyramid([2, 1, 2], makeV5([-2, 3, 3, -1]),
                 [τ/6, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
-            shapeMaker.make_cube(1, new Vec5([2, 0, 5, 2]),
+            shapeMaker.make_cube(1, makeV5([2, 0, 5, 2]),
                 [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
             // On ana of other cube.
-            shapeMaker.make_cube(1, new Vec5([2, 0, 5, 10]),
+            shapeMaker.make_cube(1, makeV5([2, 0, 5, 10]),
                 [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
 
-            shapeMaker.make_hypercube(1, new Vec5([3, 3, 3, 0]),
+            shapeMaker.make_hypercube(1, makeV5([3, 3, 3, 0]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, .002, .0005, .001]),
 
-            shapeMaker.make_hypercube(1, new Vec5([-3, 1, 0, 1.5]),
+            shapeMaker.make_hypercube(1, makeV5([-3, 1, 0, 1.5]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
 
             // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
@@ -160,7 +165,7 @@ function setScene(scene: number, shape: number) {
         state.setColorMax(10)
     } else if (scene === 2) {  // Terain with shapes
         state.setCam(new Camera(
-            new Vec5([0., 3., -3., 0.]),
+            makeV5([0., 3., -3., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
@@ -171,7 +176,8 @@ function setScene(scene: number, shape: number) {
         ))
 
         let shapeTownList = [
-            shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat, new Vec5([0, 0, 0, 0])),
+            shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat, 
+                empty),
             ...houses
         ]
 
@@ -184,7 +190,7 @@ function setScene(scene: number, shape: number) {
         state.setColorMax(30)
     } else if (scene === 3) {  // Hypergrid
         state.setCam(new Camera(
-            new Vec5([0., 0., 0., 0.]),
+            makeV5([0., 0., 0., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
@@ -205,7 +211,7 @@ function setScene(scene: number, shape: number) {
         ]
 
         state.setShapes(
-            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, mapTest3d, new Vec5([0, 0, 0, 0]))
+            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, mapTest3d, empty)
         )
         state.setColorMax(30)
     } else {
@@ -277,8 +283,7 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                    pfBuffers: any,
                    I_4: Float32Array,
                    projectionMatrix: Float32Array,
-                   deltaTime: number,
-                   processedShapes: Map<string, Vec5>, vertexCount: number) {
+                   processedShapes: Map<string, Float32Array>, vertexCount: number) {
 
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -366,16 +371,14 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
         programInfo.uniformLocations.modelViewMatrix,
         false,
         I_4)
-
     {
         const type = gl.UNSIGNED_SHORT
         const offset = 0
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
-        // gl.drawArrays(gl.TRIANGLES, 0, 3)
     }
 }
 
-function perFrameBuffers(gl: any, processedShapes: Map<string, Vec5>) {
+function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
     const positionBuffer = gl.createBuffer()
     // Select the positionBuffer as the one to apply buffer
     // operations to from here out.
@@ -391,9 +394,9 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Vec5>) {
                 for (let vertex_i of face) {
                     // Map doesn't like tuples as keys :/
                     vertex = processedShapes.get([s_id, vertex_i].join(',')) as any
-                    positions.push(vertex.vals[0])
-                    positions.push(vertex.vals[1])
-                    positions.push(vertex.vals[2])
+                    positions.push(vertex[0])
+                    positions.push(vertex[1])
+                    positions.push(vertex[2])
                 }
             }
         }
@@ -409,8 +412,8 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Vec5>) {
         (shape, s_id, map) => {
             for (let face of shape.faces_vert) {
                 for (let vertI of face) {
-                    let zDist = (processedShapes.get([s_id, vertI].join(',')) as any).vals[3] -
-                        state.cam.position.vals[3]
+                    let zDist = (processedShapes.get([s_id, vertI].join(',')) as any)[3] -
+                        state.cam.position[3]
                     faceColors.push(findColor(zDist))
                 }
             }
@@ -440,9 +443,9 @@ function initBuffers(gl: any) {
     const sbPositions: any = []
     state.skybox.faces_vert.map(face => face.map(vertex_i => {
         vertex = state.processedSkybox.get([0, vertex_i].join(',')) as any
-        sbPositions.push(vertex.vals[0])
-        sbPositions.push(vertex.vals[1])
-        sbPositions.push(vertex.vals[2])
+        sbPositions.push(vertex[0])
+        sbPositions.push(vertex[1])
+        sbPositions.push(vertex[2])
     }))
 
     // Now pass the list of positions into WebGL to build the
@@ -544,7 +547,7 @@ export function gl_main(scene_: number, shape_: number) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-    document.onkeyup = util.handleKeyUp
+    document.onkeyup = transforms.handleKeyUp
 
     // Vertex shader program
     const vsSource = `
@@ -667,7 +670,7 @@ export function gl_main(scene_: number, shape_: number) {
         pfBuffers = perFrameBuffers(gl, processedShapes)
 
         drawScene(gl, programInfo, buffers, pfBuffers, I_4, projectionMatrix,
-            deltaTime, processedShapes, vertexCount);
+                  processedShapes, vertexCount);
 
         requestAnimationFrame(render)
 
