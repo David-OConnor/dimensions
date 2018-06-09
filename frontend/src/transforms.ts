@@ -87,7 +87,7 @@ export function rotateVec(out: Float32Array, cachedTrig: any, θ: number[]): Flo
     return out
 }
 
-function make_rotator(out: Float32Array, θ: number[]): Float32Array {
+function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -175,7 +175,7 @@ function make_rotator(out: Float32Array, θ: number[]): Float32Array {
     // return dotMM5(R_1, R_2)
 }
 
-function make_translator(out: Float32Array, position: Float32Array): Float32Array {
+function makeTranslator(out: Float32Array, position: Float32Array): Float32Array {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
@@ -189,17 +189,17 @@ function make_translator(out: Float32Array, position: Float32Array): Float32Arra
     return out
 }
 
-function translateVec(out: Float32Array, position: Float32Array): Float32Array {
-    // Again, not as elegant as returning a composable matrix, but efficient for Webgl.
-    out[0] += position[0]
-    out[1] += position[1]
-    out[2] += position[2]
-    out[3] += position[3]
+// function translateVec(out: Float32Array, position: Float32Array): Float32Array {
+//     // Again, not as elegant as returning a composable matrix, but efficient for Webgl.
+//     out[0] += position[0]
+//     out[1] += position[1]
+//     out[2] += position[2]
+//     out[3] += position[3]
+//
+//     return out
+// }
 
-    return out
-}
-
-function make_scaler(out: Float32Array, scale: Float32Array): Float32Array {
+function makeScaler(out: Float32Array, scale: Float32Array): Float32Array {
     // Return a scale matrix; the pt must have 1 appended to its end.
     out[0] = scale[0]; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0
     out[5] = 0; out[6] = scale[1]; out[7] = 0; out[8] = 0; out[9] = 0
@@ -210,17 +210,17 @@ function make_scaler(out: Float32Array, scale: Float32Array): Float32Array {
     return out
 }
 
-function scaleVec(out: Float32Array, scale: Float32Array): Float32Array {
-    // Apply a scale transform to a vector. Inelegant to do it this way, but efficient.
-    out[0] *= scale[0]
-    out[1] *= scale[1]
-    out[2] *= scale[2]
-    out[3] *= scale[3]
+// function scaleVec(out: Float32Array, scale: Float32Array): Float32Array {
+//     // Apply a scale transform to a vector. Inelegant to do it this way, but efficient.
+//     out[0] *= scale[0]
+//     out[1] *= scale[1]
+//     out[2] *= scale[2]
+//     out[3] *= scale[3]
+//
+//     return out
+// }
 
-    return out
-}
-
-function make_projector(cam: Camera): Float32Array {
+function makeProjector(cam: Camera): Float32Array {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -269,60 +269,61 @@ function make_projector(cam: Camera): Float32Array {
     ])
 }
 
-export function positionShape(shape: Shape): Map<number, Float32Array> {
-    // Position a shape's nodes in 3 or 4d space, based on its position
-    // and rotation parameters.
-
-    const cachedTrig = {
-        cos_xy: Math.cos(shape.orientation[0]),
-        sin_xy: Math.sin(shape.orientation[0]),
-        cos_yz: Math.cos(shape.orientation[1]),
-        sin_yz: Math.sin(shape.orientation[1]),
-        cos_xz: Math.cos(shape.orientation[2]),
-        sin_xz: Math.sin(shape.orientation[2]),
-        cos_xu: Math.cos(shape.orientation[3]),
-        sin_xu: Math.sin(shape.orientation[3]),
-        cos_yu: Math.cos(shape.orientation[4]),
-        sin_yu: Math.sin(shape.orientation[4]),
-        cos_zu: Math.cos(shape.orientation[5]),
-        sin_zu: Math.sin(shape.orientation[5])
-    }
-    
+function makeModelMat(shape: Shape): Float32Array {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    // let R = new Float32Array(25)
-    // make_rotator(R, shape.orientation)
-    //
-    // let S = new Float32Array(25)
-    // make_scaler(S, ))
-    //
-    // let T = new Float32Array(25)
-    // make_translator(T, shape.position)
     const scaler = new Float32Array([shape.scale, shape.scale,
-            shape.scale, shape.scale, shape.scale])
+                                     shape.scale, shape.scale, shape.scale])
+    // todo creating extra matrices here
+    let R = new Float32Array(25)
+    let T = new Float32Array(25)
+    let S = new Float32Array(25)
+    let M = new Float32Array(25)
+
+    makeRotator(R, shape.orientation)
+    makeScaler(S, scaler)
+    makeTranslator(T, shape.position)
+
+    dotMM5(M, R, S)
+    dotMM5(M, T, M)
+
+    return M
+}
+
+function makeViewMat(cam: Camera): Float32Array {
+    // For a first-person sperspective, Translate first; then rotate (around the
+    // camera=origin)
+
+    // Negate, since we're rotating the world relative to the camera.
+    const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
+    const negPos = Float32Array.from([-cam.position[0], -cam.position[1],
+                                      -cam.position[2], -cam.position[3], 1])
+
+    // todo creating extra matrices here
+    let T = new Float32Array(25)
+    let R = new Float32Array(25)
+    let M = new Float32Array(25)
+    makeRotator(R, negθ)
+    makeTranslator(T, negPos)
+
+    dotMM5(M, R, T)
+
+    return M
+}
+
+function positionShape(shape: Shape): Map<number, Float32Array> {
+    // Position a shape's nodes in 3 or 4d space, based on its position
+    // and rotation parameters.
+    const modelMatrix = makeModelMat(shape)
+    let pt
 
     let positionedNodes = new Map()
     for (let id=0; id < shape.nodes.size; id++) {
-
         let node: any = shape.nodes.get(id)
-        // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
-        // then rotate, then translate.
-
-        // let M = new Float32Array(25)
-        // dotMM5(M, R, S)
-        // dotMM5(M, T, M)
-        let pt = new Float32Array(5)
+        pt = new Float32Array(5)
         pt.set(node.a)
+        dotMV5(pt, modelMatrix, pt)
 
-        scaleVec(pt, scaler)
-        rotateVec(pt, cachedTrig, shape.orientation)
-        // make_rotator(pt, shape.orientation)
-        // translateVec(pt, shape.position)
-
-        // dotMV5(pt, M, node.a)
-
-        // const transform = dotMM5(T, dotMM5(R, S))
-        // const newPt = dotMV5(transform, node.a)
         positionedNodes.set(id, pt)
     }
 
@@ -332,55 +333,20 @@ export function positionShape(shape: Shape): Map<number, Float32Array> {
 export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
     // Set up shapes rel to their model, and the camera.
     // T must be done last.
+    const viewMatrix = makeViewMat(cam)
+    let pt
+
     let result = new Map()
-    let positionedModel
-
-    let negRot = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
-    //
-    // let R = new Float32Array(25)
-    // make_rotator(R, negRot)
-    const θ = negRot
-    const cachedTrig = {
-        cos_xy: Math.cos(θ[0]),
-        sin_xy: Math.sin(θ[0]),
-        cos_yz: Math.cos(θ[1]),
-        sin_yz: Math.sin(θ[1]),
-        cos_xz: Math.cos(θ[2]),
-        sin_xz: Math.sin(θ[2]),
-        cos_xu: Math.cos(θ[3]),
-        sin_xu: Math.sin(θ[3]),
-        cos_yu: Math.cos(θ[4]),
-        sin_yu: Math.sin(θ[4]),
-        cos_zu: Math.cos(θ[5]),
-        sin_zu: Math.sin(θ[5])
-    }
-
-    const negPos = Float32Array.from([-cam.position[0],
-        -cam.position[1], -cam.position[2],
-        -cam.position[3], 1])
-    //
-    // let T = new Float32Array(25)
-    // make_translator(T, negPos)
-    // // For cam transform, position first; then rotate.
-    // let M = new Float32Array(25)
-    // dotMM5(M, R, T)
-
-    let v
     shapes.forEach(
         (shape, shapeId, map) => {
-            positionedModel = positionShape(shape)
-            positionedModel.forEach(
+            positionShape(shape).forEach(
                 (node, nodeId, _map) => {
-                    v = new Float32Array(5)
-                    v.set(node)
+                    pt = new Float32Array(5)
+                    pt.set(node)
 
-                    translateVec(v, negPos)
-                    rotateVec(v, cachedTrig, negRot)
-                    // make_rotator(v, negRot)
-
-                    // dotMV5(V, M, node)
-                    // Map doesn't like tuples/arrays as keys :/
-                    result.set([shapeId, nodeId].join(','), v)
+                    dotMV5(pt, viewMatrix, pt)
+                    // Map doesn't accept tuples/arrays as keys
+                    result.set([shapeId, nodeId].join(','), pt)
                 }
             )
         }
@@ -576,17 +542,4 @@ export function handleKeyDown(event: any, scene_: number) {
 export function handleKeyUp(event: any) {
     let index = state.currentlyPressedKeys.indexOf(event.keyCode)
     if (index !== -1) { state.currentlyPressedKeys.splice(index, 1) }
-}
-
-function makeModelMat(shape: Shape): Float32Array {
-    // T must be done last, since we scale and rotate with respect to the orgin,
-    // defined in the shape's initial nodes. S may be applied at any point.
-    const scaler = new Float32Array([shape.scale, shape.scale,
-                                     shape.scale, shape.scale, shape.scale])
-    let M = new Float32Array(25)
-    make_scaler(M, scaler)
-    make_rotator(M, shape.orientation)
-    make_translator(M, shape.position)
-
-    return M
 }
