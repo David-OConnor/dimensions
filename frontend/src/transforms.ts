@@ -14,7 +14,8 @@ function moveCam(unitVec: Float32Array, fps: boolean) {
     // around the y axis.
     const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
     let v = new Float32Array(5)
-    dotMV5(v, make_rotator(θ), unitVec)
+
+    dotMV5(v, make_rotator(new Float32Array(25), θ), unitVec)
 
     mulVConst5(v, v, state.moveSensitivity)
 
@@ -23,7 +24,7 @@ function moveCam(unitVec: Float32Array, fps: boolean) {
     addVecs5(state.skybox.position, state.skybox.position, v)
 }
 
-export function make_rotator(θ: number[]): Float32Array {
+export function make_rotator(out: Float32Array, θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -99,14 +100,12 @@ export function make_rotator(θ: number[]): Float32Array {
     ])
 
     // Combine the rotations.
-    let R = new Float32Array(25)
-
-    dotMM5(R, R_yu, R_zu)
-    dotMM5(R, R_xu, R)
-    dotMM5(R, R_xz, R)
-    dotMM5(R, R_yz, R)
-    dotMM5(R, R_xy, R)
-    return R
+    dotMM5(out, R_yu, R_zu)
+    dotMM5(out, R_xu, out)
+    dotMM5(out, R_xz, out)
+    dotMM5(out, R_yz, out)
+    dotMM5(out, R_xy, out)
+    return out
 
     // const R_1 = dotMM5(R_xy, dotMM5(R_yz, R_xz))
     // const R_2 = dotMM5(R_xu, dotMM5(R_yu, R_zu))
@@ -193,10 +192,13 @@ export function positionShape(shape: Shape): Map<number, Float32Array> {
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    const R = make_rotator(shape.orientation)
+    let R = new Float32Array(25)
+    make_rotator(R, shape.orientation)
+
     let S = new Float32Array(25)
     make_scaler(S, new Float32Array([shape.scale, shape.scale,
         shape.scale, shape.scale, shape.scale]))
+
     let T = new Float32Array(25)
     make_translator(T, shape.position)
 
@@ -228,7 +230,8 @@ export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<stri
 
     let negRot = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
 
-    const R = make_rotator(negRot)
+    let R = new Float32Array(25)
+    make_rotator(R, negRot)
 
     const negPos = Float32Array.from([-cam.position[0],
         -cam.position[1], -cam.position[2],
@@ -240,19 +243,21 @@ export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<stri
     let M = new Float32Array(25)
     dotMM5(M, R, T)
 
-    let V = new Float32Array(5)
+    let V
     shapes.forEach(
-        (shape, id, map) => {
+        (shape, shapeId, map) => {
             positionedModel = positionShape(shape)
             positionedModel.forEach(
-                (node, nid, _map) => {
+                (node, nodeId, _map) => {
+                    V = new Float32Array(5)
                     dotMV5(V, M, node)
                     // Map doesn't like tuples/arrays as keys :/
-                    result.set([id, nid].join(','), V)
+                    result.set([shapeId, nodeId].join(','), V)
                 }
             )
         }
     )
+    console.log(result, "RES")
     return result
 }
 

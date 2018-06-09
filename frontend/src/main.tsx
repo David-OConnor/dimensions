@@ -27,10 +27,18 @@ class Controls extends React.Component<any, any> {
         super(props)
     }
     render() {
-        let shapeButtons = (
+        const shapeButtons = (
             <ButtonGroup style={{marginTop: 20}}>
-                <Button bsStyle="primary" onClick={() => this.props.setShape(0)}>Hypercube</Button>
-                <Button bsStyle="primary" onClick={() => this.props.setShape(1)}>5-Cell</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(0)}>Hypercube</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(1)}>5-Cell</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(2)}>Cube</Button>
+            </ButtonGroup>
+        )
+
+        const hyperButtons = (
+            <ButtonGroup style={{marginTop: 20}}>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(0)}>Uniform</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(1)}>Warped</Button>
             </ButtonGroup>
         )
 
@@ -45,6 +53,7 @@ class Controls extends React.Component<any, any> {
 
                 <br />
                 {this.props.showShapeBtns ? shapeButtons : null}
+                {this.props.showHyperBtns ? hyperButtons : null}
                 <br />
 
                 {/*<Button bsStyle="primary">There's no place like home</Button>*/}
@@ -123,19 +132,19 @@ class Main extends React.Component<any, any> {
         super(props)
         this.state = {
             scene: 0,
-            shape: 0  // The shape to display for scene 0.
+            subScene: 0  // The shape to display for scene 0.
         }
 
         this.setScene = this.setScene.bind(this)
-        this.setShape = this.setShape.bind(this)
+        this.setSubscene = this.setSubscene.bind(this)
     }
 
     setScene(scene: number) {
         this.setState({scene: scene})
     }
 
-    setShape(shape: number) {
-        this.setState({shape: shape})
+    setSubscene(subScene: number) {
+        this.setState({subScene: subScene})
     }
 
     // Scene descriptions:
@@ -146,7 +155,7 @@ class Main extends React.Component<any, any> {
     // 3: A hyper lattice; currently of cubes.
 
     render() {
-        render.gl_main(this.state.scene, this.state.shape)
+        render.gl_main(this.state.scene, this.state.subScene)
 
         let instructions
         if (this.state.scene === 0) {
@@ -165,8 +174,9 @@ class Main extends React.Component<any, any> {
             <div>
                 <Controls
                     setScene={this.setScene}
-                    setShape={this.setShape}
+                    setSubscene={this.setSubscene}
                     showShapeBtns={this.state.scene === 0}
+                    showHyperBtns={this.state.scene === 3}
                 />
                 {instructions}
                 <br />

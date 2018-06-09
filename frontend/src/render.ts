@@ -86,7 +86,7 @@ const housePositions = [
 const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
     makeV5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
 
-function setScene(scene: number, shape: number) {
+function setScene(scene: number, subScene: number) {
     document.onkeydown = e => transforms.handleKeyDown(e, scene)
     if (scene === 0) {  // Single hypercube
         state.setCam(new Camera(
@@ -101,13 +101,14 @@ function setScene(scene: number, shape: number) {
         ))
 
         let selectedShape
-        if (shape === 0) {
-            // selectedShape = shapeMaker.make_hypercube(1, empty,
-            //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
-            selectedShape = shapeMaker.make_cube(1, util.makeV5([0, 0, 0, 0]),
+        if (subScene === 0) {
+            selectedShape = shapeMaker.make_hypercube(1, empty,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
-        } else if (shape === 1) {
+        } else if (subScene === 1) {
             selectedShape = shapeMaker.make_5cell(2, empty,
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        } else if (subScene === 2) {
+            selectedShape = shapeMaker.make_cube(1, util.makeV5([0, 0, 0, 0]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else {
             throw "Oops; a non-existant key was selected. :("
@@ -178,7 +179,7 @@ function setScene(scene: number, shape: number) {
         ))
 
         let shapeTownList = [
-            shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat, 
+            shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat,
                 empty),
             ...houses
         ]
@@ -208,12 +209,26 @@ function setScene(scene: number, shape: number) {
             [0, 0, 0, 0],
             [0, 0, 0, 0],
         ]
+
+        let mapTestWarped = [
+            [0, -3, -4, -5],
+            [2, 0, -3, -4],
+            [-1, 0, -2, -3],
+            [-1, 0, -1, -2],
+        ]
+
         let mapTest3d = [
             [...mapTest], [...mapTest], [...mapTest], [...mapTest]
         ]
 
+        let mapTest3dWarped = [
+            [...mapTest], [...mapTestWarped], [...mapTestWarped], [...mapTest]
+        ]
+
+        const spissMap_ = subScene === 1 ? mapTest3dWarped : mapTest3d
+
         state.setShapes(
-            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, mapTest3d, empty)
+            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, spissMap_, empty)
         )
         state.setColorMax(30)
     } else {
@@ -283,14 +298,9 @@ function loadShader(gl: any, type: any, source: any) {
 
 function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                    pfBuffers: any,
-                   I_4: Float32Array,
+                   modelViewMatrix: Float32Array,
                    projectionMatrix: Float32Array,
                    processedShapes: Map<string, Float32Array>, vertexCount: number) {
-
-    // console.log(processedShapes, "PS")
-
-    // let test = processedShapes.get([0, 0].join(','))
-    // console.log(test, "T")
 
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -377,14 +387,12 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
     gl.uniformMatrix4fv(
         programInfo.uniformLocations.modelViewMatrix,
         false,
-        I_4)
+        modelViewMatrix)
     {
         const type = gl.UNSIGNED_SHORT
         const offset = 0
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
     }
-    // console.log(state.cam.position, "CAM POS")
-    // throw "DEBUG"
 }
 
 function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
@@ -411,8 +419,6 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         }
     )
 
-    console.log(positions, "POSIT")
-
     gl.bufferData(gl.ARRAY_BUFFER,
         new Float32Array(positions),
         gl.STATIC_DRAW)
@@ -430,7 +436,6 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
             }
         }
     )
-    // console.log(faceColors, "FC")
 
     // Convert the array of colors into a table for all the vertices.
     let colors: any = []
@@ -520,7 +525,7 @@ function initBuffers(gl: any) {
             indexModifier += shape.numFaceVerts()
         }
     )
-    console.log(indices, "IND")
+
     // Now send the element array to GL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(indices), gl.STATIC_DRAW)
@@ -532,7 +537,7 @@ function initBuffers(gl: any) {
     }
 }
 
-export function gl_main(scene_: number, shape_: number) {
+export function gl_main(scene: number, subScene: number) {
     // Initialize WebGL rendering.
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
@@ -554,7 +559,7 @@ export function gl_main(scene_: number, shape_: number) {
     // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    setScene(scene_, shape_)
+    setScene(scene, subScene)
 
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
@@ -671,8 +676,6 @@ export function gl_main(scene_: number, shape_: number) {
         state.cam.far
     )
 
-    console.log(state.cam, "CAM")
-
     // Draw the scene repeatedly
     function render(now: number) {
         now *= 0.001;  // convert to seconds
@@ -685,7 +688,7 @@ export function gl_main(scene_: number, shape_: number) {
         pfBuffers = perFrameBuffers(gl, processedShapes)
 
         drawScene(gl, programInfo, buffers, pfBuffers, I_4, projectionMatrix,
-                  processedShapes, vertexCount);
+            processedShapes, vertexCount);
 
         requestAnimationFrame(render)
 
