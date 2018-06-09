@@ -4,17 +4,13 @@
 // or lower-case constants.
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
+#![allow(dead_code)]  // todo remove this later
+#![allow(unused_variables)] // todo remove this later
+#![allow(unused_imports)] // todo remove this later
 #![feature(non_ascii_idents)]
 
 #[macro_use]
 extern crate ndarray;
-extern crate ggez;
-
-mod types;
-mod render_ggez;
-mod transforms;
-mod shape_maker;
-mod clipping;
 
 // Vulkano
 extern crate cgmath;
@@ -38,14 +34,19 @@ use vulkano::swapchain::SwapchainCreationError;
 use vulkano::sync::now;
 use vulkano::sync::GpuFuture;
 
-use cgmath::Matrix4;
-use cgmath::SquareMatrix;
-use cgmath::Vector3;
+//use cgmath::Matrix4;
+//use cgmath::SquareMatrix;
+//use cgmath::Vector3;
 
 use std::mem;
 
-
 use std::collections::HashMap;
+
+mod clipping;
+mod shape_maker;
+mod types;
+mod transforms;
+mod render_vulcano;
 
 fn main() {
     let empty_6 = array![0., 0., 0., 0., 0., 0.];
@@ -81,8 +82,8 @@ fn main() {
         shapes.insert(id as u32, shape);
     }
 
-    render_ggez::run(shapes);
-    // gfx_render::main();
+//    render_ggez::run(shapes);
+    render_vulcano::main();
 }
 
 #[cfg(test)]

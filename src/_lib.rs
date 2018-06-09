@@ -8,6 +8,10 @@
 #![feature(non_ascii_idents)]
 #![feature(proc_macro, wasm_custom_section, wasm_import_module)]
 
+#![allow(dead_code)]  // todo remove this later
+#![warn(unused_variables)] // todo remove this later
+
+
 #[macro_use]
 extern crate ndarray;
 

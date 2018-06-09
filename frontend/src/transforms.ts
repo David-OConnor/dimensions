@@ -4,18 +4,23 @@ import {dotMM5, dotMV5, mulVConst5, addVecs5, makeV5} from './util'
 import {Shape, Camera} from './interfaces'
 import * as state from "./state";
 
-export function moveCam(unitVec: Float32Array, fps: boolean) {
+// Note: We use matrix conventions that make our 1D matrices, when written
+// here, appear as they would in standard linear algebra conventions; this may
+// not be the same as OpenGl etc conventions; ie transposed.
+
+function moveCam(unitVec: Float32Array, fps: boolean) {
     // Modifies the global camera
     // With first-person-shooter controls, ignore all input except rotation
     // around the y axis.
     const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
+    let v = new Float32Array(5)
+    dotMV5(v, make_rotator(θ), unitVec)
 
-    const direc = dotMV5(make_rotator(θ), unitVec)
-    const amount = mulVConst5(direc, state.moveSensitivity)
+    mulVConst5(v, v, state.moveSensitivity)
 
-    state.cam.position = addVecs5(state.cam.position, amount)
+    addVecs5(state.cam.position, state.cam.position, v)
     // The skybox moves with the camera, but doesn't rotate with it.
-    state.skybox.position = addVecs5(state.cam.position, amount)
+    addVecs5(state.skybox.position, state.skybox.position, v)
 }
 
 export function make_rotator(θ: number[]): Float32Array {
@@ -94,33 +99,43 @@ export function make_rotator(θ: number[]): Float32Array {
     ])
 
     // Combine the rotations.
-    const R_1 = dotMM5(R_xy, dotMM5(R_yz, R_xz))
-    const R_2 = dotMM5(R_xu, dotMM5(R_yu, R_zu))
-    return dotMM5(R_1, R_2)
+    let R = new Float32Array(25)
+
+    dotMM5(R, R_yu, R_zu)
+    dotMM5(R, R_xu, R)
+    dotMM5(R, R_xz, R)
+    dotMM5(R, R_yz, R)
+    dotMM5(R, R_xy, R)
+    return R
+
+    // const R_1 = dotMM5(R_xy, dotMM5(R_yz, R_xz))
+    // const R_2 = dotMM5(R_xu, dotMM5(R_yu, R_zu))
+    // return dotMM5(R_1, R_2)
 }
 
-export function make_translator(position: Float32Array): Float32Array {
+export function make_translator(out: Float32Array, position: Float32Array): Float32Array {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
-    return Float32Array.from([
-        1., 0., 0., 0., position[0],
-        0., 1., 0., 0., position[1],
-        0., 0., 1., 0., position[2],
-        0., 0., 0., 1., position[3],
-        0., 0., 0., 0., 1.
-    ])
+    // Ugly, but efficient...
+    out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = position[0]
+    out[5] = 0; out[6] = 1; out[7] = 0; out[8] = 0; out[9] = position[1]
+    out[10] = 0; out[11] = 0; out[12] = 1; out[13] = 0; out[14] = position[2]
+    out[15] = 0; out[16] = 0; out[17] = 0; out[18] = 1; out[19] = position[3]
+    out[20] = 0; out[21] = 0; out[22] = 0; out[23] = 0; out[24] = 1
+
+    return out
 }
 
-export function make_scaler(scale: Float32Array): Float32Array {
+export function make_scaler(out: Float32Array, scale: Float32Array): Float32Array {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    return Float32Array.from([
-        scale[0], 0., 0., 0., 0.,
-        0., scale[1], 0., 0., 0.,
-        0., 0., scale[2], 0., 0.,
-        0., 0., 0., scale[3], 0.,
-        0., 0., 0., 0., 1.
-    ])
+    out[0] = scale[0]; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0
+    out[5] = 0; out[6] = scale[1]; out[7] = 0; out[8] = 0; out[9] = 0
+    out[10] = 0; out[11] = 0; out[12] = scale[2]; out[13] = 0; out[14] = 0
+    out[15] = 0; out[16] = 0; out[17] = 0; out[18] = scale[3]; out[19] = 0
+    out[20] = 0; out[21] = 0; out[22] = 0; out[23] = 0; out[24] = 1
+
+    return out
 }
 
 export function make_projector(cam: Camera): Float32Array {
@@ -172,30 +187,37 @@ export function make_projector(cam: Camera): Float32Array {
     ])
 }
 
-export function position_shape(shape: Shape): Map<number, Float32Array> {
+export function positionShape(shape: Shape): Map<number, Float32Array> {
     // Position a shape's nodes in 3 or 4d space, based on its position
     // and rotation parameters.
 
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     const R = make_rotator(shape.orientation)
-    const S = make_scaler(Float32Array.from([shape.scale, shape.scale,
+    let S = new Float32Array(25)
+    make_scaler(S, new Float32Array([shape.scale, shape.scale,
         shape.scale, shape.scale, shape.scale]))
-    const T = make_translator(shape.position)
+    let T = new Float32Array(25)
+    make_translator(T, shape.position)
 
-    let positioned_nodes = new Map()
+    let positionedNodes = new Map()
     for (let id=0; id < shape.nodes.size; id++) {
 
         let node: any = shape.nodes.get(id)
         // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
         // then rotate, then translate.
+        let M = new Float32Array(25)
+        dotMM5(M, R, S)
+        dotMM5(M, T, M)
+        let pt = new Float32Array(5)
+        dotMV5(pt, M, node.a)
 
-        const transform = dotMM5(T, dotMM5(R, S))
-        const newPt = dotMV5(transform, node.a)
-        positioned_nodes.set(id, newPt)
+        // const transform = dotMM5(T, dotMM5(R, S))
+        // const newPt = dotMV5(transform, node.a)
+        positionedNodes.set(id, pt)
     }
 
-    return positioned_nodes
+    return positionedNodes
 }
 
 export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
@@ -205,22 +227,28 @@ export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<stri
     let positionedModel
 
     let negRot = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
+
     const R = make_rotator(negRot)
 
     const negPos = Float32Array.from([-cam.position[0],
         -cam.position[1], -cam.position[2],
         -cam.position[3], 1])
-    const T = make_translator(negPos)
-    // For cam transform, position first; then rotate.
-    const M = dotMM5(R, T)
 
+    let T = new Float32Array(25)
+    make_translator(T, negPos)
+    // For cam transform, position first; then rotate.
+    let M = new Float32Array(25)
+    dotMM5(M, R, T)
+
+    let V = new Float32Array(5)
     shapes.forEach(
         (shape, id, map) => {
-            positionedModel = position_shape(shape)
+            positionedModel = positionShape(shape)
             positionedModel.forEach(
                 (node, nid, _map) => {
+                    dotMV5(V, M, node)
                     // Map doesn't like tuples/arrays as keys :/
-                    result.set([id, nid].join(','), dotMV5(M, node))
+                    result.set([id, nid].join(','), V)
                 }
             )
         }

@@ -246,7 +246,7 @@ pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array
         return None
         }
     }
-    return None;
+//    return None;
 
     return Some((
         array![clipped_pts[0][0], clipped_pts[0][1], clipped_pts[0][2], line.0[3]],

@@ -17,6 +17,8 @@
 // and that you want to learn Vulkan. This means that for example it won't go into details about
 // what a vertex or a shader is.
 
+use std::sync::Arc;
+use std::mem;
 
 use vulkano_win::VkSurfaceBuild;
 
@@ -39,10 +41,16 @@ use vulkano::swapchain::SwapchainCreationError;
 use vulkano::sync::now;
 use vulkano::sync::GpuFuture;
 
-use std::sync::Arc;
-use std::mem;
+use cgmath;
+use vulkano;
+use vulkano_shader_derive;
+use vulkano_win;
+use winit;
 
-fn main() {
+const WIDTH: u32 = 1024;
+const HEIGHT: u32 = 768;
+
+pub fn main() {
     // The first step of any vulkan program is to create an instance.
     let instance = {
         // When we create an instance, we have to pass a list of extensions that we want to enable.
@@ -151,7 +159,7 @@ fn main() {
         let caps = surface.capabilities(physical)
                          .expect("failed to get surface capabilities");
         
-        dimensions = caps.current_extent.unwrap_or([1024, 768]);
+        dimensions = caps.current_extent.unwrap_or([WIDTH, HEIGHT]);
 
         // We choose the dimensions of the swapchain to match the current extent of the surface.
         // If `caps.current_extent` is `None`, this means that the window size will be determined
@@ -460,7 +468,7 @@ void main() {
         let mut done = false;
         events_loop.poll_events(|ev| {
             match ev {
-                winit::Event::WindowEvent { event: winit::WindowEvent::CloseRequested, .. } => done = true,
+                winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => done = true,
                 _ => ()
             }
         });

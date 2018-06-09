@@ -102,7 +102,9 @@ function setScene(scene: number, shape: number) {
 
         let selectedShape
         if (shape === 0) {
-            selectedShape = shapeMaker.make_hypercube(1, empty,
+            // selectedShape = shapeMaker.make_hypercube(1, empty,
+            //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+            selectedShape = shapeMaker.make_cube(1, util.makeV5([0, 0, 0, 0]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else if (shape === 1) {
             selectedShape = shapeMaker.make_5cell(2, empty,
@@ -285,6 +287,11 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
                    projectionMatrix: Float32Array,
                    processedShapes: Map<string, Float32Array>, vertexCount: number) {
 
+    // console.log(processedShapes, "PS")
+
+    // let test = processedShapes.get([0, 0].join(','))
+    // console.log(test, "T")
+
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -376,6 +383,8 @@ function drawScene(gl: any, programInfo: ProgramInfo, buffers: any,
         const offset = 0
         gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
     }
+    // console.log(state.cam.position, "CAM POS")
+    // throw "DEBUG"
 }
 
 function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
@@ -402,6 +411,8 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
         }
     )
 
+    console.log(positions, "POSIT")
+
     gl.bufferData(gl.ARRAY_BUFFER,
         new Float32Array(positions),
         gl.STATIC_DRAW)
@@ -419,6 +430,7 @@ function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
             }
         }
     )
+    // console.log(faceColors, "FC")
 
     // Convert the array of colors into a table for all the vertices.
     let colors: any = []
@@ -508,6 +520,7 @@ function initBuffers(gl: any) {
             indexModifier += shape.numFaceVerts()
         }
     )
+    console.log(indices, "IND")
     // Now send the element array to GL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(indices), gl.STATIC_DRAW)
@@ -657,6 +670,8 @@ export function gl_main(scene_: number, shape_: number) {
         state.cam.near,
         state.cam.far
     )
+
+    console.log(state.cam, "CAM")
 
     // Draw the scene repeatedly
     function render(now: number) {

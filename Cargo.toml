@@ -8,16 +8,16 @@ homepage = "https://github.com/David-OConnor/dimensions"
 readme = "README.md"
 build = "build.rs"
 
-[lib]
-path = "src/lib.rs"
-crate-type = ["cdylib"]
+#[lib]
+#path = "src/lib.rs"
+#crate-type = ["cdylib"]
 
 # cargo build --target wasm32-unknown-unknown --lib
 # wasm-bindgen target/wasm32-unknown-unknown/debug/dimensions.wasm --out-dir .
 
-[[bin]]
-name = "dimensions"
-path = "src/bin.rs"
+#[[bin]]
+#name = "dimensions"
+#path = "src/main.rs"
 
 [dependencies]
 ndarray = "^0.11.2"
@@ -39,21 +39,22 @@ image = "^0.14.0"
 winit = "^0.11.0"
 time = "^0.1.37"
 
-[dependencies.wasm-bindgen]
-version = "^0.2"
-features = ["serde-serialize",]
+# WASM
+#[dependencies.wasm-bindgen]
+#version = "^0.2"
+#features = ["serde-serialize",]
 
 # I want something more like this:
 #[target.cfg(not(wasm32-unknown-unknown)).dependencies]
 # gegz's not compatible with wasm-unknown-unknown.
-[target.'cfg(windows)'.dependencies]
-ggez = "^0.4.2"
-
-[build-dependencies]
-#cc = "1.0"
-webgl_generator = "^0.1.0"
+#[target.'cfg(windows)'.dependencies]
+#ggez = "^0.4.2"
 
 # WebGl.
+
+#[build-dependencies]
+##cc = "1.0"
+#webgl_generator = "^0.1.0"
 #gl = "0.6.0"
 #gl_generator = "0.5.0"
 #wasm-bindgen = "0.2"
