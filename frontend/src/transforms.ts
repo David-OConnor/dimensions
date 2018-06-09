@@ -13,79 +13,79 @@ function moveCam(unitVec: Float32Array, fps: boolean) {
     // With first-person-shooter controls, ignore all input except rotation
     // around the y axis.
     const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
-    // let v = new Float32Array(5)
+    const R = makeRotator(new Float32Array(25), θ)
 
-    // dotMV5(v, make_rotator(new Float32Array(25), θ), unitVec)
-    rotateVec(unitVec, null, θ)
+    let v = new Float32Array(5)
+    dotMV5(v, R, unitVec)
 
-    mulVConst5(unitVec, unitVec, state.moveSensitivity)
+    mulVConst5(v, v, state.moveSensitivity)
 
-    addVecs5(state.cam.position, state.cam.position, unitVec)
+    addVecs5(state.cam.position, state.cam.position, v)
     // The skybox moves with the camera, but doesn't rotate with it.
-    addVecs5(state.skybox.position, state.skybox.position, unitVec)
+    addVecs5(state.skybox.position, state.skybox.position, v)
 }
 
-export function rotateVec(out: Float32Array, cachedTrig: any, θ: number[]): Float32Array {
-    // See note about operating on vectors directly as oppposed to returning
-    // a composable matrix, in the scaleVec / translateVec funcs.
-    let cos_xy, sin_xy, cos_yz, sin_yz, cos_xz, sin_xz, cos_xu, sin_xu, cos_yu,
-        sin_yu, cos_zu, sin_zu
-
-    // cache trig computations; or not.
-    if (cachedTrig == null) {
-        cos_xy = Math.cos(θ[0])
-        sin_xy = Math.sin(θ[0])
-        cos_yz = Math.cos(θ[1])
-        sin_yz = Math.sin(θ[1])
-        cos_xz = Math.cos(θ[2])
-        sin_xz = Math.sin(θ[2])
-        cos_xu = Math.cos(θ[3])
-        sin_xu = Math.sin(θ[3])
-        cos_yu = Math.cos(θ[4])
-        sin_yu = Math.sin(θ[4])
-        cos_zu = Math.cos(θ[5])
-        sin_zu = Math.sin(θ[5])
-    } else {
-        cos_xy = cachedTrig.cos_xy
-        sin_xy = cachedTrig.sin_xy
-        cos_yz = cachedTrig.cos_yz
-        sin_yz = cachedTrig.sin_yz
-        cos_xz = cachedTrig.cos_xz
-        sin_xz = cachedTrig.sin_xz
-        cos_xu = cachedTrig.cos_xu
-        sin_xu = cachedTrig.sin_xu
-        cos_yu = cachedTrig.cos_yu
-        sin_yu = cachedTrig.sin_yu
-        cos_zu = cachedTrig.cos_zu
-        sin_zu = cachedTrig.sin_zu
-    }
-
-    // zu
-    out[2] = out[2] * cos_zu + out[3] * -sin_zu
-    out[3] = out[2] * sin_zu + out[3] * cos_zu
-
-    // yu
-    out[1] = out[1] * cos_yu + out[3] * -sin_yu
-    out[3] = out[1] * sin_yu + out[3] * cos_yu
-
-    // xu
-    out[0] = out[0] * cos_xu  + out[3] * sin_xu
-    out[3] = out[0] * -sin_xu  + out[3] * cos_xu
-
-    // xz
-    out[0] = out[0] * cos_xz + out[2] * -sin_xz
-    out[2] = out[0] * sin_xz + out[2] * cos_xz
-
-    // yz
-    out[1] = out[1] * cos_yz + out[2] * sin_yz
-    out[2] = out[1] * -sin_yz + out[2] * cos_yz
-
-    // xy
-    out[0] = out[0] * cos_xy + out[1] * sin_xy
-    out[1] = out[0] * -sin_xy + out[1] * cos_xy
-
-    return out
-}
+// export function rotateVec(out: Float32Array, cachedTrig: any, θ: number[]): Float32Array {
+//     // See note about operating on vectors directly as oppposed to returning
+//     // a composable matrix, in the scaleVec / translateVec funcs.
+//     let cos_xy, sin_xy, cos_yz, sin_yz, cos_xz, sin_xz, cos_xu, sin_xu, cos_yu,
+//         sin_yu, cos_zu, sin_zu
+//
+//     // cache trig computations; or not.
+//     if (cachedTrig == null) {
+//         cos_xy = Math.cos(θ[0])
+//         sin_xy = Math.sin(θ[0])
+//         cos_yz = Math.cos(θ[1])
+//         sin_yz = Math.sin(θ[1])
+//         cos_xz = Math.cos(θ[2])
+//         sin_xz = Math.sin(θ[2])
+//         cos_xu = Math.cos(θ[3])
+//         sin_xu = Math.sin(θ[3])
+//         cos_yu = Math.cos(θ[4])
+//         sin_yu = Math.sin(θ[4])
+//         cos_zu = Math.cos(θ[5])
+//         sin_zu = Math.sin(θ[5])
+//     } else {
+//         cos_xy = cachedTrig.cos_xy
+//         sin_xy = cachedTrig.sin_xy
+//         cos_yz = cachedTrig.cos_yz
+//         sin_yz = cachedTrig.sin_yz
+//         cos_xz = cachedTrig.cos_xz
+//         sin_xz = cachedTrig.sin_xz
+//         cos_xu = cachedTrig.cos_xu
+//         sin_xu = cachedTrig.sin_xu
+//         cos_yu = cachedTrig.cos_yu
+//         sin_yu = cachedTrig.sin_yu
+//         cos_zu = cachedTrig.cos_zu
+//         sin_zu = cachedTrig.sin_zu
+//     }
+//
+//     // zu
+//     out[2] = out[2] * cos_zu + out[3] * -sin_zu
+//     out[3] = out[2] * sin_zu + out[3] * cos_zu
+//
+//     // yu
+//     out[1] = out[1] * cos_yu + out[3] * -sin_yu
+//     out[3] = out[1] * sin_yu + out[3] * cos_yu
+//
+//     // xu
+//     out[0] = out[0] * cos_xu  + out[3] * sin_xu
+//     out[3] = out[0] * -sin_xu  + out[3] * cos_xu
+//
+//     // xz
+//     out[0] = out[0] * cos_xz + out[2] * -sin_xz
+//     out[2] = out[0] * sin_xz + out[2] * cos_xz
+//
+//     // yz
+//     out[1] = out[1] * cos_yz + out[2] * sin_yz
+//     out[2] = out[1] * -sin_yz + out[2] * cos_yz
+//
+//     // xy
+//     out[0] = out[0] * cos_xy + out[1] * sin_xy
+//     out[1] = out[0] * -sin_xy + out[1] * cos_xy
+//
+//     return out
+// }
 
 function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -169,10 +169,6 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     dotMM5(out, R_yz, out)
     dotMM5(out, R_xy, out)
     return out
-
-    // const R_1 = dotMM5(R_xy, dotMM5(R_yz, R_xz))
-    // const R_2 = dotMM5(R_xu, dotMM5(R_yu, R_zu))
-    // return dotMM5(R_1, R_2)
 }
 
 function makeTranslator(out: Float32Array, position: Float32Array): Float32Array {
@@ -269,7 +265,7 @@ function makeProjector(cam: Camera): Float32Array {
     ])
 }
 
-function makeModelMat(shape: Shape): Float32Array {
+export function makeModelMat(shape: Shape): Float32Array {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     const scaler = new Float32Array([shape.scale, shape.scale,
@@ -280,17 +276,18 @@ function makeModelMat(shape: Shape): Float32Array {
     let S = new Float32Array(25)
     let M = new Float32Array(25)
 
-    makeRotator(R, shape.orientation)
+    // makeRotator(R, shape.orientation)
     makeScaler(S, scaler)
     makeTranslator(T, shape.position)
 
     dotMM5(M, R, S)
     dotMM5(M, T, M)
 
-    return M
+    return T
+    // return M
 }
 
-function makeViewMat(cam: Camera): Float32Array {
+export function makeViewMat(cam: Camera): Float32Array {
     // For a first-person sperspective, Translate first; then rotate (around the
     // camera=origin)
 

@@ -1,5 +1,9 @@
 // See note in transforms.ts file about matrix conventions.
 
+// These functions avoid creating new arrays, hence the modify-in-place logic
+// with out arguments..
+// Having algorithms tuned to the specific size matrix is ugly, but efficient.
+
 export function makeV5(vals: number[]): Float32Array {
     // Custom constructor to make a 5-element Float32Array from 4.
     // We store things internally as 5-vecs as much as possible, for compatibility
@@ -14,6 +18,7 @@ export function addVecs5(out: Float32Array, a: Float32Array, b: Float32Array): F
     out[2] = a[2] + b[2]
     out[3] = a[3] + b[3]
     out[4] = a[4] + b[4]
+
     return out
 }
 
