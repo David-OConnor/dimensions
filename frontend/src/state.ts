@@ -27,7 +27,7 @@ export let cam = defaultCam
 
 export const skybox = shapeMaker.make_skybox(100, cam.position)
 skybox.make_tris()
-export const processedSkybox = transforms.processShapes(cam, new Map([[0, skybox]]))
+// export const processedSkybox = transforms.processShapes(cam, new Map([[0, skybox]]))
 
 // Imported values seem to be read-only, hence the setters.
 export function setColorMax(val: number) {

@@ -25,68 +25,6 @@ function moveCam(unitVec: Float32Array, fps: boolean) {
     addVecs5(state.skybox.position, state.skybox.position, v)
 }
 
-// export function rotateVec(out: Float32Array, cachedTrig: any, θ: number[]): Float32Array {
-//     // See note about operating on vectors directly as oppposed to returning
-//     // a composable matrix, in the scaleVec / translateVec funcs.
-//     let cos_xy, sin_xy, cos_yz, sin_yz, cos_xz, sin_xz, cos_xu, sin_xu, cos_yu,
-//         sin_yu, cos_zu, sin_zu
-//
-//     // cache trig computations; or not.
-//     if (cachedTrig == null) {
-//         cos_xy = Math.cos(θ[0])
-//         sin_xy = Math.sin(θ[0])
-//         cos_yz = Math.cos(θ[1])
-//         sin_yz = Math.sin(θ[1])
-//         cos_xz = Math.cos(θ[2])
-//         sin_xz = Math.sin(θ[2])
-//         cos_xu = Math.cos(θ[3])
-//         sin_xu = Math.sin(θ[3])
-//         cos_yu = Math.cos(θ[4])
-//         sin_yu = Math.sin(θ[4])
-//         cos_zu = Math.cos(θ[5])
-//         sin_zu = Math.sin(θ[5])
-//     } else {
-//         cos_xy = cachedTrig.cos_xy
-//         sin_xy = cachedTrig.sin_xy
-//         cos_yz = cachedTrig.cos_yz
-//         sin_yz = cachedTrig.sin_yz
-//         cos_xz = cachedTrig.cos_xz
-//         sin_xz = cachedTrig.sin_xz
-//         cos_xu = cachedTrig.cos_xu
-//         sin_xu = cachedTrig.sin_xu
-//         cos_yu = cachedTrig.cos_yu
-//         sin_yu = cachedTrig.sin_yu
-//         cos_zu = cachedTrig.cos_zu
-//         sin_zu = cachedTrig.sin_zu
-//     }
-//
-//     // zu
-//     out[2] = out[2] * cos_zu + out[3] * -sin_zu
-//     out[3] = out[2] * sin_zu + out[3] * cos_zu
-//
-//     // yu
-//     out[1] = out[1] * cos_yu + out[3] * -sin_yu
-//     out[3] = out[1] * sin_yu + out[3] * cos_yu
-//
-//     // xu
-//     out[0] = out[0] * cos_xu  + out[3] * sin_xu
-//     out[3] = out[0] * -sin_xu  + out[3] * cos_xu
-//
-//     // xz
-//     out[0] = out[0] * cos_xz + out[2] * -sin_xz
-//     out[2] = out[0] * sin_xz + out[2] * cos_xz
-//
-//     // yz
-//     out[1] = out[1] * cos_yz + out[2] * sin_yz
-//     out[2] = out[1] * -sin_yz + out[2] * cos_yz
-//
-//     // xy
-//     out[0] = out[0] * cos_xy + out[1] * sin_xy
-//     out[1] = out[0] * -sin_xy + out[1] * cos_xy
-//
-//     return out
-// }
-
 function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
@@ -162,12 +100,26 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
         0., 0., 0., 0., 1.
     ])
 
+    // let R = new Float32Array([
+    //     (sin_xy*sin_xz*sin_yz + cos_xy * cos_xz)*cos_xu, (sin_xy*sin_xz*sin_yz + cos_xy*cos_xz)
+    // ])
+
+    // todo this defeats the purpose of our out array; ie we create loads of new
+    // todo arrays whenever we call this function. Address.
     // Combine the rotations.
-    dotMM5(out, R_yu, R_zu)
-    dotMM5(out, R_xu, out)
-    dotMM5(out, R_xz, out)
-    dotMM5(out, R_yz, out)
-    dotMM5(out, R_xy, out)
+    const a = dotMM5(new Float32Array(25), R_yu, R_zu)
+    const b = dotMM5(new Float32Array(25), R_xu, a)
+    const c = dotMM5(new Float32Array(25), R_xz, b)
+    const d = dotMM5(new Float32Array(25), R_yz, c)
+    const e = dotMM5(new Float32Array(25), R_xy, d)
+    out.set(e)
+
+    // // Combine the rotations.
+    // dotMM5(out, R_yu, R_zu)
+    // dotMM5(out, R_xu, out)
+    // dotMM5(out, R_xz, out)
+    // dotMM5(out, R_yz, out)
+    // dotMM5(out, R_xy, out)
     return out
 }
 
@@ -216,55 +168,6 @@ function makeScaler(out: Float32Array, scale: Float32Array): Float32Array {
 //     return out
 // }
 
-function makeProjector(cam: Camera): Float32Array {
-    // Create the projection matrix, used to transform translated and
-    // rotated points.
-
-    // Let's compile the different versions you've seen:
-    // 1: http://learnwebgl.brown37.net/08_projections/projections_perspective.html
-    // 2: https://en.wikipedia.org/wiki/3D_projection
-    // 3: https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
-    // 4: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
-    // projection-matrix/building-basic-perspective-projection-matrix
-    // 5: https://github.com/brendanzab/cgmath/blob/master/src/projection.rs
-    // 6: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_model_view_projection
-    // 7: http://www.songho.ca/opengl/gl_projectionmatrix.html
-
-    // 7's on point with my calcs, although stated in terms of right/top.
-
-    let y_scale = 1. / Math.tan(cam.fov / 2.)
-    let x_scale = y_scale / cam.aspect
-    let u_scale = y_scale / cam.aspect_4  // depth for 4d
-
-    // We are defining z as the axis that determines how x and y points are
-    // scaled, for both 4d and 3d projections. U points don't play a factor
-    // in our final result; their data is only included during rotations;
-    // This function transforms them, but that ultimately is not projected to
-    // 2d screens.
-
-    // Insight: z (or u, depending on which convention we settle on) is used
-    // for two things: Determining how we should scale x and y (The vars that
-
-    // I've derived these matrices myself; none of the ones described in the
-    // above links seem to produce a unit cube for easy clipping.
-    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
-    // along each axis.
-    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
-    // as a decaying exponential from -1 to +1.
-
-    return Float32Array.from([
-        x_scale, 0., 0., 0., 0.,
-        0., y_scale, 0., 0., 0.,
-        0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-        (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.,
-        // u_scale is, ultimately, not really used.
-        0., 0., 0., u_scale, 0.,
-        // This row allows us to divide by z after taking the dot product,
-        // as part of our scaling operation.
-        0., 0., 1., 0., 1.,
-    ])
-}
-
 export function makeModelMat(shape: Shape): Float32Array {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
@@ -276,15 +179,42 @@ export function makeModelMat(shape: Shape): Float32Array {
     let S = new Float32Array(25)
     let M = new Float32Array(25)
 
-    // makeRotator(R, shape.orientation)
     makeScaler(S, scaler)
+    makeRotator(R, shape.orientation)
     makeTranslator(T, shape.position)
 
     dotMM5(M, R, S)
     dotMM5(M, T, M)
 
-    return T
-    // return M
+    return M
+}
+
+function to4d(M: Float32Array): Float32Array {
+    let out = new Float32Array(16)
+    out[0] = M[0]; out[1] = M[1]; out[2] = M[2]; out[3] = M[3];
+    out[4] = M[5]; out[5] = M[6]; out[6] = M[7]; out[7] = M[8];
+    out[8] = M[10]; out[9] = M[11]; out[10] = M[12]; out[11] = M[13];
+    out[12] = M[15]; out[14] = M[16]; out[14] = M[17]; out[15] = M[18];
+
+    return out
+}
+
+export function makeModelMat4(shape: Shape): Float32Array {
+    // T must be done last, since we scale and rotate with respect to the orgin,
+    // defined in the shape's initial nodes. S may be applied at any point.
+    const scaler = new Float32Array([shape.scale, shape.scale,
+                                     shape.scale, shape.scale, shape.scale])
+    // todo creating extra matrices here
+    let R = new Float32Array(25)
+    let S = new Float32Array(25)
+    let M = new Float32Array(25)
+
+    makeScaler(S, scaler)
+    makeRotator(R, shape.orientation)
+
+    dotMM5(M, R, S)
+
+    return to4d(M)
 }
 
 export function makeViewMat(cam: Camera): Float32Array {
@@ -293,7 +223,7 @@ export function makeViewMat(cam: Camera): Float32Array {
 
     // Negate, since we're rotating the world relative to the camera.
     const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
-    const negPos = Float32Array.from([-cam.position[0], -cam.position[1],
+    const negPos = new Float32Array([-cam.position[0], -cam.position[1],
                                       -cam.position[2], -cam.position[3], 1])
 
     // todo creating extra matrices here
@@ -308,47 +238,17 @@ export function makeViewMat(cam: Camera): Float32Array {
     return M
 }
 
-function positionShape(shape: Shape): Map<number, Float32Array> {
-    // Position a shape's nodes in 3 or 4d space, based on its position
-    // and rotation parameters.
-    const modelMatrix = makeModelMat(shape)
-    let pt
+export function makeViewMat4(cam: Camera): Float32Array {
+    // For a first-person sperspective, Translate first; then rotate (around the
+    // camera=origin)
 
-    let positionedNodes = new Map()
-    for (let id=0; id < shape.nodes.size; id++) {
-        let node: any = shape.nodes.get(id)
-        pt = new Float32Array(5)
-        pt.set(node.a)
-        dotMV5(pt, modelMatrix, pt)
+    // Negate, since we're rotating the world relative to the camera.
+    const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
 
-        positionedNodes.set(id, pt)
-    }
-
-    return positionedNodes
-}
-
-export function processShapes(cam: Camera, shapes: Map<number, Shape>): Map<string, Float32Array> {
-    // Set up shapes rel to their model, and the camera.
-    // T must be done last.
-    const viewMatrix = makeViewMat(cam)
-    let pt
-
-    let result = new Map()
-    shapes.forEach(
-        (shape, shapeId, map) => {
-            positionShape(shape).forEach(
-                (node, nodeId, _map) => {
-                    pt = new Float32Array(5)
-                    pt.set(node)
-
-                    dotMV5(pt, viewMatrix, pt)
-                    // Map doesn't accept tuples/arrays as keys
-                    result.set([shapeId, nodeId].join(','), pt)
-                }
-            )
-        }
-    )
-    return result
+    // todo creating extra matrices here
+    let R = new Float32Array(25)
+    makeRotator(R, negθ)
+    return to4d(R)
 }
 
 export function handleKeyDown(event: any, scene_: number) {

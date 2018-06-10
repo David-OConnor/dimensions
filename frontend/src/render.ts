@@ -4,7 +4,7 @@ import * as setup from './setup'
 import * as state from './state'
 import * as transforms from './transforms'
 import {ProgramInfo, Shape} from './interfaces'
-import {dotMM5} from "./util";
+import {dotMM5, dotMV5} from "./util";
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -72,12 +72,12 @@ function loadShader(gl: any, type: any, source: any) {
 function drawScene(
     gl: any,
     programInfo: ProgramInfo,
-    uniforms: Map<number, any>,
-    buffers: any,
+    staticBuffers: any,
+    shapeBuffers: any,
+    // modelViewMat: Float32Array,
     viewMatrix: Float32Array,
     projectionMatrix: Float32Array,
     shapes: Map<number, Shape>,
-    shapeBuffers: any
 ) {
 
     // Clear the canvas before we start drawing on it.
@@ -97,6 +97,8 @@ function drawScene(
     //     gl.enableVertexAttribArray(programInfo.attribLocations.skyboxTexCoords)
     // }
 
+    let modelMatrix
+
     shapes.forEach(
         (shape, s_id, map_) => {
             // Create a perspective matrix, a special matrix that is
@@ -115,14 +117,17 @@ function drawScene(
             // Tell WebGL how to pull out the positions from the position
             // buffer into the vertexPosition attribute.
             {
-                const numComponents = 4  // pull out 3 values per iteration
+                const numComponents = 3  // pull out 3 values per iteration
                 const type = gl.FLOAT    // the data in the buffer is 32bit floats
                 const normalize = false  // don't normalize
                 const stride = 0         // how many bytes to get from one set of values to the next
                                          // 0 = use type and numComponents above
                 const offset = 0         // how many bytes inside the buffer to start from
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.position)
+                // console.log(shapeBuffers.get(s_id).position, "P")
+                // console.log(shapeBuffers.get(s_id).indices, "P")
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.get(s_id).position)
                 gl.vertexAttribPointer(
                     programInfo.attribLocations.vertexPosition,
                     numComponents,
@@ -133,6 +138,50 @@ function drawScene(
                 gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
             }
 
+            {
+                const numComponents = 3  // pull out 3 values per iteration
+                const type = gl.FLOAT    // the data in the buffer is 32bit floats
+                const normalize = false  // don't normalize
+                const stride = 0         // how many bytes to get from one set of values to the next
+                                         // 0 = use type and numComponents above
+                const offset = 0         // how many bytes inside the buffer to start from
+
+                // console.log(shapeBuffers.get(s_id).position, "P")
+                // console.log(shapeBuffers.get(s_id).indices, "P")
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.get(s_id).quickPosition)
+                gl.vertexAttribPointer(
+                    programInfo.attribLocations.shapePosition,
+                    numComponents,
+                    type,
+                    normalize,
+                    stride,
+                    offset)
+                gl.enableVertexAttribArray(programInfo.attribLocations.shapePosition)
+            }
+
+            {
+                const numComponents = 3  // pull out 3 values per iteration
+                const type = gl.FLOAT    // the data in the buffer is 32bit floats
+                const normalize = false  // don't normalize
+                const stride = 0         // how many bytes to get from one set of values to the next
+                                         // 0 = use type and numComponents above
+                const offset = 0         // how many bytes inside the buffer to start from
+
+                // console.log(shapeBuffers.get(s_id).position, "P")
+                // console.log(shapeBuffers.get(s_id).indices, "P")
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.get(s_id).camPosition)
+                gl.vertexAttribPointer(
+                    programInfo.attribLocations.camPosition,
+                    numComponents,
+                    type,
+                    normalize,
+                    stride,
+                    offset)
+                gl.enableVertexAttribArray(programInfo.attribLocations.camPosition)
+            }
+
             // Tell WebGL how to pull out the colors from the color buffer
             // into the vertexColor attribute.
             {
@@ -141,7 +190,7 @@ function drawScene(
                 const normalize = false
                 const stride = 0
                 const offset = 0
-                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.color)
+                gl.bindBuffer(gl.ARRAY_BUFFER, shapeBuffers.get(s_id).color)
                 gl.vertexAttribPointer(
                     programInfo.attribLocations.vertexColor,
                     numComponents,
@@ -154,7 +203,7 @@ function drawScene(
             }
 
             // Tell WebGL which indices to use to index the vertices
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, shapeBuffers.indices)
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, staticBuffers.indexBuffers.get(s_id))
 
             // Tell WebGL to use our program when drawing
             gl.useProgram(programInfo.program)
@@ -163,19 +212,27 @@ function drawScene(
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.projectionMatrix,
                 false,
-                projectionMatrix)
+                projectionMatrix
+            )
 
-            let modelViewMat = new Float32Array(25)
-            dotMM5(modelViewMat, viewMatrix, uniforms.get(s_id).u_matrix)
+            modelMatrix = transforms.makeModelMat4(shape)
 
-            console.log("ModMat", uniforms.get(s_id).u_matrix)
-            // console.log("ViewMat", viewMatrix)
-            // console.log(modelViewMat, "MVM")
+            // gl.uniformMatrix4fv(
+            //     programInfo.uniformLocations.modelViewMatrix,
+            //     false,
+            //     modelViewMat)
 
             gl.uniformMatrix4fv(
-                programInfo.uniformLocations.modelViewMatrix,
+                programInfo.uniformLocations.viewMatrix,
                 false,
-                modelViewMat)
+                modelMatrix
+            )
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.viewMatrix,
+                false,
+                viewMatrix
+            )
+
             {
                 const type = gl.UNSIGNED_SHORT
                 const offset = 0
@@ -186,73 +243,19 @@ function drawScene(
         }
     )
 }
-//
-// function perFrameBuffers(gl: any, processedShapes: Map<string, Float32Array>) {
-//     const positionBuffer = gl.createBuffer()
-//     // Select the positionBuffer as the one to apply buffer
-//     // operations to from here out.
-//     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
-//
-//     // Now create an array of positions for the shapes.
-//     let vertex
-//     let positions: number[] = []
-//     // Set up vertices.
-//     state.shapes.forEach(
-//         (shape, s_id, map) => {
-//             for (let face of shape.faces_vert) {
-//                 for (let vertex_i of face) {
-//                     // Map doesn't like tuples as keys :/
-//                     vertex = processedShapes.get([s_id, vertex_i].join(',')) as any
-//                     positions.push(vertex[0])
-//                     positions.push(vertex[1])
-//                     positions.push(vertex[2])
-//                 }
-//             }
-//         }
-//     )
-//
-//     gl.bufferData(gl.ARRAY_BUFFER,
-//         new Float32Array(positions),
-//         gl.STATIC_DRAW)
-//
-//     let faceColors: number[][] = []
-//
-//     state.shapes.forEach(
-//         (shape, s_id, map) => {
-//             for (let face of shape.faces_vert) {
-//                 for (let vertI of face) {
-//                     let zDist = (processedShapes.get([s_id, vertI].join(',')) as any)[3] -
-//                         state.cam.position[3]
-//                     faceColors.push(findColor(zDist))
-//                 }
-//             }
-//         }
-//     )
-//
-//     // Convert the array of colors into a table for all the vertices.
-//     let colors: any = []
-//     for (let c of faceColors) {
-//         // Repeat each color four times for the four vertices of the face
-//         colors = colors.concat(c, c, c, c);
-//     }
-//
-//     const colorBuffer = gl.createBuffer()
-//     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
-//     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
-//
-//     return {
-//         position: positionBuffer,
-//         color: colorBuffer,
-//     }
-// }
 
-function makeShapeBuffers(gl: any, shapes: Map<number, Shape>): Map<number, any> {
-    let positionBuffer, colorBuffer, indexBuffer, positions, faceColors, colors: any,
-        indices, tri_indices, indexModifier: number
-
+function makeShapeBuffers(gl: any, shapes: Map<number, Shape>, viewMat: Float32Array): Map<number, any> {
+    let positionBuffer, colorBuffer, indexBuffer, positions, faceColors,
+        colors: any, quickPositionBuffer, camPositionBuffer
     let result = new Map()
+    let modelMat, vertex, transformed, uDist
+    let modelViewMat = new Float32Array(25)
+
     shapes.forEach(
         (shape, s_id, map_) => {
+            // modelMat = transforms.makeModelMat(shape)
+            // dotMM5(modelViewMat, viewMat, modelMat)
+
             positionBuffer = gl.createBuffer()
             // Select the positionBuffer as the one to apply buffer
             // operations to from here out.
@@ -260,27 +263,32 @@ function makeShapeBuffers(gl: any, shapes: Map<number, Shape>): Map<number, any>
 
             // Now create an array of positions for the shapes.
             positions = []
+            faceColors = []
             // Set up vertices.
             for (let face of shape.faces_vert) {
                 for (let vertex_i of face) {
-                    positions.push(vertex_i[0])
-                    positions.push(vertex_i[1])
-                    positions.push(vertex_i[2])
+                    vertex = (shape.nodes.get(vertex_i) as any).a
+
+                    // transformed = new Float32Array(5)
+                    // dotMV5(transformed, modelViewMat, vertex)
+                    // positions.push(transformed[0])
+                    // positions.push(transformed[1])
+                    // positions.push(transformed[2])
+
+                    positions.push(vertex[0])
+                    positions.push(vertex[1])
+                    positions.push(vertex[2])
+
+                    // Now handle colors, based on u-coord dist
+                    // uDist = transformed[3] - state.cam.position[3]
+                    uDist = 2
+                    faceColors.push(findColor(uDist))
                 }
             }
 
             gl.bufferData(gl.ARRAY_BUFFER,
                 new Float32Array(positions),
                 gl.STATIC_DRAW)
-
-            faceColors = []
-
-            for (let face of shape.faces_vert) {
-                for (let vertI of face) {
-                    let zDist = 0  // todo temp
-                    faceColors.push(findColor(zDist))
-                }
-            }
 
             // Convert the array of colors into a table for all the vertices.
             colors = []
@@ -293,28 +301,23 @@ function makeShapeBuffers(gl: any, shapes: Map<number, Shape>): Map<number, any>
             gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
 
-            // todo you don't need to do the index buffer here, since it's only calcualted
-            // todo once per shape. Make a map in init_buffers.
-            indexBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+            // quick position is the shape's whole position; eg just 4 elements.
+            // used for our separate model, view logic.
+            quickPositionBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, quickPositionBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, shape.position, gl.STATIC_DRAW)
 
-            // This array defines each face as two triangles, using the
-            // indices into the vertex array to specify each triangle's
-            // position.
-            indices = []
-            indexModifier = 0
-            tri_indices = shape.get_tris().map(ind => ind + indexModifier)
-            indices.push(...tri_indices)
-            indexModifier += shape.numFaceVerts()
-
-            // Now send the element array to GL
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Uint16Array(indices), gl.STATIC_DRAW)
+            camPositionBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, camPositionBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, state.cam.position, gl.STATIC_DRAW)
 
             result.set(s_id, {
                 position: positionBuffer,
                 color: colorBuffer,
-                indices: indexBuffer
+                quickPosition: quickPositionBuffer,
+                // todo we don't need to add the cam to the buffer each shape;
+                // todo need to rethink how we organize our buffer-creation funcs.
+                camPosition: camPositionBuffer
             })
         }
     )
@@ -322,16 +325,16 @@ function makeShapeBuffers(gl: any, shapes: Map<number, Shape>): Map<number, any>
     return result
 }
 
-function initBuffers(gl: any) {
+function initBuffers(gl: any, shapes: Map<number, Shape>) {
     // Create a buffer for our shapes' positions and color.
     let vertex
     const sbPositions: any = []
-    state.skybox.faces_vert.map(face => face.map(vertex_i => {
-        vertex = state.processedSkybox.get([0, vertex_i].join(',')) as any
-        sbPositions.push(vertex[0])
-        sbPositions.push(vertex[1])
-        sbPositions.push(vertex[2])
-    }))
+    // state.skybox.faces_vert.map(face => face.map(vertex_i => {
+    //     vertex = state.processedSkybox.get([0, vertex_i].join(',')) as any
+    //     sbPositions.push(vertex[0])
+    //     sbPositions.push(vertex[1])
+    //     sbPositions.push(vertex[2])
+    // }))
 
     // Now pass the list of positions into WebGL to build the
     // shape. We do this by creating a Float32Array from the
@@ -377,29 +380,42 @@ function initBuffers(gl: any) {
 
     // Build the element array buffer; this specifies the indices
     // into the vertex arrays for each face's vertices.
-    const indexBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
 
     // This array defines each face as two triangles, using the
     // indices into the vertex array to specify each triangle's
     // position.
     let indices: number[] = []
     let indexModifier = 0
-    let tri_indices
-    state.shapes.forEach(
-        (shape: Shape, s_i, map) => {
+    let tri_indices, indexBuffer
+    let indexBuffers = new Map()
+
+    shapes.forEach(
+        (shape, s_id, map_) => {
+            indexBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+
+            // This array defines each face as two triangles, using the
+            // indices into the vertex array to specify each triangle's
+            // position.
+            indices = []
+            indexModifier = 0
             tri_indices = shape.get_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
             indexModifier += shape.numFaceVerts()
-        }
-    )
+
+            // Now send the element array to GL
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+                new Uint16Array(indices), gl.STATIC_DRAW)
+
+            indexBuffers.set(s_id, indexBuffer)
+            })
 
     // Now send the element array to GL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
         new Uint16Array(indices), gl.STATIC_DRAW)
 
     return {
-        indices: indexBuffer,
+        indexBuffers: indexBuffers,
         skybox: skyboxBuffer,
         skyboxPosits: skyboxPositBuffer
     }
@@ -440,13 +456,32 @@ export function gl_main(scene: number, subScene: number) {
         attribute vec4 aVertexPosition;
         attribute vec4 aVertexColor;
         
+        attribute vec4 aShapePosition;
+        attribute vec4 aCamPosition;
+        
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
+                
+        // Trying to sep model and view matrices, so we can pass 4x4,
+        // non-homogenous matrices to the shader.
+        uniform mat4 uModelMatrix;
+        uniform mat4 uViewMatrix;
                
         varying lowp vec4 vColor;
+        
+        // Intermediate variable we use for applying our sequence of custom transforms.
+        // We split this up so we can operate on matrices and vectors of size 4,
+        // since WebGL doesn't support 5x5 (homogenous) matrices.
+        vec4 positionedPt;
     
         void main() {
-          gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+          // gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+          
+          // For model transform, position after the transform
+          positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
+          // for view transform, position first.
+          positionedPt = uViewMatrix * (aVertexPosition - aCamPosition);
+          gl_Position = uProjectionMatrix * positionedPt;
           vColor = aVertexColor;
         }
     `
@@ -505,17 +540,21 @@ export function gl_main(scene: number, subScene: number) {
         program: shaderProgram,
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+            shapePosition: gl.getAttribLocation(shaderProgram, 'aShapePosition'),
+            camPosition: gl.getAttribLocation(shaderProgram, 'aCamPosition'),
             vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
             skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
             modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+            modelMatrix: gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
+            ViewMatrix: gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
         },
     }
 
     let then = 0
-    let buffers = initBuffers(gl)
+    let staticBuffers = initBuffers(gl, state.shapes)
 
     // Note: If we want dynamically-adjustable FOV, we need to move this,
     // or part of it to drawScene.
@@ -530,7 +569,8 @@ export function gl_main(scene: number, subScene: number) {
         state.cam.far
     )
 
-    let shapeBuffers
+    // const I_4 = mat4.create()
+
     // Draw the scene repeatedly
     function render(now: number) {
         now *= 0.001;  // convert to seconds
@@ -542,29 +582,17 @@ export function gl_main(scene: number, subScene: number) {
         // const processedShapes = transforms.processShapes(state.cam, state.shapes)
         // pfBuffers = perFrameBuffers(gl, processedShapes)
 
-        shapeBuffers = makeShapeBuffers(gl, state.shapes)
+        // const viewMatrix = transforms.makeViewMat(state.cam)
+        const viewMatrix = transforms.makeViewMat4(state.cam)
+        const shapeBuffers = makeShapeBuffers(gl, state.shapes, viewMatrix)
 
-        // const modelMat = transforms.makeModelMat(state.shapes[0])
-        // const viewMat = transforms.makeViewMat(state.cam)
-        // const modelViewMat = new Float32Array(25)  // todo reuse one of the old ones?
-        // Model transform is performed before view transform
-        // dotMM5(modelViewMat, viewMat, modelMat)
-
-        // Uniform keys correspond to shape ids.
-        let uniforms = new Map()
-        state.shapes.forEach(
-            (shape, id, map_) => uniforms.set(id, {
-                // u_colorMult: [1, 0.5, 0.5, .3],
-                // todo model view mat here??
-                u_matrix: transforms.makeModelMat(shape)
-            })
-        )
-
-        const viewMat = transforms.makeViewMat(state.cam)
-
-        drawScene(gl, programInfo, uniforms, buffers,
-            viewMat, projectionMatrix,
-            state.shapes, shapeBuffers)
+        // drawScene(gl, programInfo, staticBuffers, shapeBuffers,
+        //     I_4, projectionMatrix,
+        //     state.shapes)
+        //
+        drawScene(gl, programInfo, staticBuffers, shapeBuffers,
+            viewMatrix, projectionMatrix,
+            state.shapes)
 
         requestAnimationFrame(render)
 

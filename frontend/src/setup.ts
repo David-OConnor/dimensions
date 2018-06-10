@@ -81,12 +81,14 @@ const housePositions = [
 const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
     makeV5(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
 
+// todo we have a reversal issue with cam; for now have it look backwards
+
 export function setScene(scene: number, subScene: number) {
     document.onkeydown = e => transforms.handleKeyDown(e, scene)
     if (scene === 0) {  // Single hypercube
         state.setCam(new Camera(
             makeV5([0., 0., -2., 0.]),
-            [0., 0., 0., 0., 0., 0.],
+            [0., τ/2., 0., 0., 0., 0.],
             τ / 5.5,
             4 / 3.,
             1.,
@@ -119,7 +121,7 @@ export function setScene(scene: number, subScene: number) {
     } else if (scene === 1) {  // Terain with shapes
         state.setCam(new Camera(
             makeV5([0., 2., -3., 0.]),
-            [0., -.5, 0., 0., 0., 0.],
+            [0., τ/2, 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
             1.,
@@ -164,7 +166,7 @@ export function setScene(scene: number, subScene: number) {
     } else if (scene === 2) {  // Terain with shapes
         state.setCam(new Camera(
             makeV5([0., 3., -3., 0.]),
-            [0., 0., 0., 0., 0., 0.],
+            [0., τ/2, 0., 0., 0., 0.],
             τ / 4.,
             4 / 3.,
             1.,
@@ -199,31 +201,41 @@ export function setScene(scene: number, subScene: number) {
         ))
 
         let mapTest = [
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
-            [0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
         ]
 
         let mapTestWarped = [
-            [0, -3, -4, -5],
-            [2, 0, -3, -4],
-            [-1, 0, -2, -3],
-            [-1, 0, -1, -2],
+            [1, 1.5, 1.5, 1.5, 1.5, 0, 0, 0],
+            [1.5, 2, 2.5, 2, 1, 1, 0, 0],
+            [1, 2.5, 3, 2.5, 2, 1, 0, 0],
+            [1.5, 2, 2.5, 2, 1.5, 0, 0, 0],
+            [1, 1.5, 1.5, 1.5, 1, 0, 0, 0],
+            [1, 1, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0],
         ]
 
         let mapTest3d = [
+            [...mapTest], [...mapTest], [...mapTest], [...mapTest],
             [...mapTest], [...mapTest], [...mapTest], [...mapTest]
         ]
 
         let mapTest3dWarped = [
+            [...mapTest], [...mapTestWarped], [...mapTestWarped], [...mapTest],
             [...mapTest], [...mapTestWarped], [...mapTestWarped], [...mapTest]
         ]
 
         const spissMap_ = subScene === 1 ? mapTest3dWarped : mapTest3d
 
         state.setShapes(
-            shapeMaker.make_cube_hypergrid([10, 10, 10], 4, spissMap_, empty)
+            shapeMaker.make_cube_hypergrid([20, 20, 20], 8, spissMap_, empty)
         )
         state.setColorMax(30)
     } else {

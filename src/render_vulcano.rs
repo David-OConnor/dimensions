@@ -96,7 +96,7 @@ pub fn main() {
     // window and a cross-platform Vulkan surface that represents the surface of the window.
     let mut events_loop = winit::EventsLoop::new();
     let surface = winit::WindowBuilder::new().build_vk_surface(&events_loop, instance.clone()).unwrap();
-    
+
     // The next step is to choose which GPU queue will execute our draw commands.
     //
     // Devices can provide multiple queues to run commands in parallel (for example a draw queue
@@ -158,7 +158,7 @@ pub fn main() {
         // pass values that are allowed by the capabilities.
         let caps = surface.capabilities(physical)
                          .expect("failed to get surface capabilities");
-        
+
         dimensions = caps.current_extent.unwrap_or([WIDTH, HEIGHT]);
 
         // We choose the dimensions of the swapchain to match the current extent of the surface.
@@ -185,11 +185,14 @@ pub fn main() {
         struct Vertex { position: [f32; 2] }
         impl_vertex!(Vertex, position);
 
-        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(), [
+        let vertices = [
             Vertex { position: [-0.5, -0.25] },
             Vertex { position: [0.0, 0.5] },
             Vertex { position: [0.25, -0.1] }
-        ].iter().cloned()).expect("failed to create buffer")
+        ];
+
+        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
+            vertices.iter().cloned()).expect("failed to create buffer")
     };
 
     // The next step is to create the shaders.
@@ -334,7 +337,7 @@ void main() {
             dimensions = surface.capabilities(physical)
                         .expect("failed to get surface capabilities")
                         .current_extent.unwrap();
-            
+
             let (new_swapchain, new_images) = match swapchain.recreate_with_dimension(dimensions) {
                 Ok(r) => r,
                 // This error tends to happen when the user is manually resizing the window.

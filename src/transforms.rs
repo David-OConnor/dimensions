@@ -5,7 +5,7 @@ use ndarray::prelude::*;
 use clipping;
 use types::{Camera, Shape};
 
-pub fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
+fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -87,7 +87,7 @@ pub fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
     R_1.dot(&R_2)
 }
 
-pub fn make_translator(position: &Array1<f64>) -> Array2<f64> {
+fn make_translator(position: &Array1<f64>) -> Array2<f64> {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
@@ -165,30 +165,27 @@ pub fn make_projector(cam: &Camera) -> Array2<f64> {
         ]
 }
 
-pub fn position_shape(shape: &Shape) -> HashMap<u32, Array1<f64>> {
-    // Position a shape's nodes in 3 or 4d space, based on its position
-    // and rotation parameters.
-
-    let is_4d = shape.rotation_speed[3].abs() > 0. || shape.rotation_speed[4] .abs() > 0. ||
-        shape.rotation_speed[5].abs() > 0. || shape.orientation[3].abs() > 0. ||
-        shape.orientation[4].abs() > 0. || shape.orientation[5].abs() > 0.;
-
+pub fn make_model_mat(shape: &Shape) -> Array2<f64> {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
+    let S = make_scaler(array![shape.scale, shape.scale, shape.scale, shape.scale]);
     let R = make_rotator(&shape.orientation);
-    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
     let T = make_translator(&shape.position);
+    T.dot(&(R.dot(&S)))
+}
 
-    let mut positioned_nodes = HashMap::new();
-    for (id, node) in &shape.nodes {
-    // We dot what OpenGL calls the 'Model matrix' with our point. Scale,
-    // then rotate, then translate.
-        let homogenous = array![node.a[0], node.a[1], node.a[2], node.a[3], 1.];
-        let new_pt = T.dot(&(R.dot(&(S.dot(&homogenous)))));
-        positioned_nodes.insert(*id, new_pt);
-    }
+pub fn make_view_mat(cam: &Camera) -> Array2<f64> {
+    // For a first-person sperspective, translate first; then rotate (around the
+    // camera=origin)
 
-    positioned_nodes
+    // Negate, since we're rotating the world relative to the camera.
+    let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
+    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1];
+
+    let T = make_translator(&cam.position);
+    let R = make_rotator(&cam.θ);
+
+    R.dot(&T)
 }
 
 fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
@@ -209,41 +206,41 @@ fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
     array![f[0] / f[4], -f[1] / f[4], f[2] / f[4], f[3] / f[4]]
 }
 
-pub fn project_shapes(shapes: &HashMap<u32, Shape>, cam: &Camera)
-        -> HashMap<(u32, u32), Array1<f64>> {
-    // Position and rotate shapes relative to the camera; project into a
-    // clipspace [hyper]frustum.
-    // The HashMap key is (shape_index, node_index), so we can tie back to the
-    // original shapes later.
-    // We negate R and T, since we're shifting and rotating relative to the
-    // [fixed] camera.
-    let T = make_translator(&-&(cam.position));
-    let R = make_rotator(&-&(cam.θ));
-    let P = make_projector(&cam);
-
-    let mut result = HashMap::new();
-
-    for (shape_id, shape) in shapes {
-        let positioned_pts = position_shape(shape);
-
-        // Iterate over edges so we can clip lines.
-        for edge in &shape.edges {
-            let pt_0 = &positioned_pts[&edge.node0];
-            let pt_1 = &positioned_pts[&edge.node1];
-            let pt_0_clipspace = project(pt_0, &T, &R, &P);
-            let pt_1_clipspace = project(pt_1, &T, &R, &P);
-
-            let clipped = clipping::clip_3d((&pt_0_clipspace, &pt_1_clipspace));
-            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
-                // We return the full (non-homogenous) projected point, even
-                // though we only need x and y to display.
-                result.insert((*shape_id, edge.node0), pt_0_clipped);
-                result.insert((*shape_id, edge.node1), pt_1_clipped);
-            }
-        }
-    }
-    result
-}
+//pub fn project_shapes(shapes: &HashMap<u32, Shape>, cam: &Camera)
+//        -> HashMap<(u32, u32), Array1<f64>> {
+//    // Position and rotate shapes relative to the camera; project into a
+//    // clipspace [hyper]frustum.
+//    // The HashMap key is (shape_index, node_index), so we can tie back to the
+//    // original shapes later.
+//    // We negate R and T, since we're shifting and rotating relative to the
+//    // [fixed] camera.
+//    let T = make_translator(&-&(cam.position));
+//    let R = make_rotator(&-&(cam.θ));
+//    let P = make_projector(&cam);
+//
+//    let mut result = HashMap::new();
+//
+//    for (shape_id, shape) in shapes {
+//        let positioned_pts = position_shape(shape);
+//
+//        // Iterate over edges so we can clip lines.
+//        for edge in &shape.edges {
+//            let pt_0 = &positioned_pts[&edge.node0];
+//            let pt_1 = &positioned_pts[&edge.node1];
+//            let pt_0_clipspace = project(pt_0, &T, &R, &P);
+//            let pt_1_clipspace = project(pt_1, &T, &R, &P);
+//
+//            let clipped = clipping::clip_3d((&pt_0_clipspace, &pt_1_clipspace));
+//            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
+//                // We return the full (non-homogenous) projected point, even
+//                // though we only need x and y to display.
+//                result.insert((*shape_id, edge.node0), pt_0_clipped);
+//                result.insert((*shape_id, edge.node1), pt_1_clipped);
+//            }
+//        }
+//    }
+//    result
+//}
 
 pub enum MoveDirection{
     Forward,
