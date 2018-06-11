@@ -139,17 +139,16 @@ function drawScene(
 
             // Tell WebGL how to pull out the colors from the color buffer
             // into the vertexColor attribute.
-            gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).color)
+            gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).uDist)
             gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexColor,
-                4,
+                programInfo.attribLocations.uDist,
+                1,  // Rather than 4 elements, we have one color per vertex.
                 gl.FLOAT ,
                 false ,
                 0,
                 0
             )
-            gl.enableVertexAttribArray(
-                programInfo.attribLocations.vertexColor)
+            gl.enableVertexAttribArray(programInfo.attribLocations.uDist)
 
             // Tell WebGL which indices to use to index the vertices
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, staticBuffers.indexBuffers.get(s_id))
@@ -289,8 +288,8 @@ function initBuffers(gl: any, shapes: Map<number, Shape>) {
 
 function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
     Map<number, any> {
-    let vertexPositionBuffer, colorBuffer, shapePositionBuffer, camPositionBuffer,
-        vertexPositions, faceColors, vertex, uDist, color, shapePositDuped, camPositDuped
+    let vertexPositionBuffer, uDistBuffer, shapePositionBuffer, camPositionBuffer,
+        vertexPositions, faceColors, vertex, dists, shapePositDuped, camPositDuped
 
     let result = new Map()
 
@@ -307,19 +306,17 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
             // todo posit arrays... Find a better way
             shapePositDuped = []
             camPositDuped = []
+            dists = []
             // Set up vertices.
             for (let face of shape.faces_vert) {
                 for (let vertex_i of face) {
                     vertex = (shape.nodes.get(vertex_i) as any).a
-                    // util.findColor(uDist))  //
-                    color = util.findColor(2)  // todo temp
-                    // todo see if you can handle color in the shader.
                     for (let i=0; i < 4; i++) {
                         vertexPositions.push(vertex[i])
-                        faceColors.push(color[i])
                         shapePositDuped.push(shape.position[i])
                         camPositDuped.push(cam.position[i])
                     }
+                    dists.push(cam.position[3] - vertex[3])  // u dist.
                 }
             }
 
@@ -327,9 +324,9 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer)
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW)
 
-            colorBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(faceColors), gl.STATIC_DRAW)
+            uDistBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, uDistBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(dists), gl.STATIC_DRAW)
 
             // quick position is the shape's whole position; eg just 4 elements.
             // used for our separate model, view logic.
@@ -343,7 +340,7 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
 
             result.set(s_id, {
                 vertexPosition: vertexPositionBuffer,
-                color: colorBuffer,
+                uDist: uDistBuffer,
                 shapePosition: shapePositionBuffer,
                 // todo we don't need to add the cam to the buffer each shape;
                 // todo need to rethink how we organize our buffer-creation funcs.
@@ -388,7 +385,8 @@ export function gl_main(scene: number, subScene: number) {
     // Vertex shader program
     const vsSource = `
         attribute vec4 aVertexPosition;
-        attribute vec4 aVertexColor;
+        // attribute vec4 aVertexColor;
+        attribute float aDist;
         
         attribute vec4 aShapePosition;
         attribute vec4 aCamPosition;
@@ -401,16 +399,40 @@ export function gl_main(scene: number, subScene: number) {
         uniform mat4 uViewMatrix;
                
         varying lowp vec4 vColor;
-        
-        vec4 positionedPt;
     
         void main() {
-          // For model transform, position after the transform
-          positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
-          // for view transform, position first.
-          positionedPt = uViewMatrix * (positionedPt - aCamPosition);
-          gl_Position = uProjectionMatrix * positionedPt;
-          vColor = aVertexColor;
+            vec4 positionedPt;
+            // For model transform, position after the transform
+            positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
+            // for view transform, position first.
+            positionedPt = uViewMatrix * (positionedPt - aCamPosition);
+            
+            // Now remove the u coord; replace with one. We no longer need it, 
+            // and the projection matrix is set up for 3d homogenous vectors.
+            vec4 positioned3d = vec4(positionedPt[0], positionedPt[1], positionedPt[2], 1.);
+            
+            gl_Position = uProjectionMatrix * positioned3d;
+          
+            // Now calculate the color, based on passed u dist from cam.
+            vec4 calced_color;
+            
+            // todo pass in colormax.
+            float portion_through = abs(aDist) / 3.0;
+
+            if (portion_through > 1.) {
+                portion_through = 1.;
+            }
+            
+            float baseGray = 0.0;
+            float colorVal = baseGray + portion_through * 1. - baseGray;
+            
+            if (aDist > 0.) {
+                calced_color = vec4(baseGray, baseGray, colorVal, 0.2);  // Blue
+            } else {
+                calced_color = vec4(colorVal, baseGray, baseGray, 0.2);  // Red
+            }
+
+            vColor = calced_color;
         }
     `
 
@@ -418,8 +440,9 @@ export function gl_main(scene: number, subScene: number) {
     const fsSource = `
         varying lowp vec4 vColor;
 
+
         void main() {
-          gl_FragColor = vColor;
+            gl_FragColor = vColor;
         }
     `
 
@@ -470,7 +493,7 @@ export function gl_main(scene: number, subScene: number) {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             shapePosition: gl.getAttribLocation(shaderProgram, 'aShapePosition'),
             camPosition: gl.getAttribLocation(shaderProgram, 'aCamPosition'),
-            vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
+            uDist: gl.getAttribLocation(shaderProgram, 'aDist'),
             skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
