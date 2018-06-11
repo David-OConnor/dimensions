@@ -168,27 +168,6 @@ function makeScaler(out: Float32Array, scale: Float32Array): Float32Array {
 //     return out
 // }
 
-export function makeModelMat(shape: Shape): Float32Array {
-    // T must be done last, since we scale and rotate with respect to the orgin,
-    // defined in the shape's initial nodes. S may be applied at any point.
-    const scaler = new Float32Array([shape.scale, shape.scale,
-                                     shape.scale, shape.scale, shape.scale])
-    // todo creating extra matrices here
-    let R = new Float32Array(25)
-    let T = new Float32Array(25)
-    let S = new Float32Array(25)
-    let M = new Float32Array(25)
-
-    makeScaler(S, scaler)
-    makeRotator(R, shape.orientation)
-    makeTranslator(T, shape.position)
-
-    dotMM5(M, R, S)
-    dotMM5(M, T, M)
-
-    return M
-}
-
 function to4d(M: Float32Array): Float32Array {
     let out = new Float32Array(16)
     out[0] = M[0]; out[1] = M[1]; out[2] = M[2]; out[3] = M[3];
@@ -202,45 +181,31 @@ function to4d(M: Float32Array): Float32Array {
 export function makeModelMat4(shape: Shape): Float32Array {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
+    // These 4d matrices don't translate; we do it separately, since we can only
+    // pass 4d matrices/vecs to the shader; we use non-homogenous 4d arrays, which
+    // we can't perform translations with.
+
+    // In the 4d versions of these functions, we leave out translations, since
+    // we require homogenous coords to handle those via matrices, but GL only
+    // supports up to 4d matrices.
     const scaler = new Float32Array([shape.scale, shape.scale,
                                      shape.scale, shape.scale, shape.scale])
-    // todo creating extra matrices here
     let R = new Float32Array(25)
     let S = new Float32Array(25)
-    let M = new Float32Array(25)
 
     makeScaler(S, scaler)
     makeRotator(R, shape.orientation)
 
-    dotMM5(M, R, S)
+    dotMM5(R, R, S)
 
-    return to4d(M)
-}
-
-export function makeViewMat(cam: Camera): Float32Array {
-    // For a first-person sperspective, Translate first; then rotate (around the
-    // camera=origin)
-
-    // Negate, since we're rotating the world relative to the camera.
-    const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
-    const negPos = new Float32Array([-cam.position[0], -cam.position[1],
-                                      -cam.position[2], -cam.position[3], 1])
-
-    // todo creating extra matrices here
-    let T = new Float32Array(25)
-    let R = new Float32Array(25)
-    let M = new Float32Array(25)
-    makeRotator(R, negθ)
-    makeTranslator(T, negPos)
-
-    dotMM5(M, R, T)
-
-    return M
+    return to4d(R)
 }
 
 export function makeViewMat4(cam: Camera): Float32Array {
     // For a first-person sperspective, Translate first; then rotate (around the
     // camera=origin)
+
+    // See note in makeViewMat4 re leaving out translation.
 
     // Negate, since we're rotating the world relative to the camera.
     const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]

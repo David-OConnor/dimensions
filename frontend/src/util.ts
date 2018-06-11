@@ -4,6 +4,8 @@
 // with out arguments..
 // Having algorithms tuned to the specific size matrix is ugly, but efficient.
 
+import * as state from "./state";
+
 export function makeV5(vals: number[]): Float32Array {
     // Custom constructor to make a 5-element Float32Array from 4.
     // We store things internally as 5-vecs as much as possible, for compatibility
@@ -123,4 +125,22 @@ function testDotMatrixMatrix() {
     //        [ 1,  0,  1, -4, -3],
     //        [ 2,  0, -3,  6,  2],
     //        [ 4, 14, 22,  5,  5]
+}
+
+export function findColor(dist: number): number[] {
+    // produce a color ranging from red to blue, based on how close a point is
+    // to the edge.
+    let portion_through = Math.abs(dist) / state.colorMax
+
+    if (portion_through > 1.) {
+        portion_through = 1.
+    }
+    const baseGray = .0
+    const colorVal = (baseGray + portion_through * 1. - baseGray)
+
+    if (dist > 0) {
+        return [baseGray, baseGray, colorVal, 0.2]  // Blue
+    } else {
+        return [colorVal, baseGray, baseGray, 0.2]  // Red
+    }
 }

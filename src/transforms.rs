@@ -168,7 +168,7 @@ pub fn make_projector(cam: &Camera) -> Array2<f64> {
 pub fn make_model_mat(shape: &Shape) -> Array2<f64> {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    let S = make_scaler(array![shape.scale, shape.scale, shape.scale, shape.scale]);
+    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
     let R = make_rotator(&shape.orientation);
     let T = make_translator(&shape.position);
     T.dot(&(R.dot(&S)))
@@ -180,10 +180,10 @@ pub fn make_view_mat(cam: &Camera) -> Array2<f64> {
 
     // Negate, since we're rotating the world relative to the camera.
     let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
-    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1];
+    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1.];
 
-    let T = make_translator(&cam.position);
-    let R = make_rotator(&cam.θ);
+    let T = make_translator(&negPos);
+    let R = make_rotator(&negθ);
 
     R.dot(&T)
 }

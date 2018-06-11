@@ -14,6 +14,7 @@ extern crate ndarray;
 
 // Vulkano
 extern crate cgmath;
+extern crate image;
 #[macro_use]
 extern crate vulkano;
 #[macro_use]
