@@ -16,7 +16,6 @@ import * as state from "./state";
 
 // Not sure how to get TS to accept WebAssembly.
 declare const WebAssembly: any
-const τ = 2 * Math.PI
 
 interface MainProps {
     state: any
@@ -141,11 +140,13 @@ class Main extends React.Component<any, any> {
     }
 
     setScene(scene: number) {
+        state.emptyStaticBuffers()
         this.setState({scene: scene})
         setup.setScene(scene, this.state.subScene)
     }
 
     setSubscene(subScene: number) {
+        state.emptyStaticBuffers()
         this.setState({subScene: subScene})
         setup.setScene(this.state.scene, subScene)
     }
