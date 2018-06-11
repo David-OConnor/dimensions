@@ -4,7 +4,6 @@ import * as setup from './setup'
 import * as state from './state'
 import * as transforms from './transforms'
 import {Camera, ProgramInfo, Shape} from './interfaces'
-import * as util from "./util";
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -190,102 +189,6 @@ function drawScene(
     )
 }
 
-function initBuffers(gl: any, shapes: Map<number, Shape>) {
-    // Create a buffer for our shapes' positions and color.
-    let vertex
-    const sbPositions: any = []
-    // state.skybox.faces_vert.map(face => face.map(vertex_i => {
-    //     vertex = state.processedSkybox.get([0, vertex_i].join(',')) as any
-    //     sbPositions.push(vertex[0])
-    //     sbPositions.push(vertex[1])
-    //     sbPositions.push(vertex[2])
-    // }))
-
-    // Now pass the list of positions into WebGL to build the
-    // shape. We do this by creating a Float32Array from the
-    // JavaScript array, then use it to fill the current buffer.
-    const skyboxPositBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, skyboxPositBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER,
-        new Float32Array(sbPositions),
-        gl.STATIC_DRAW)
-
-    // todo skybox texture wip
-    // look up where the vertex data needs to go.
-    // const positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
-    // consttexcoordLocation = gl.getAttribLocation(program, "a_texcoords");
-    // Create a buffer for texcoords.
-
-    const skyboxBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, skyboxBuffer)
-    // Set Texcoords.
-    gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([
-            // left column front
-            0, 0,
-            0, 1,
-            1, 0,
-            0, 1,
-            1, 1,
-            1, 0,
-
-            // top rung front
-            0, 0,
-            0, 1,
-            1, 0,
-            0, 1,
-            1, 1,
-            1, 0,
-        ]),
-        gl.STATIC_DRAW)
-
-    // Build the element array buffer; this specifies the indices
-    // into the vertex arrays for each face's vertices.
-
-    // Build the element array buffer; this specifies the indices
-    // into the vertex arrays for each face's vertices.
-
-    // This array defines each face as two triangles, using the
-    // indices into the vertex array to specify each triangle's
-    // position.
-    let indices: number[] = []
-    let indexModifier = 0
-    let tri_indices, indexBuffer
-    let indexBuffers = new Map()
-
-    shapes.forEach(
-        (shape, s_id, map_) => {
-            indexBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
-
-            // This array defines each face as two triangles, using the
-            // indices into the vertex array to specify each triangle's
-            // position.
-            indices = []
-            indexModifier = 0
-            tri_indices = shape.get_tris().map(ind => ind + indexModifier)
-            indices.push(...tri_indices)
-            indexModifier += shape.numFaceVerts()
-
-            // Now send the element array to GL
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Uint16Array(indices), gl.STATIC_DRAW)
-
-            indexBuffers.set(s_id, indexBuffer)
-        })
-
-    // Now send the element array to GL
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-        new Uint16Array(indices), gl.STATIC_DRAW)
-
-    return {
-        indexBuffers: indexBuffers,
-        skybox: skyboxBuffer,
-        skyboxPosits: skyboxPositBuffer
-    }
-}
-
 function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
     Map<number, any> {
     let vertexPositionBuffer, uDistBuffer, shapePositionBuffer, camPositionBuffer,
@@ -352,13 +255,12 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
     return result
 }
 
-export function gl_main(scene: number, subScene: number) {
+export function gl_main() {
     // Initialize WebGL rendering.
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
 
     // Overall settings here.
-
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
 
     // These settings affect transparency.
@@ -374,7 +276,6 @@ export function gl_main(scene: number, subScene: number) {
     // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    setup.setScene(scene, subScene)
 
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
@@ -417,7 +318,7 @@ export function gl_main(scene: number, subScene: number) {
             vec4 calced_color;
             
             // todo pass in colormax.
-            float portion_through = abs(aDist) / 3.0;
+            float portion_through = abs(aDist) / 1.5;
 
             if (portion_through > 1.) {
                 portion_through = 1.;
@@ -505,8 +406,8 @@ export function gl_main(scene: number, subScene: number) {
     }
 
     let then = 0
-    // These buffers don't change; eg index buffers.
-    let staticBuffers = initBuffers(gl, state.shapes)
+    // These buffers don't change; eg index buffers.  todo put static buffers back here?!
+    // let staticBuffers = initBuffers(gl, state.shapes, state.skybox)
 
     // Note: If we want dynamically-adjustable FOV, we need to move this,
     // or part of it to drawScene.
@@ -520,8 +421,6 @@ export function gl_main(scene: number, subScene: number) {
         state.cam.near,
         state.cam.far
     )
-
-    // const I_4 = mat4.create()
 
     // Draw the scene repeatedly
     function render(now: number) {
@@ -537,13 +436,15 @@ export function gl_main(scene: number, subScene: number) {
         // const viewMatrix = transforms.makeViewMat(state.cam)
         const viewMatrix = transforms.makeViewMat4(state.cam)
 
+        state.updateStaticBuffers(gl)
+
         const pfBuffers = makePerFrameBuffers(gl, state.shapes, state.cam)
 
         // drawScene(gl, programInfo, staticBuffers, shapeBuffers,
         //     I_4, projectionMatrix,
         //     state.shapes)
         //
-        drawScene(gl, programInfo, staticBuffers, pfBuffers,
+        drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
             viewMatrix, projectionMatrix,
             state.shapes)
 

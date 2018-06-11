@@ -1,6 +1,6 @@
 // This file mirrors transforms.rs.
 
-import {dotMM5, dotMV5, mulVConst5, addVecs5, makeV5} from './util'
+import {dotMM4, dotMV4, mulVConst4, addVecs4} from './util'
 import {Shape, Camera} from './interfaces'
 import * as state from "./state";
 
@@ -13,16 +13,16 @@ function moveCam(unitVec: Float32Array, fps: boolean) {
     // With first-person-shooter controls, ignore all input except rotation
     // around the y axis.
     const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
-    const R = makeRotator(new Float32Array(25), θ)
+    const R = makeRotator(new Float32Array(16), θ)
 
-    let v = new Float32Array(5)
-    dotMV5(v, R, unitVec)
+    let v = new Float32Array(4)
+    dotMV4(v, R, unitVec)
 
-    mulVConst5(v, v, state.moveSensitivity)
+    mulVConst4(v, v, state.moveSensitivity)
 
-    addVecs5(state.cam.position, state.cam.position, v)
+    addVecs4(state.cam.position, state.cam.position, v)
     // The skybox moves with the camera, but doesn't rotate with it.
-    addVecs5(state.skybox.position, state.skybox.position, v)
+    addVecs4(state.skybox.position, state.skybox.position, v)
 }
 
 function makeRotator(out: Float32Array, θ: number[]): Float32Array {
@@ -52,52 +52,46 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
 
     // Rotations around the xy, yz, and xz planes should appear normal.
     let R_xy = Float32Array.from([
-        cos_xy, sin_xy, 0., 0., 0.,
-        -sin_xy, cos_xy, 0., 0., 0.,
-        0., 0., 1., 0., 0.,
-        0., 0., 0., 1., 0.,
-        0., 0., 0., 0., 1.
+        cos_xy, sin_xy, 0., 0.,
+        -sin_xy, cos_xy, 0., 0.,
+        0., 0., 1., 0.,
+        0., 0., 0., 1.
     ])
 
     const R_yz = Float32Array.from([
-        1., 0., 0., 0., 0.,
-        0., cos_yz, sin_yz, 0., 0.,
-        0., -sin_yz, cos_yz, 0., 0.,
-        0., 0., 0., 1., 0.,
-        0., 0., 0., 0., 1.
+        1., 0., 0., 0.,
+        0., cos_yz, sin_yz, 0.,
+        0., -sin_yz, cos_yz, 0.,
+        0., 0., 0., 1.
     ])
 
     const R_xz = Float32Array.from([
-        cos_xz, 0., -sin_xz, 0., 0.,
-        0., 1., 0., 0., 0.,
-        sin_xz, 0., cos_xz, 0., 0.,
-        0., 0., 0., 1., 0.,
-        0., 0., 0., 0., 1.
+        cos_xz, 0., -sin_xz, 0.,
+        0., 1., 0., 0.,
+        sin_xz, 0., cos_xz, 0.,
+        0., 0., 0., 1.
     ])
 
     // Rotations involving u, the fourth dimension, should distort 3d objects.
     const R_xu = Float32Array.from([
-        cos_xu, 0., 0., sin_xu, 0.,
-        0., 1., 0., 0., 0.,
-        0., 0., 1., 0., 0.,
-        -sin_xu, 0., 0., cos_xu, 0.,
-        0., 0., 0., 0., 1.
+        cos_xu, 0., 0., sin_xu,
+        0., 1., 0., 0.,
+        0., 0., 1., 0.,
+        -sin_xu, 0., 0., cos_xu
     ])
 
     const R_yu = Float32Array.from([
-        1., 0., 0., 0., 0.,
-        0., cos_yu, 0., -sin_yu, 0.,
-        0., 0., 1., 0., 0.,
-        0., sin_yu, 0., cos_yu, 0.,
-        0., 0., 0., 0., 1.
+        1., 0., 0., 0.,
+        0., cos_yu, 0., -sin_yu,
+        0., 0., 1., 0.,
+        0., sin_yu, 0., cos_yu
     ])
 
     const R_zu = Float32Array.from([
-        1., 0., 0., 0., 0.,
-        0., 1., 0., 0., 0.,
-        0., 0., cos_zu, -sin_zu, 0.,
-        0., 0., sin_zu, cos_zu, 0.,
-        0., 0., 0., 0., 1.
+        1., 0., 0., 0.,
+        0., 1., 0., 0.,
+        0., 0., cos_zu, -sin_zu,
+        0., 0., sin_zu, cos_zu
     ])
 
     // let R = new Float32Array([
@@ -107,11 +101,11 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     // todo this defeats the purpose of our out array; ie we create loads of new
     // todo arrays whenever we call this function. Address.
     // Combine the rotations.
-    const a = dotMM5(new Float32Array(25), R_yu, R_zu)
-    const b = dotMM5(new Float32Array(25), R_xu, a)
-    const c = dotMM5(new Float32Array(25), R_xz, b)
-    const d = dotMM5(new Float32Array(25), R_yz, c)
-    const e = dotMM5(new Float32Array(25), R_xy, d)
+    const a = dotMM4(new Float32Array(16), R_yu, R_zu)
+    const b = dotMM4(new Float32Array(16), R_xu, a)
+    const c = dotMM4(new Float32Array(16), R_xz, b)
+    const d = dotMM4(new Float32Array(16), R_yz, c)
+    const e = dotMM4(new Float32Array(16), R_xy, d)
     out.set(e)
 
     // // Combine the rotations.
@@ -123,57 +117,12 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     return out
 }
 
-function makeTranslator(out: Float32Array, position: Float32Array): Float32Array {
-    // Return a translation matrix; the pt must have 1 appended to its end.
-    // We do this augmentation so we can add a constant term.  Scale and
-    // rotation matrices may have this as well for matrix compatibility.
-    // Ugly, but efficient...
-    out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = position[0]
-    out[5] = 0; out[6] = 1; out[7] = 0; out[8] = 0; out[9] = position[1]
-    out[10] = 0; out[11] = 0; out[12] = 1; out[13] = 0; out[14] = position[2]
-    out[15] = 0; out[16] = 0; out[17] = 0; out[18] = 1; out[19] = position[3]
-    out[20] = 0; out[21] = 0; out[22] = 0; out[23] = 0; out[24] = 1
-
-    return out
-}
-
-// function translateVec(out: Float32Array, position: Float32Array): Float32Array {
-//     // Again, not as elegant as returning a composable matrix, but efficient for Webgl.
-//     out[0] += position[0]
-//     out[1] += position[1]
-//     out[2] += position[2]
-//     out[3] += position[3]
-//
-//     return out
-// }
-
 function makeScaler(out: Float32Array, scale: Float32Array): Float32Array {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    out[0] = scale[0]; out[1] = 0; out[2] = 0; out[3] = 0; out[4] = 0
-    out[5] = 0; out[6] = scale[1]; out[7] = 0; out[8] = 0; out[9] = 0
-    out[10] = 0; out[11] = 0; out[12] = scale[2]; out[13] = 0; out[14] = 0
-    out[15] = 0; out[16] = 0; out[17] = 0; out[18] = scale[3]; out[19] = 0
-    out[20] = 0; out[21] = 0; out[22] = 0; out[23] = 0; out[24] = 1
-
-    return out
-}
-
-// function scaleVec(out: Float32Array, scale: Float32Array): Float32Array {
-//     // Apply a scale transform to a vector. Inelegant to do it this way, but efficient.
-//     out[0] *= scale[0]
-//     out[1] *= scale[1]
-//     out[2] *= scale[2]
-//     out[3] *= scale[3]
-//
-//     return out
-// }
-
-function to4d(M: Float32Array): Float32Array {
-    let out = new Float32Array(16)
-    out[0] = M[0]; out[1] = M[1]; out[2] = M[2]; out[3] = M[3];
-    out[4] = M[5]; out[5] = M[6]; out[6] = M[7]; out[7] = M[8];
-    out[8] = M[10]; out[9] = M[11]; out[10] = M[12]; out[11] = M[13];
-    out[12] = M[15]; out[14] = M[16]; out[14] = M[17]; out[15] = M[18];
+    out[0] = scale[0]; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = scale[1]; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = scale[2]; out[11] = 0;
+    out[12] = 0; out[13] = 0; out[14] = 0; out[15] = scale[3]
 
     return out
 }
@@ -188,17 +137,16 @@ export function makeModelMat4(shape: Shape): Float32Array {
     // In the 4d versions of these functions, we leave out translations, since
     // we require homogenous coords to handle those via matrices, but GL only
     // supports up to 4d matrices.
-    const scaler = new Float32Array([shape.scale, shape.scale,
-                                     shape.scale, shape.scale, shape.scale])
-    let R = new Float32Array(25)
-    let S = new Float32Array(25)
+    const scaler = new Float32Array([shape.scale, shape.scale, shape.scale, shape.scale])
+    let R = new Float32Array(16)
+    let S = new Float32Array(16)
 
     makeScaler(S, scaler)
     makeRotator(R, shape.orientation)
 
-    dotMM5(R, R, S)
+    dotMM4(R, R, S)
 
-    return to4d(R)
+    return R
 }
 
 export function makeViewMat4(cam: Camera): Float32Array {
@@ -211,9 +159,9 @@ export function makeViewMat4(cam: Camera): Float32Array {
     const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
 
     // todo creating extra matrices here
-    let R = new Float32Array(25)
+    let R = new Float32Array(16)
     makeRotator(R, negθ)
-    return to4d(R)
+    return R
 }
 
 export function handleKeyDown(event: any, scene_: number) {
@@ -224,13 +172,12 @@ export function handleKeyDown(event: any, scene_: number) {
 
     for (let code of state.currentlyPressedKeys) {
         switch(code) {
+            // todo fudge factors on f and back to reverse.
             case 87:  // w
                 if (scene_ === 0) {
                     console.log()
-                } else if (scene_ === 2) {
-                    moveCam(makeV5([0, 0, 1, 0]), true)
                 } else {
-                    moveCam(makeV5([0, 0, 1, 0]), false)
+                    moveCam(new Float32Array([0, 0, -1, 0]), false)
                 }
                 event.preventDefault()
                 break
@@ -238,21 +185,21 @@ export function handleKeyDown(event: any, scene_: number) {
                 if (scene_ === 0) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, 0, -1, 0]), false)
+                    moveCam(new Float32Array([0, 0, 1, 0]), false)
                 }
                 break
             case 68:  // d
                 if (scene_ === 0) {
                     console.log()
                 } else {
-                    moveCam(makeV5([1, 0, 0, 0]), false)
+                    moveCam(new Float32Array([1, 0, 0, 0]), false)
                 }
                 break
             case 65:  // a
                 if (scene_ === 0) {
                     console.log()
                 } else {
-                    moveCam(makeV5([-1, 0, 0, 0]), false)
+                    moveCam(new Float32Array([-1, 0, 0, 0]), false)
                 }
                 break
             case 32:  // Space
@@ -261,7 +208,7 @@ export function handleKeyDown(event: any, scene_: number) {
                 } else if (scene_ === 2) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, 1, 0, 0]), false)
+                    moveCam(new Float32Array([0, 1, 0, 0]), false)
                 }
                 event.preventDefault()
                 break
@@ -271,7 +218,7 @@ export function handleKeyDown(event: any, scene_: number) {
                 } else if (scene_ === 2) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, -1, 0, 0]), false)
+                    moveCam(new Float32Array([0, -1, 0, 0]), false)
                 }
                 break
             case 17:  // Control
@@ -280,21 +227,21 @@ export function handleKeyDown(event: any, scene_: number) {
                 } else if (scene_ === 2) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, -1, 0, 0]), false)
+                    moveCam(new Float32Array([0, -1, 0, 0]), false)
                 }
                 break
             case 82:  // r
                 if (scene_ === 0) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, 0, 0, 1]), false)
+                    moveCam(new Float32Array([0, 0, 0, 1]), false)
                 }
                 break
             case 70:  // f
                 if (scene_ === 0) {
                     console.log()
                 } else {
-                    moveCam(makeV5([0, 0, 0, -1]), false)
+                    moveCam(new Float32Array([0, 0, 0, -1]), false)
                 }
                 break
             // todo add deltaTime!

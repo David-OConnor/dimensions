@@ -6,8 +6,9 @@ import {Button, Grid, Row, Col,
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-import {Shape, Camera} from './interfaces'
 import * as render from './render'
+import * as setup from "./setup";
+import * as state from "./state";
 
 //
 // import * as test from './dimensions'
@@ -141,10 +142,12 @@ class Main extends React.Component<any, any> {
 
     setScene(scene: number) {
         this.setState({scene: scene})
+        setup.setScene(scene, this.state.subScene)
     }
 
     setSubscene(subScene: number) {
         this.setState({subScene: subScene})
+        setup.setScene(this.state.scene, subScene)
     }
 
     // Scene descriptions:
@@ -155,8 +158,6 @@ class Main extends React.Component<any, any> {
     // 3: A hyper lattice; currently of cubes.
 
     render() {
-        render.gl_main(this.state.scene, this.state.subScene)
-
         let instructions
         if (this.state.scene === 0) {
             instructions = <InstructionsOneShape />
@@ -185,5 +186,8 @@ class Main extends React.Component<any, any> {
         )
     }
 }
+
+setup.setScene(0, 0)
+render.gl_main()
 
 export default Main

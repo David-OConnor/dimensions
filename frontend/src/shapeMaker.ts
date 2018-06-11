@@ -3,7 +3,6 @@
 // of the frontend.
 
 import {Shape, Node2, Edge, Face} from "./interfaces"
-import {makeV5} from "./util"
 
 export function make_box(lens: [number, number, number],
                          position: Float32Array, orientation: number[],
@@ -28,7 +27,7 @@ export function make_box(lens: [number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(makeV5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+        nodes.set(id, new Node2(new Float32Array([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3]])))
     }
 
@@ -105,7 +104,7 @@ export function make_rectangular_pyramid(lens: [number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2(makeV5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+        nodes.set(id, new Node2(new Float32Array([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3]/2])))
     }
 
@@ -160,7 +159,7 @@ export function make_house(lens: [number, number, number],
         // Let the roof overhang the base by a little.
         // Make the roof height a portion of the base height.
         [lens[0] * 1.2, lens[1] / 3., lens[2] * 1.2],
-        makeV5([0, 0, 0, 0]), empty_array, empty_array
+        new Float32Array([0, 0, 0, 0]), empty_array, empty_array
     );
 
     // Now that we've made the shapes, recompose them to be one shape.
@@ -232,7 +231,7 @@ export function make_hyperrect(lens: [number, number, number, number],
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
-        nodes.set(id, new Node2(makeV5([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
+        nodes.set(id, new Node2(new Float32Array([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3] * lens[3]/2])))
     }
 
@@ -350,7 +349,7 @@ export function make_origin(len: number, position: Float32Array,
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id]
         // todo should have better vector arithmetic
-        nodes.set(id, new Node2(makeV5([coord[0] * len, coord[1] * len,
+        nodes.set(id, new Node2(new Float32Array([coord[0] * len, coord[1] * len,
             coord[2] * len, coord[3] * len])))
     }
     const edges = [
@@ -395,7 +394,7 @@ export function make_terrain(dims: [number, number], res: number,
             }
             // todo you could change which planes this is over by rearranging
             // todo these node points.
-            nodes.set(id, new Node2(makeV5([
+            nodes.set(id, new Node2(new Float32Array([
                 x,
                 height,
                 z,
@@ -450,7 +449,7 @@ export function make_cube_hypergrid(dims: [number, number, number],
             for (let k=0; k < res; k++) {  // z
                 result.set(
                     Math.pow(res, 2) * i + res * j + k,
-                    make_cube(.5, makeV5([x, y, z, spissitudeMap[i][j][k]]),
+                    make_cube(.5, new Float32Array([x, y, z, spissitudeMap[i][j][k]]),
                               [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
                 )
                 z += dims[2] / res
@@ -486,7 +485,7 @@ export function make_5cell(radius: number, position: Float32Array, orientation: 
     let nodes = new Map()
     for (let id=0; id < coords.length; id++) {
         let coord = coords[id];
-        nodes.set(id, new Node2(makeV5([coord[0] * radius/2., coord[1] * radius/2.,
+        nodes.set(id, new Node2(new Float32Array([coord[0] * radius/2., coord[1] * radius/2.,
             coord[2] * radius/2., coord[3] * radius/2.])))
     }
 
