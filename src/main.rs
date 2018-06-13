@@ -84,7 +84,7 @@ fn main() {
     }
 
 //    render_ggez::run(shapes);
-    render_vulcano::main();
+    render_vulcano::render(shapes);
 }
 
 #[cfg(test)]

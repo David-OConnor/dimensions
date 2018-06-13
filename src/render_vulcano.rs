@@ -17,6 +17,8 @@
 // and that you want to learn Vulkan. This means that for example it won't go into details about
 // what a vertex or a shader is.
 
+use std::collections::HashMap;
+use std::f32::consts::PI;
 use std::sync::Arc;
 use std::mem;
 
@@ -49,15 +51,85 @@ use vulkano::sync::now;
 use vulkano::sync::GpuFuture;
 
 use cgmath;
+use ndarray::prelude::*;
 use vulkano;
 use vulkano_shader_derive;
 use vulkano_win;
 use winit;
 
+use shape_maker;
+use transforms;
+use types::{Camera, Shape};
+
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
-pub fn main() {
+const τ: f32 = 2. * PI;
+
+mod State {
+    use std::cell;
+    use std::collections::HashMap;
+    use std::f32::consts::PI;
+    use std::sync::{Arc, Mutex, RwLock};
+
+    use ndarray::prelude::*;
+
+    use types::{Camera, Shape};
+
+    const τ: f32 = 2. * PI;
+
+    fn default_camera() -> Camera {
+        // Effectively a global constant.
+        Camera {
+            // If 3d, the 4th items for position isn't used.
+            position: array![0., 1., -6., -2.],
+            θ: array![0., 0., 0., 0., 0., 0.],
+            fov: τ / 5.,
+            aspect: 1.,
+            aspect_4: 1.,
+            far: 50.,
+            near: 0.1,
+            strange: 1.0,
+        }
+    }
+
+    struct State_ {
+        cam: Camera,
+        shapes: HashMap<u32, Shape>,
+    }
+
+//    let state1 = State_ {
+//        cam: default_camera(),
+//        shapes: HashMap::new(),
+//    };
+
+//    let data = Arc::new(Mutex::new(0));
+
+}
+
+
+pub fn render(shapes: HashMap<u32, Shape>) {
+
+    // todo for now, we'll keep state in this func.
+    let cam = Camera {
+        // If 3d, the 4th items for position isn't used.
+        position: array![0., 0., -2., 0.],
+        θ: array![0., 0., 0., 0., 0., 0.],
+        fov: τ / 5.,
+        aspect: 1.,
+        aspect_4: 1.,
+        far: 200.,
+        near: 0.1,
+        strange: 1.0,
+    };
+
+    let mut shapes = HashMap::new();
+    shapes.insert(0, shape_maker::make_cube(1.,
+                                            array![0., 0., 0., 0.],
+                                            array![0., 0., 0., 0., 0., 0.],
+                                            array![0., 0., 0., 0., 0., 0.]
+    ));
+
     // The first step of any vulkan program is to create an instance.
     let instance = {
         // When we create an instance, we have to pass a list of extensions that we want to enable.
@@ -187,86 +259,48 @@ pub fn main() {
     };
 
     // We now create a buffer that will store the shape of our triangle.
-    let vertex_buffer = {
-        #[derive(Debug, Clone)]
-        struct Vertex { position: [f32; 2] }
-        impl_vertex!(Vertex, position);
 
-        let vertices = [
-            Vertex { position: [-0.5, -0.5] },
-            Vertex { position: [-0.5, 0.5] },
-            Vertex { position: [0.5, 0.5] },
-            Vertex { position: [0.5, -0.5] },
-        ];
+
+    // todo separate into buffer maker funcs.
+    let vertex_buffer = {
+
+        let mut shape_vertices = Vec::new();
+        for (s_id, shape) in &shapes {
+            for (n_id, node) in &shape.nodes {
+                let vertex = &node.a;
+                shape_vertices.push([vertex[0], vertex[1], vertex[2], vertex[3]])
+            }
+        }
 
         CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
-                                       vertices.iter().cloned()).expect("failed to create buffer")
+                                       shape_vertices.iter().cloned())
+            .expect("failed to create vertex buffer")
     };
 
-    let image = StorageImage::new(device.clone(), Dimensions::Dim2d { width: 1024, height: 1024 },
-                                  Format::R8G8B8A8Unorm, Some(queue.family())).unwrap();
+    // todo normals buffer
 
-    mod cs {
-        #[derive(VulkanoShader)]
-         #[ty = "compute"]
-         #[src = "
-# version 450
+    let index_buffer = {
+        let mut indices = Vec::new();
+        for (s_id, shape) in &shapes {
 
-layout(local_size_x =8, local_size_y = 8, local_size_z = 8) in;
-
-layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
-
-void main() {
-    vec2 norm_coordinates = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(img));
-    vec2 c = (norm_coordinates - vec2(0.5)) * 2.0 - vec2(1.0, 0.0);
-
-    vec2 z = vec2(0.0, 0.0);
-    float i;
-    for (i = 0.0; i < 1.0; i += 0.005) {
-        z = vec2(
-            z.x * z.x - z.y * z.y + c.x,
-            z.y * z.x + z.x * z.y + c.y
-        );
-
-        if (length(z) > 4.0) {
-            break;
+            let mut indexModifier: u32 = 0;
+            let tri_indices = shape.get_tris().into_iter().map(|ind| ind + indexModifier);
+            indices.push(...tri_indices);
+            indexModifier += shape.num_face_verts();
         }
-    }
 
-    vec4 to_write = vec4(vec3(i), 1.0);
-    imageStore(img, ivec2(gl_GlobalInvocationID.xy), to_write);
-}"
-         ]
-         struct Dummy;
-     }
+        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
+                                       indices.iter().cloned())
+            .expect("Failed to create index buffer")
+    };
 
-    let shader = cs::Shader::load(device.clone()).expect("failed to create shader module");
+    let view_mat = transforms::make_view_mat4(&cam);
+    // todo we need one for each shape; only one shape for now though.
+    let model_mat = transforms::make_model_mat4(&shapes.get(&0).unwrap());
+    let proj_mat = transforms::make_proj_mat4(&cam);
 
-     let compute_pipeline = Arc::new(ComputePipeline::new(device.clone(), &shader.main_entry_point(), &())
-         .expect("failed to create compute pipeline"));
-
-    let set = Arc::new(PersistentDescriptorSet::start(compute_pipeline.clone(), 0)
-        .add_image(image.clone()).unwrap()
-        .build().unwrap()
-    );
-
-    let im_buf = CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
-                                                (0 .. 1024 * 1024 * 4).map(|_| 0u8))
-                                               .expect("Failed to create im buffer");
-
-    let command_buffer_im = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap()
-        .dispatch([1024 / 8, 1024 / 8, 1], compute_pipeline.clone(), set.clone(), ()).unwrap()
-        .copy_image_to_buffer(image.clone(), im_buf.clone()).unwrap()
-        .build().unwrap();
-
-    let finished_im = command_buffer_im.execute(queue.clone()).unwrap();
-    finished_im.then_signal_fence_and_flush().unwrap()
-        .wait(None).unwrap();
-
-    let buffer_content = im_buf.read().unwrap();
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
-    image.save("mandlebrot.png").unwrap();
-
+    let uniform_buffer = vulkano::buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
+                         ::new(device.clone(), BufferUsage::all());
 
     // The next step is to create the shaders.
     //
@@ -283,10 +317,36 @@ void main() {
         #[src = "
 #version 450
 
-layout(location = 0) in vec2 position;
+layout(location = 0) in vec4 ver_posit;
+layout(location = 1) in vec4 shape_posit;
+layout(location = 2) in vec4 cam_posit;
+layout(location = 3) out vec4 fragColor;
+// layout(location = 4) in vec4 normal;
+
+layout(set = 0, binding = 0) uniform Data {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} uniforms;
+
+out gl_PerVertex {
+    vec4 gl_Position;
+};
 
 void main() {
-    gl_Position = vec4(position, 0.0, 1.0);
+    vec4 tempColor = vec4(0., 1., 0., 0.);
+
+    // For model transform, position after the transform
+    vec4 positionedPt = (uniforms.model * vert_posit) + shape_posit;
+    // for view transform, position first.
+    positioned_pt = uniforms.view * (positioned_pt - cam_posit);
+
+    // Now remove the u coord; replace with 1. We no longer need it,
+    // and the projection matrix is set up for 3d homogenous vectors.
+    vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
+
+    gl_Position = uniforms.proj * vec4(positioned_3d);
+//    fragColor = tempColor;
 }
 "]
         struct Dummy;
@@ -302,6 +362,7 @@ layout(location = 0) out vec4 f_color;
 
 void main() {
     f_color = vec4(1.0, 0.0, 0.0, 1.0);
+//    gl_FragColor = f_color;
 }
 "]
         struct Dummy;
@@ -440,6 +501,18 @@ void main() {
             mem::replace(&mut framebuffers, new_framebuffers);
         }
 
+        let uniform_buffer_subbuffer = {
+            // maybe increment rotation here.
+
+            let uniform_data = vs::ty::Data {
+                model: model_mat,
+                view: view_mat,
+                proj: proj_mat,
+            };
+
+            uniform_buffer.next(uniform_data).unwrap()
+        };
+
         // Before we can draw on the output, we have to *acquire* an image from the swapchain. If
         // no image is available (which happens if you submit draw commands too quickly), then the
         // function will block.
@@ -482,6 +555,7 @@ void main() {
             //
             // The last two parameters contain the list of resources to pass to the shaders.
             // Since we used an `EmptyPipeline` object, the objects have to be `()`.
+
             .draw(pipeline.clone(),
                   DynamicState {
                       line_width: None,
@@ -489,12 +563,12 @@ void main() {
                       viewports: Some(vec![Viewport {
                           origin: [0.0, 0.0],
                           dimensions: [dimensions[0] as f32, dimensions[1] as f32],
-                          depth_range: 0.0 .. 1.0,
+                          depth_range: 0.0..1.0,
                       }]),
                       scissors: None,
                   },
                   vertex_buffer.clone(), (), ())
-            .unwrap()
+                .unwrap()
 
             // We leave the render pass by calling `draw_end`. Note that if we had multiple
             // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the

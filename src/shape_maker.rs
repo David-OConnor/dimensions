@@ -10,9 +10,9 @@ use types::{Node, Edge, Face, Shape};
 // Nodes are set up here so that 0 is at their center; this is used for scaling,
 // rotation, and positioning in the world.
 
-pub fn make_box(lens: (f64, f64, f64),
-                position: Array1<f64>, orientation: Array1<f64>,
-                rotation_speed: Array1<f64>) -> Shape {
+pub fn make_box(lens: (f32, f32, f32),
+                position: Array1<f32>, orientation: Array1<f32>,
+                rotation_speed: Array1<f32>) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -78,9 +78,9 @@ pub fn make_box(lens: (f64, f64, f64),
     Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
-pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
-                                position: Array1<f64>, orientation: Array1<f64>,
-                                rotation_speed: Array1<f64>) -> Shape {
+pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
+                                position: Array1<f32>, orientation: Array1<f32>,
+                                rotation_speed: Array1<f32>) -> Shape {
     let coords = [
         // Base
         [-1., 0., -1., 0.],
@@ -132,10 +132,10 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
     Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
- pub fn make_house(lens: (f64, f64, f64),
-                   position: Array1<f64>,
-                   orientation: Array1<f64>,
-                   rotation_speed: Array1<f64>) -> Shape {
+ pub fn make_house(lens: (f32, f32, f32),
+                   position: Array1<f32>,
+                   orientation: Array1<f32>,
+                   rotation_speed: Array1<f32>) -> Shape {
      let empty_array = array![0., 0., 0., 0., 0., 0.];
 
      // We'll modify base in-place, then return it.
@@ -172,16 +172,16 @@ pub fn make_rectangular_pyramid(lens: (f64, f64, f64),
      base
  }
 
-pub fn make_cube(side_len: f64,
-                 position: Array1<f64>, orientation: Array1<f64>,
-                 rotation_speed: Array1<f64>) -> Shape {
+pub fn make_cube(side_len: f32,
+                 position: Array1<f32>, orientation: Array1<f32>,
+                 rotation_speed: Array1<f32>) -> Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
     make_box((side_len, side_len, side_len), position, orientation, rotation_speed)
 }
 
-pub fn make_origin(len: f64, position: Array1<f64>, orientation: Array1<f64>,
-                   rotation_speed: Array1<f64>) -> Shape {
+pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
+                   rotation_speed: Array1<f32>) -> Shape {
     // A 4-dimensional cross, for marking the origin.
     let coords = [
         [-1., 0., 0., 0.],
@@ -215,8 +215,8 @@ pub fn make_origin(len: f64, position: Array1<f64>, orientation: Array1<f64>,
     Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
-//pub fn make_street(width: f64, position: Array1<f64>, scale: f64, orientation: Array1<f64>,
-//                   rotation_speed: Array1<f64>) -> Shape {
+//pub fn make_street(width: f32, position: Array1<f32>, scale: f32, orientation: Array1<f32>,
+//                   rotation_speed: Array1<f32>) -> Shape {
 //    // Make a street extending very far into the distance in both directions.
 //    // Direction is the vector the street points.
 //
@@ -238,9 +238,9 @@ pub fn make_origin(len: f64, position: Array1<f64>, orientation: Array1<f64>,
 //    Shape {nodes, edges, faces, position, 1., orientation, rotation_speed}
 //}
 
-pub fn make_hyperrect(lens: (f64, f64, f64, f64),
-                      position: Array1<f64>, orientation: Array1<f64>,
-                      rotation_speed: Array1<f64>) -> Shape {
+pub fn make_hyperrect(lens: (f32, f32, f32, f32),
+                      position: Array1<f32>, orientation: Array1<f32>,
+                      rotation_speed: Array1<f32>) -> Shape {
     // Make a 4d hypercube.
 
     let coords = [
@@ -333,9 +333,9 @@ pub fn make_hyperrect(lens: (f64, f64, f64, f64),
     Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
-pub fn make_hypercube(side_len: f64,
-                      position: Array1<f64>, orientation: Array1<f64>,
-                      rotation_speed: Array1<f64>) -> Shape {
+pub fn make_hypercube(side_len: f32,
+                      position: Array1<f32>, orientation: Array1<f32>,
+                      rotation_speed: Array1<f32>) -> Shape {
     // Convenience function.
     make_hyperrect((side_len, side_len, side_len, side_len),
                    position, orientation, rotation_speed)

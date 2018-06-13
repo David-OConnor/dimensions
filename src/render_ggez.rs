@@ -3,7 +3,7 @@
 // example: https://github.com/ggez/ggez/blob/master/examples/drawing.rs
 
 use std::collections::HashMap;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 use ndarray::prelude::*;
 use ggez::conf;
@@ -21,7 +21,7 @@ use types::{Shape, Camera, Pt2D};
 
 const CANVAS_SIZE: (u32, u32) = (1024, 1024);
 
-const τ: f64 = 2. * PI;
+const τ: f32 = 2. * PI;
 
 fn DEFAULT_CAMERA() -> Camera {
     // Effectively a global constant.
@@ -56,8 +56,8 @@ impl MainState {
     }
 }
 
-fn dist_from_edge(pt_0: &Array1<f64>, pt_1: &Array1<f64>, 
-                  cam_posit: &Array1<f64>) -> f64 {
+fn dist_from_edge(pt_0: &Array1<f32>, pt_1: &Array1<f32>, 
+                  cam_posit: &Array1<f32>) -> f32 {
     // Find an edge's average distance from the camera, using only
     // the first three dimensions.
     assert![pt_0.len() == 4 && pt_1.len() == 4 && cam_posit.len() == 4];
@@ -71,7 +71,7 @@ fn dist_from_edge(pt_0: &Array1<f64>, pt_1: &Array1<f64>,
 }
 
 fn find_thickness(min_width: f32, max_width: f32,
-                  min_dist: f32, max_dist: f32, dist: f64) -> f32 {
+                  min_dist: f32, max_dist: f32, dist: f32) -> f32 {
     // Edges closer to the user (Z axis) are thicker.
     let mut portion_through = (dist as f32 - min_dist) / (max_dist - min_dist);
 
@@ -84,16 +84,16 @@ fn find_thickness(min_width: f32, max_width: f32,
 }
 
 // fn set_color(start_color: f32, end_color: f32,
-//              min_dist: f32, max_dist: f32, dist: f64) -> f32 {
+//              min_dist: f32, max_dist: f32, dist: f32) -> f32 {
 //     // Edges vary in color, depending on fourth-dimension (U axis) distance.
 //     let portion_through = (dist as f32 - min_dist) / (max_dist - min_dist);
 //     min_width + portion_through * (max_width - min_width)
 // }
 
 fn build_mesh(ctx: &mut Context, 
-              projected: HashMap<(u32, u32), Array1<f64>>,
+              projected: HashMap<(u32, u32), Array1<f32>>,
               shapes: &HashMap<u32, Shape>,
-              cam_posit: &Array1<f64>,
+              cam_posit: &Array1<f32>,
     ) -> GameResult<graphics::Mesh> {
     // Draw a set of of connected lines, given projected nodes and edges.
 
@@ -113,9 +113,9 @@ fn build_mesh(ctx: &mut Context,
     // todo ratios. Ie for landscape.
     let (mut x_clip, mut y_clip) = (1., 1.);
     if CANVAS_SIZE.0 > CANVAS_SIZE.1 {  // Landscape; clip y.
-        y_clip = CANVAS_SIZE.1 as f64 / CANVAS_SIZE.0 as f64;
+        y_clip = CANVAS_SIZE.1 as f32 / CANVAS_SIZE.0 as f32;
     } else if CANVAS_SIZE.1 > CANVAS_SIZE.0 {  // Portrait; clip x.
-        x_clip = CANVAS_SIZE.0 as f64/ CANVAS_SIZE.1 as f64;
+        x_clip = CANVAS_SIZE.0 as f32/ CANVAS_SIZE.1 as f32;
     }
     // Else AA == 1; no 2d clipping required.
 
@@ -124,8 +124,8 @@ fn build_mesh(ctx: &mut Context,
         for edge in &shape.edges {
             let start = &projected.get(&(*shape_id, edge.node0));
             let end = &projected.get(&(*shape_id, edge.node1));
-            let start_unwrapped: &Array1<f64>;
-            let end_unwrapped: &Array1<f64>;
+            let start_unwrapped: &Array1<f32>;
+            let end_unwrapped: &Array1<f32>;
 
             // Absent keys indicate we've clipped the point from the projection.
             match start {
@@ -166,7 +166,7 @@ fn build_mesh(ctx: &mut Context,
     mb.build(ctx)
 }
 
-fn add_ang_norm(angle: f64, amount: f64) -> f64 {
+fn add_ang_norm(angle: f32, amount: f32) -> f32 {
     let mut new_angle = (angle + amount) % τ;
     if new_angle < 0. {
         new_angle += τ;
@@ -214,9 +214,9 @@ impl event::EventHandler for MainState {
     }
    
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, _keymod: Mod, _repeat: bool) {
-        const MOVE_SENSITIVITY: f64 = 0.05;
-        const TURN_SENSITIVITY: f64 = 0.05;
-        const ZOOM_SENSITIVITY: f64 = 0.02;
+        const MOVE_SENSITIVITY: f32 = 0.05;
+        const TURN_SENSITIVITY: f32 = 0.05;
+        const ZOOM_SENSITIVITY: f32 = 0.02;
 
 
         // todo for now we've removed FPS controls; make the move simply modify

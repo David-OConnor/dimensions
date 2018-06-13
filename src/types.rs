@@ -4,18 +4,18 @@ use ndarray::prelude::*;
 
 #[derive(Debug)]
 pub struct Pt2D {
-    pub x: f64,
-    pub y: f64,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, Clone)]
 pub struct Node {
     // a may be relative or absolute.
-    pub a: Array1<f64>,
+    pub a: Array1<f32>,
 }
 
 impl Node {
-    pub fn augmented(&self) -> Array1<f64> {
+    pub fn augmented(&self) -> Array1<f32> {
         // For use with translation matrices, and others that have
         // the same dimension.
         array![self.a[0], self.a[1], self.a[2], self.a[3], 1.]
@@ -36,7 +36,7 @@ pub struct Face {
 }
 
 impl Face {
-    pub fn surface_normal(&self) -> Array1<f64> {
+    pub fn surface_normal(&self) -> Array1<f32> {
         assert![self.edges.len() >= 3];
 
         array![]
@@ -51,18 +51,18 @@ pub struct Shape {
     pub edges: Vec<Edge>,
     pub faces: Vec<Face>,
     pub faces_vert: Vec<Array1<u32>>,
-    pub position: Array1<f64>,
-    pub scale: f64,
-    pub orientation: Array1<f64>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
-    pub rotation_speed: Array1<f64>,  // 6 items, as with rotation.  Radians/s ?
+    pub position: Array1<f32>,
+    pub scale: f32,
+    pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
+    pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
     tris: Array1<u32>,
 }
 
 impl Shape {
     pub fn new(nodes: HashMap<u32, Node>, edges: Vec<Edge>, faces: Vec<Face>,
                faces_vert: Vec<Array1<u32>>,
-               position: Array1<f64>, orientation: Array1<f64>,
-               rotation_speed: Array1<f64>) -> Shape {
+               position: Array1<f32>, orientation: Array1<f32>,
+               rotation_speed: Array1<f32>) -> Shape {
         Shape{nodes, edges, faces, faces_vert, position, scale: 1., orientation, rotation_speed, tris: array![]}
     }
 
@@ -107,27 +107,33 @@ impl Shape {
         }
         self.tris = Array::from_vec(result)
     }
+
+    pub fn num_face_verts(&self) -> u32 {
+        // Find the number of vertices used in drawing faces.  Ie for a box,
+        // it's 6 faces x 4 vertices/face.
+        this.faces_vert.iter().fold(0, |acc, face| acc + face.len())
+    }
 }
 
 #[derive(Debug)]
 pub struct Camera {
     // Position shifts all points prior to the camera transform; this is what
     // we adjust with move keys.
-    pub position: Array1<f64>,
-    pub θ: Array1<f64>,
+    pub position: Array1<f32>,
+    pub θ: Array1<f32>,
 
-    pub fov: f64,  // Vertical field of view in radians.
-    pub aspect: f64,  // width / height.
-    pub aspect_4: f64,  // fourth dim / height.
+    pub fov: f32,  // Vertical field of view in radians.
+    pub aspect: f32,  // width / height.
+    pub aspect_4: f32,  // fourth dim / height.
     // near, far, and strange for our 3d and 4d frustrums.  Strange is an
     // experimental extension into the 4th dimension.
-    pub near: f64,
-    pub far: f64,
-    pub strange: f64
+    pub near: f32,
+    pub far: f32,
+    pub strange: f32
 }
 
 impl Camera {
-    pub fn view_size(&self, far: bool) -> (f64, f64){
+    pub fn view_size(&self, far: bool) -> (f32, f32){
         // Calculate the projected window width and height, using basic trig.
         let dist = if far { self.far } else { self.near };
 
@@ -147,9 +153,9 @@ pub struct _Quaternion {
     // vector?
 
     // The scalar (real) part of the quaternion.
-    pub s: f64,
+    pub s: f32,
     // The vector (imaginary) part of the quaternion.
-    pub v: Array1<f64>,
+    pub v: Array1<f32>,
 }
 
 impl _Quaternion {

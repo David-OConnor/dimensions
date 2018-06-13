@@ -54,6 +54,7 @@ function drawScene(
     programInfo: ProgramInfo,
     staticBuffers: any,
     pfBuffers: any,
+    skyboxPositBuffer: any,
     // modelViewMat: Float32Array,
     viewMatrix: Float32Array,
     projectionMatrix: Float32Array,
@@ -137,16 +138,6 @@ function drawScene(
 
             // Tell WebGL how to pull out the colors from the color buffer
             // into the vertexColor attribute.
-            gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).uDist)
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.uDist,
-                1,  // Rather than 4 elements, we have one color per vertex.
-                gl.FLOAT ,
-                false ,
-                0,
-                0
-            )
-            gl.enableVertexAttribArray(programInfo.attribLocations.uDist)
 
             // Tell WebGL which indices to use to index the vertices
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, staticBuffers.indexBuffers.get(s_id))
@@ -176,6 +167,7 @@ function drawScene(
                 false,
                 viewMatrix
             )
+            gl.uniform1f(programInfo.uniformLocations.colorMax, state.colorMax)
 
             {
                 const type = gl.UNSIGNED_SHORT
@@ -190,24 +182,6 @@ function drawScene(
 
 export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_: Shape) {
     // Create a buffer for our shapes' positions and color.
-    const sbPositions: any = []
-    let sbVertex
-    skybox_.faces_vert.map(face => face.map(vertex_i => {
-        sbVertex = (skybox_.nodes.get(vertex_i) as any).a
-        for (let i=0; i < 4; i++) {
-            sbPositions.push(sbVertex[i])
-
-        }
-    }))
-
-    // Now pass the list of positions into WebGL to build the
-    // shape. We do this by creating a Float32Array from the
-    // JavaScript array, then use it to fill the current buffer.
-    const skyboxPositBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, skyboxPositBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER,
-        new Float32Array(sbPositions),
-        gl.STATIC_DRAW)
 
     // todo skybox texture wip
     // look up where the vertex data needs to go.
@@ -272,7 +246,8 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
                 new Uint16Array(indices), gl.STATIC_DRAW)
 
             indexBuffers.set(s_id, indexBuffer)
-        })
+        }
+    )
 
     // Now send the element array to GL
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
@@ -281,7 +256,6 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
     return {
         indexBuffers: indexBuffers,
         skybox: skyboxTexBuffer,
-        skyboxPosits: skyboxPositBuffer
     }
 }
 
@@ -305,7 +279,6 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
             // todo posit arrays... Find a better way
             shapePositDuped = []
             camPositDuped = []
-            dists = []
             // Set up vertices.
             for (let face of shape.faces_vert) {
                 for (let vertex_i of face) {
@@ -315,17 +288,12 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
                         shapePositDuped.push(shape.position[i])
                         camPositDuped.push(cam.position[i])
                     }
-                    dists.push(cam.position[3] - vertex[3])  // u dist.
                 }
             }
 
             vertexPositionBuffer = gl.createBuffer()
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer)
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW)
-
-            uDistBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ARRAY_BUFFER, uDistBuffer)
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(dists), gl.STATIC_DRAW)
 
             // quick position is the shape's whole position; eg just 4 elements.
             // used for our separate model, view logic.
@@ -339,7 +307,6 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
 
             result.set(s_id, {
                 vertexPosition: vertexPositionBuffer,
-                uDist: uDistBuffer,
                 shapePosition: shapePositionBuffer,
                 // todo we don't need to add the cam to the buffer each shape;
                 // todo need to rethink how we organize our buffer-creation funcs.
@@ -347,8 +314,30 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
             })
         }
     )
-
     return result
+}
+
+function makeSkyboxPositBuffer(gl: any, skybox: Shape, cam: Camera) {
+    // Run this every frame.
+     // Now process the skybox positions.
+
+    const positions: any = []
+    let vertex
+    skybox.faces_vert.map(face => face.map(vertex_i => {
+        vertex = (skybox.nodes.get(vertex_i) as any).a
+        for (let i=0; i < 4; i++) {
+            positions.push(vertex[i])
+        }
+    }))
+
+    // Now pass the list of positions into WebGL to build the
+    // shape. We do this by creating a Float32Array from the
+    // JavaScript array, then use it to fill the current buffer.
+    const buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
+
+    return buffer
 }
 
 export function gl_main() {
@@ -383,7 +372,6 @@ export function gl_main() {
     const vsSource = `
         attribute vec4 aVertexPosition;
         // attribute vec4 aVertexColor;
-        attribute float aDist;
         
         attribute vec4 aShapePosition;
         attribute vec4 aCamPosition;
@@ -395,16 +383,19 @@ export function gl_main() {
         uniform mat4 uModelMatrix;
         uniform mat4 uViewMatrix;
                
+        uniform float uColorMax;
+               
         varying lowp vec4 vColor;
     
         void main() {
             vec4 positionedPt;
+                      
             // For model transform, position after the transform
             positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
             // for view transform, position first.
             positionedPt = uViewMatrix * (positionedPt - aCamPosition);
             
-            // Now remove the u coord; replace with one. We no longer need it, 
+            // Now remove the u coord; replace with 1. We no longer need it, 
             // and the projection matrix is set up for 3d homogenous vectors.
             vec4 positioned3d = vec4(positionedPt[0], positionedPt[1], positionedPt[2], 1.);
             
@@ -413,8 +404,9 @@ export function gl_main() {
             // Now calculate the color, based on passed u dist from cam.
             vec4 calced_color;
             
-            // todo pass in colormax.
-            float portion_through = abs(aDist) / 1.5;
+            float u_dist = aCamPosition[3] - positionedPt[3];
+            
+            float portion_through = abs(u_dist) / uColorMax;
 
             if (portion_through > 1.) {
                 portion_through = 1.;
@@ -423,7 +415,7 @@ export function gl_main() {
             float baseGray = 0.0;
             float colorVal = baseGray + portion_through * 1. - baseGray;
             
-            if (aDist > 0.) {
+            if (u_dist > 0.) {
                 calced_color = vec4(baseGray, baseGray, colorVal, 0.2);  // Blue
             } else {
                 calced_color = vec4(colorVal, baseGray, baseGray, 0.2);  // Red
@@ -486,11 +478,11 @@ export function gl_main() {
     // for aVertexPosition and look up uniform locations.
     const programInfo = {
         program: shaderProgram,
+        skyboxProgram: shaderSkybox,
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
             shapePosition: gl.getAttribLocation(shaderProgram, 'aShapePosition'),
             camPosition: gl.getAttribLocation(shaderProgram, 'aCamPosition'),
-            uDist: gl.getAttribLocation(shaderProgram, 'aDist'),
             skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
@@ -498,6 +490,7 @@ export function gl_main() {
             // modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
             modelMatrix: gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
             viewMatrix: gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
+            colorMax: gl.getUniformLocation(shaderProgram, 'uColorMax'),
         },
     }
 
@@ -538,8 +531,9 @@ export function gl_main() {
         }
 
         const pfBuffers = makePerFrameBuffers(gl, state.shapes, state.cam)
+        const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
 
-        drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
+        drawScene(gl, programInfo, state.staticBuffers, pfBuffers, skyboxPositBuffer,
             viewMatrix, projectionMatrix,
             state.shapes)
 

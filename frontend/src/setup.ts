@@ -55,25 +55,25 @@ let mapFlat3d = [
 
 // todo you could generate these with a loop
 const housePositions = [
-    [-8., 2, 0., 0.],
-    [-8., 2, 12., 0.],
-    [-8., 2, 24., 0.],
-    [-8., 2, 36., 0.],
+    [-8., 2, 0., -2.],
+    [-8., 2, 12., -2.],
+    [-8., 2, 24., -2.],
+    [-8., 2, 36., -2.],
 
-    [8., 2, 0., 0.],
-    [8., 2, 12., 0.],
-    [8., 2, 24., 0.],
-    [8., 2, 36., 0.],
+    [8., 2, 0., -2.],
+    [8., 2, 12., -2.],
+    [8., 2, 24., -2.],
+    [8., 2, 36., -2.],
 
-    [-8., 2, 0., 4.],
-    [-8., 2, 12., 4.],
-    [-8., 2, 24., 4.],
-    [-8., 2, 36., 4.],
+    [-8., 2, 0., 2.],
+    [-8., 2, 12., 2.],
+    [-8., 2, 24., 2.],
+    [-8., 2, 36., 2.],
 
-    [8., 2, 0., 4.],
-    [8., 2, 12., 4.],
-    [8., 2, 24., 4.],
-    [8., 2, 36., 4.],
+    [8., 2, 0., 2.],
+    [8., 2, 12., 2.],
+    [8., 2, 24., 2.],
+    [8., 2, 36., 2.],
 ]
 
 const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
@@ -115,7 +115,7 @@ export function setScene(scene: number, subScene: number) {
         )
         state.setShapes(shapes)
 
-        state.setColorMax(1.5)
+        state.setColorMax(0.4)
     } else if (scene === 1) {  // Terain with shapes
         state.setCam(new Camera(
             new Float32Array([0., 2., -3., 0.]),
@@ -185,7 +185,7 @@ export function setScene(scene: number, subScene: number) {
         }
         state.setShapes(shapes)
 
-        state.setColorMax(30)
+        state.setColorMax(15)
     } else if (scene === 3) {  // Hypergrid
         state.setCam(new Camera(
             new Float32Array([0., 0., 0., 0.]),

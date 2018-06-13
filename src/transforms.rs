@@ -5,7 +5,7 @@ use ndarray::prelude::*;
 use clipping;
 use types::{Camera, Shape};
 
-fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
+fn make_rotator(θ: &Array1<f32>) -> Array2<f32> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1
@@ -87,7 +87,7 @@ fn make_rotator(θ: &Array1<f64>) -> Array2<f64> {
     R_1.dot(&R_2)
 }
 
-fn make_translator(position: &Array1<f64>) -> Array2<f64> {
+fn make_translator(position: &Array1<f32>) -> Array2<f32> {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
     // rotation matrices may have this as well for matrix compatibility.
@@ -102,7 +102,7 @@ fn make_translator(position: &Array1<f64>) -> Array2<f64> {
     ]
 }
 
-fn make_scaler(scale: &Array1<f64>) -> Array2<f64> {
+fn make_scaler(scale: &Array1<f32>) -> Array2<f32> {
     // Return a scale matrix; the pt must have 1 appended to its end.
     assert_eq![scale.len(), 4];
 
@@ -115,7 +115,7 @@ fn make_scaler(scale: &Array1<f64>) -> Array2<f64> {
     ]
 }
 
-pub fn make_projector(cam: &Camera) -> Array2<f64> {
+pub fn make_projector(cam: &Camera) -> Array2<f32> {
     // Create the projection matrix, used to transform translated and
     // rotated points.
 
@@ -131,7 +131,7 @@ pub fn make_projector(cam: &Camera) -> Array2<f64> {
 
     // 7's on point with my calcs, although stated in terms of right/top.
 
-    let y_scale = 1. / (cam.fov / 2. as f64).tan();
+    let y_scale = 1. / (cam.fov / 2. as f32).tan();
     let x_scale = y_scale / cam.aspect;
     let u_scale = y_scale / cam.aspect_4;  // depth for 4d
 
@@ -159,13 +159,47 @@ pub fn make_projector(cam: &Camera) -> Array2<f64> {
                 (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
             // u_scale is, ultimately, not really used.
             [0., 0., 0., u_scale, 0.],
-            // This row allows us to divide by z after taking the dot product,
-            // as part of our scaling operation.
-            [0., 0., 1., 0., 1.],
+
         ]
 }
 
-pub fn make_model_mat(shape: &Shape) -> Array2<f64> {
+pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
+    // This variant returns a 4x4, non-homogenous matrix in the array format used
+    // by Vulkan.
+    let y_scale = 1. / (cam.fov / 2. as f32).tan();
+    let x_scale = y_scale / cam.aspect;
+    let u_scale = y_scale / cam.aspect_4;  // depth for 4d
+
+    // We are defining z as the axis that determines how x and y points are
+    // scaled, for both 4d and 3d projections. U points don't play a factor
+    // in our final result; their data is only included during rotations;
+    // This function transforms them, but that ultimately is not projected to
+    // 2d screens.
+
+    // Insight: z (or u, depending on which convention we settle on) is used
+    // for two things: Determining how we should scale x and y (The vars that
+
+
+    // I've derived these matrices myself; none of the ones described in the
+    // above links seem to produce a unit cube for easy clipping.
+    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
+    // along each axis.
+    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
+    // as a decaying exponential from -1 to +1.
+
+    [
+        [x_scale, 0., 0., 0.],
+        [0., y_scale, 0., 0.],
+        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+            (-2. * cam.far * cam.near) / (cam.far - cam.near)],
+        // u_scale is, ultimately, not really used.
+        // This row allows us to divide by z after taking the dot product,
+        // as part of our scaling operation.
+        [0., 0., 1., 1.],
+    ]
+}
+
+pub fn make_model_mat(shape: &Shape) -> Array2<f32> {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
@@ -174,7 +208,16 @@ pub fn make_model_mat(shape: &Shape) -> Array2<f64> {
     T.dot(&(R.dot(&S)))
 }
 
-pub fn make_view_mat(cam: &Camera) -> Array2<f64> {
+pub fn make_model_mat4(shape: &Shape) -> [[f32; 4]; 4] {
+    // We ommit translation, since we are constrained
+    // todo put scaling back in, once you sort out custom dot products.
+//    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
+//    let R = make_rotator(&shape.orientation);
+    let R = make_rotator4(&shape.orientation);
+    R
+}
+
+pub fn make_view_mat(cam: &Camera) -> Array2<f32> {
     // For a first-person sperspective, translate first; then rotate (around the
     // camera=origin)
 
@@ -188,8 +231,18 @@ pub fn make_view_mat(cam: &Camera) -> Array2<f64> {
     R.dot(&T)
 }
 
-fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
-             P: &Array2<f64>) -> Array1<f64> {
+pub fn make_view_mat4(cam: &Camera) -> [[f32; 4]; 4] {
+    // Non-homogenous, in the nested-array format used by Vulkan.
+    let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
+//    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1.];
+
+//    let T = make_translator(&negPos);
+    let R = make_rotator(&negθ);
+    R
+}
+
+fn project(pt: &Array1<f32>, T: &Array2<f32>, R: &Array2<f32>,
+             P: &Array2<f32>) -> Array1<f32> {
     // Helper function to reduce repetition in project_shapes.
     // Clip our edge, which has been projected into "clipspace", eg a
     // cube ranging from -1 to +1 on each axes.
@@ -207,7 +260,7 @@ fn project(pt: &Array1<f64>, T: &Array2<f64>, R: &Array2<f64>,
 }
 
 //pub fn project_shapes(shapes: &HashMap<u32, Shape>, cam: &Camera)
-//        -> HashMap<(u32, u32), Array1<f64>> {
+//        -> HashMap<(u32, u32), Array1<f32>> {
 //    // Position and rotate shapes relative to the camera; project into a
 //    // clipspace [hyper]frustum.
 //    // The HashMap key is (shape_index, node_index), so we can tie back to the
@@ -253,7 +306,7 @@ pub enum MoveDirection{
     Kata,
 }
 
-pub fn move_camera(direction: MoveDirection, θ: &Array1<f64>) -> Array1<f64> {
+pub fn move_camera(direction: MoveDirection, θ: &Array1<f32>) -> Array1<f32> {
     // Move the camera to a new position, based on where it's pointing.
     let unit_vec = match direction {
         MoveDirection::Forward => array![0., 0., 1., 0.],

@@ -49,9 +49,9 @@ pub struct ProjectedPt3d {
     // handle HashMaps  or JS Maps.
     shape_id: u32,
     node_id: u32,
-    x: f64,
-    y: f64,
-    z: f64,
+    x: f32,
+    y: f32,
+    z: f32,
 }
 
 //js_serializable!( ProjectedPt3d );
@@ -64,11 +64,11 @@ pub struct ProjectedPt3d {
 //    name: String,  // eg "cube", "hypercube"
 //    // len of 1 for cubes/origin, 3 for 3d boxes, 4 for 4d boxes etc.
 //    // eg vec![x_len, y_len, z_len] for a 3d box.
-//    lens: Vec<f64>,
-//    position: Vec<f64>,
-//    scale: f64,
-//    orientation: Vec<f64>,
-//    rotation_speed: Vec<f64>,
+//    lens: Vec<f32>,
+//    position: Vec<f32>,
+//    scale: f32,
+//    orientation: Vec<f32>,
+//    rotation_speed: Vec<f32>,
 //}
 //
 //fn to_shapes(shape_argss: Vec<ShapeArgs>) -> HashMap<i32, Shape> {
@@ -124,17 +124,17 @@ pub struct ProjectedPt3d {
 ////#[derive(Debug)]
 //pub struct CameraBindgen {
 //    // This camera replaces ndarrays with vectors, for bindgen compatibility.
-//    pub position: Vec<f64>,
+//    pub position: Vec<f32>,
 //
 //    // θ_3d is in tait-bryan angles. 3 entries for 3d, 6 for 4d.
-//    pub theta_3d: Vec<f64>,
-//    pub theta_4d: Vec<f64>,
+//    pub theta_3d: Vec<f32>,
+//    pub theta_4d: Vec<f32>,
 //
-//    pub fov: f64,
-//    pub aspect: f64,
-//    pub clip_near: f64,
-//    pub clip_far: f64,
-//    pub clip_strange: f64
+//    pub fov: f32,
+//    pub aspect: f32,
+//    pub clip_near: f32,
+//    pub clip_far: f32,
+//    pub clip_strange: f32
 //}
 //
 //impl CameraBindgen {

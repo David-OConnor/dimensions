@@ -16,7 +16,7 @@ const FORWARD: i16 = 32;
 const EARTH: i16 = 64;
 const SKY: i16 = 128;
 
-fn compute_outcode_2d(pt: &Pt2D, x_min: f64, x_max: f64, y_min: f64, y_max: f64) -> i16 {
+fn compute_outcode_2d(pt: &Pt2D, x_min: f32, x_max: f32, y_min: f32, y_max: f32) -> i16 {
     // Initialised as being inside of clip window
     let mut code = INSIDE;
 
@@ -36,10 +36,10 @@ fn compute_outcode_2d(pt: &Pt2D, x_min: f64, x_max: f64, y_min: f64, y_max: f64)
 }
 
 fn compute_outcode_3d(
-    pt: &Array1<f64>,
-    x_min: f64, x_max: f64,
-    y_min: f64, y_max: f64,
-    z_min: f64, z_max: f64,
+    pt: &Array1<f32>,
+    x_min: f32, x_max: f32,
+    y_min: f32, y_max: f32,
+    z_min: f32, z_max: f32,
 ) -> i16 {
 
     let mut code = compute_outcode_2d(&Pt2D {x: pt[0], y: pt[1]}, x_min, x_max, y_min, y_max);
@@ -54,11 +54,11 @@ fn compute_outcode_3d(
 }
 
 fn compute_outcode_4d(
-    pt: &Array1<f64>,
-    x_min: f64, x_max: f64,
-    y_min: f64, y_max: f64,
-    z_min: f64, z_max: f64,
-    u_min: f64, u_max: f64
+    pt: &Array1<f32>,
+    x_min: f32, x_max: f32,
+    y_min: f32, y_max: f32,
+    z_min: f32, z_max: f32,
+    u_min: f32, u_max: f32
 ) -> i16 {
 
     let mut code = compute_outcode_3d(pt, x_min, x_max, y_min, y_max, z_min, z_max);
@@ -72,8 +72,8 @@ fn compute_outcode_4d(
     code
 }
 
-pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
-                           y_min: f64, y_max: f64) -> Option<(Pt2D, Pt2D)> {
+pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f32, x_max: f32,
+                           y_min: f32, y_max: f32) -> Option<(Pt2D, Pt2D)> {
     // Cohen–Sutherland clipping algorithm clips a line from
     // P0 = (x0, y0) to P1 = (x1, y1) against a rectangle with 
     // diagonal from (xmin, ymin) to (xmax, ymax).
@@ -95,8 +95,8 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
             // or BOTTOM), so both must be outside window; return None.
             return None
         } else {
-            let x: f64;
-            let y: f64;
+            let x: f32;
+            let y: f32;
             // At least one endpoint is outside the clip rectangle; pick it.
             let outcode_out = if outcode_0 > 0 { outcode_0 } else { outcode_1 };
 
@@ -140,11 +140,11 @@ pub fn cohen_sutherland_2d(pt_0: &Pt2D, pt_1: &Pt2D, x_min: f64, x_max: f64,
     }
 }
 
-fn line_plane_intersection(norm: &Array1<f64>, plane_pt: &Array1<f64>,
-                           line: (&Array1<f64>, &Array1<f64>)) -> Option<Array1<f64>> {
+fn line_plane_intersection(norm: &Array1<f32>, plane_pt: &Array1<f32>,
+                           line: (&Array1<f32>, &Array1<f32>)) -> Option<Array1<f32>> {
     // Compute where a line segment intersects an infinite plane, if it does.
     // 3d only.  https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    const ϵ: f64 = 1e-6;
+    const ϵ: f32 = 1e-6;
     let l = line.1 - line.0;  // Vector in the direction of the line.
 
     let line_dot_norm = l.dot(norm);
@@ -164,7 +164,7 @@ fn line_plane_intersection(norm: &Array1<f64>, plane_pt: &Array1<f64>,
     Some(d2 + line.0.clone())
 }
 
-fn inside_frustum(pt: &Array1<f64>) -> bool {
+fn inside_frustum(pt: &Array1<f32>) -> bool {
     // Assume a clipspace -1 to +1 limit on all axes.  3d only.
     let (min, max) = (-1., 1.);
     if min < pt[0] && pt[0] < max && min < pt[1] && pt[1] < max && min < pt[2] && pt[2] < max {
@@ -173,12 +173,12 @@ fn inside_frustum(pt: &Array1<f64>) -> bool {
     false
 }
 
-fn magnitude(pt: &Array1<f64>) -> f64 {
+fn magnitude(pt: &Array1<f32>) -> f32 {
     // Calculate the magnitude of a vector.
-    (pt.iter().fold(0. as f64, |acc, coord| acc + coord.powi(2))).sqrt()
+    (pt.iter().fold(0. as f32, |acc, coord| acc + coord.powi(2))).sqrt()
 }
 
-pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array1<f64>)> {
+pub fn clip_3d(line: (&Array1<f32>, &Array1<f32>)) -> Option<(Array1<f32>, Array1<f32>)> {
     // Struggling on Cohen Sutherland for 3d; rolling my own algo.
     // Clip to a clipspace frustum, bounded by -1 and +1 on each axis.
     let (min, max) = (-1., 1.);
@@ -219,11 +219,11 @@ pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array
         }
     }
 
-    const ϵ: f64 = 1e-6;
+    const ϵ: f32 = 1e-6;
     let adj_max = max + ϵ;
 
     // Find the subset of intersections that occur on faces of our frustum.
-    let clipped_pts: Vec<Array1<f64>> = intersections.into_iter().filter(
+    let clipped_pts: Vec<Array1<f32>> = intersections.into_iter().filter(
         |inter| inter[0].abs() <= adj_max && inter[1].abs() <= adj_max &&
             inter[2].abs() <= adj_max
     ).collect();
@@ -258,7 +258,7 @@ pub fn clip_3d(line: (&Array1<f64>, &Array1<f64>)) -> Option<(Array1<f64>, Array
 mod tests {
     use super::*;
 
-    const ϵ: f64 = 1e-6;
+    const ϵ: f32 = 1e-6;
 
     #[test]
     fn outcodes() {
