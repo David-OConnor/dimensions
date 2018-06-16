@@ -117,12 +117,12 @@ function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     return out
 }
 
-function makeScaler(out: Float32Array, scale: Float32Array): Float32Array {
+function makeScaler(out: Float32Array, scale: number): Float32Array {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    out[0] = scale[0]; out[1] = 0; out[2] = 0; out[3] = 0;
-    out[4] = 0; out[5] = scale[1]; out[6] = 0; out[7] = 0;
-    out[8] = 0; out[9] = 0; out[10] = scale[2]; out[11] = 0;
-    out[12] = 0; out[13] = 0; out[14] = 0; out[15] = scale[3]
+    out[0] = scale; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = scale; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = scale; out[11] = 0;
+    out[12] = 0; out[13] = 0; out[14] = 0; out[15] = scale
 
     return out
 }
@@ -137,11 +137,10 @@ export function makeModelMat4(shape: Shape): Float32Array {
     // In the 4d versions of these functions, we leave out translations, since
     // we require homogenous coords to handle those via matrices, but GL only
     // supports up to 4d matrices.
-    const scaler = new Float32Array([shape.scale, shape.scale, shape.scale, shape.scale])
     let R = new Float32Array(16)
     let S = new Float32Array(16)
 
-    makeScaler(S, scaler)
+    makeScaler(S, shape.scale)
     makeRotator(R, shape.orientation)
 
     dotMM4(R, R, S)

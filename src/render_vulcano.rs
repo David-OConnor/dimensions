@@ -7,66 +7,43 @@
 // notice may not be copied, modified, or distributed except
 // according to those terms.
 
-
-// Welcome to the triangle example!
-//
-// This is the only example that is entirely detailed. All the other examples avoid code
-// duplication by using helper functions.
-//
-// This example assumes that you are already more or less familiar with graphics programming
-// and that you want to learn Vulkan. This means that for example it won't go into details about
-// what a vertex or a shader is.
-
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::sync::Arc;
 use std::mem;
 
-use image::{ImageBuffer, Rgba};
-
-use vulkano_win::VkSurfaceBuild;
-use vulkano::buffer::BufferUsage;
-use vulkano::buffer::CpuAccessibleBuffer;
-use vulkano::command_buffer::AutoCommandBufferBuilder;
-use vulkano::command_buffer::DynamicState;
-use vulkano::command_buffer::CommandBuffer;
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-use vulkano::device::Device;
+use vulkano::buffer;
+use vulkano::command_buffer;
+use vulkano::descriptor;
+use vulkano::device;
 use vulkano::format::{ClearValue, Format};
-use vulkano::framebuffer::Framebuffer;
-use vulkano::framebuffer::Subpass;
-use vulkano::image::Dimensions;
-use vulkano::image::StorageImage;
-use vulkano::instance::Instance;
-use vulkano::pipeline::ComputePipeline;
-use vulkano::pipeline::GraphicsPipeline;
-use vulkano::pipeline::viewport::Viewport;
+use vulkano::format;
+use vulkano::framebuffer;
+use vulkano::image;
+use vulkano::instance;
+use vulkano::pipeline;
 use vulkano::swapchain;
-use vulkano::swapchain::PresentMode;
-use vulkano::swapchain::SurfaceTransform;
-use vulkano::swapchain::Swapchain;
-use vulkano::swapchain::AcquireError;
-use vulkano::swapchain::SwapchainCreationError;
-use vulkano::sync::now;
+use vulkano::sync;
 use vulkano::sync::GpuFuture;
 
 use cgmath;
-use ndarray::prelude::*;
-use vulkano;
+//use ndarray::prelude::*;
+//use vulkano;
 use vulkano_shader_derive;
 use vulkano_win;
+use vulkano_win::VkSurfaceBuild;
 use winit;
 
 use shape_maker;
 use transforms;
-use types::{Camera, Shape};
+use types::{Camera, Shape, Vertex};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
 const τ: f32 = 2. * PI;
 
-mod State {
+mod state {
     use std::cell;
     use std::collections::HashMap;
     use std::f32::consts::PI;
@@ -109,7 +86,6 @@ mod State {
 
 
 pub fn render(shapes: HashMap<u32, Shape>) {
-
     // todo for now, we'll keep state in this func.
     let cam = Camera {
         // If 3d, the 4th items for position isn't used.
@@ -129,6 +105,9 @@ pub fn render(shapes: HashMap<u32, Shape>) {
                                             array![0., 0., 0., 0., 0., 0.],
                                             array![0., 0., 0., 0., 0., 0.]
     ));
+    for (id, shape) in &mut shapes {
+        shape.make_tris();
+    }
 
     // The first step of any vulkan program is to create an instance.
     let instance = {
@@ -140,7 +119,8 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         let extensions = vulkano_win::required_extensions();
 
         // Now creating the instance.
-        Instance::new(None, &extensions, None).expect("failed to create Vulkan instance")
+        instance::Instance::new(None, &extensions, None)
+            .expect("failed to create Vulkan instance")
     };
 
     // We then choose which physical device to use.
@@ -157,11 +137,10 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     //
     // For the sake of the example we are just going to use the first device, which should work
     // most of the time.
-    let physical = vulkano::instance::PhysicalDevice::enumerate(&instance)
+    let physical = instance::PhysicalDevice::enumerate(&instance)
         .next().expect("no device available");
     // Some little debug infos.
     println!("Using device: {} (type: {:?})", physical.name(), physical.ty());
-
 
     // The objective of this example is to draw a triangle on a window. To do so, we first need to
     // create the window.
@@ -211,13 +190,13 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     //
     // The list of created queues is returned by the function alongside with the device.
     let (device, mut queues) = {
-        let device_ext = vulkano::device::DeviceExtensions {
+        let device_ext = device::DeviceExtensions {
             khr_swapchain: true,
-            .. vulkano::device::DeviceExtensions::none()
+            .. device::DeviceExtensions::none()
         };
 
-        Device::new(physical, physical.supported_features(), &device_ext,
-                    [(queue, 0.5)].iter().cloned()).expect("failed to create device")
+        device::Device::new(physical, physical.supported_features(), &device_ext,
+                                     [(queue, 0.5)].iter().cloned()).expect("failed to create device")
     };
 
     // Since we can request multiple queues, the `queues` variable is in fact an iterator. In this
@@ -232,7 +211,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     // Before we can draw on the surface, we have to create what is called a swapchain. Creating
     // a swapchain allocates the color buffers that will contain the image that will ultimately
     // be visible on the screen. These images are returned alongside with the swapchain.
-    let (mut swapchain, mut images) = {
+    let (mut swapchain_, mut images) = {
         // Querying the capabilities of the surface. When we create the swapchain we can only
         // pass values that are allowed by the capabilities.
         let caps = surface.capabilities(physical)
@@ -244,63 +223,100 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         // If `caps.current_extent` is `None`, this means that the window size will be determined
         // by the dimensions of the swapchain, in which case we just use the width and height defined above.
 
+        let usage = caps.supported_usage_flags;
         // The alpha mode indicates how the alpha value of the final image will behave. For example
         // you can choose whether the window will be opaque or transparent.
         let alpha = caps.supported_composite_alpha.iter().next().unwrap();
-
         // Choosing the internal format that the images will have.
         let format = caps.supported_formats[0].0;
 
         // Please take a look at the docs for the meaning of the parameters we didn't mention.
-        Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format,
-                       dimensions, 1, caps.supported_usage_flags, &queue,
-                       SurfaceTransform::Identity, alpha, PresentMode::Fifo, true,
-                       None).expect("failed to create swapchain")
+        swapchain::Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format,
+                                  dimensions, 1, usage, &queue,
+                                  swapchain::SurfaceTransform::Identity, alpha,
+                                  swapchain::PresentMode::Fifo, true,
+                                  None).expect("failed to create swapchain")
     };
 
-    // We now create a buffer that will store the shape of our triangle.
+    let mut depth_buffer = image::attachment::AttachmentImage::transient(
+        device.clone(), dimensions, format::D16Unorm).unwrap();
 
+    //todo
+    use test;
+
+    #[derive(Copy, Clone, Debug)]
+    struct Vertex3 {  // todo temp
+        position: (f32, f32, f32)
+    }
+    use vulkano;
+    impl_vertex!(Vertex3, position);
 
     // todo separate into buffer maker funcs.
     let vertex_buffer = {
-
         let mut shape_vertices = Vec::new();
         for (s_id, shape) in &shapes {
-            for (n_id, node) in &shape.nodes {
-                let vertex = &node.a;
-                shape_vertices.push([vertex[0], vertex[1], vertex[2], vertex[3]])
+            for (v_id, vertex) in &shape.vertices {
+//                let vertex2 = &vertex.position;  // todo fix this; why not 4d??
+//                shape_vertices.push(vertex)
+                shape_vertices.push(
+                    Vertex3 {position: (vertex.position.0, vertex.position.1, vertex.position.2)}
+                );
             }
         }
 
-        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
-                                       shape_vertices.iter().cloned())
+        println!("VERTS: {:?}", shape_vertices);
+
+        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                               shape_vertices.iter().cloned()) // todo .cloned ?
             .expect("failed to create vertex buffer")
     };
 
-    // todo normals buffer
+    let normals_buffer = {
+        // todo fill this in
+//        let normals = Vec::new();
+        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                           test::NORMALS.iter().cloned())
+            .expect("failed to create buffer")
+    };
 
     let index_buffer = {
-        let mut indices = Vec::new();
+//        let mut indices = Vec::new();
+        let mut tri_indices: Vec<u32> = Vec::new();  // todo put this back in the loop.
         for (s_id, shape) in &shapes {
-
-            let mut indexModifier: u32 = 0;
-            let tri_indices = shape.get_tris().into_iter().map(|ind| ind + indexModifier);
-            indices.push(...tri_indices);
+            let mut indexModifier = 0;
+            tri_indices = shape.tris.iter().map(|ind| ind + indexModifier).collect();
+//            let tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + indexModifier).collect();
+//            indices.append(tri_indices);
+            // todo fix this; for now just adding tri_Indices
             indexModifier += shape.num_face_verts();
         }
 
-        CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(),
-                                       indices.iter().cloned())
+        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                           tri_indices.iter().cloned())
             .expect("Failed to create index buffer")
     };
+
+    let I_4: [f32; 16] = [
+        1., 0., 0., 0.,
+        0., 1., 0., 0.,
+        0., 0., 1., 0.,
+        0., 0., 0., 1.
+    ];
+
+    let I_42: [[f32; 4]; 4] = [
+        [1., 0., 0., 0.],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.]
+    ];
 
     let view_mat = transforms::make_view_mat4(&cam);
     // todo we need one for each shape; only one shape for now though.
     let model_mat = transforms::make_model_mat4(&shapes.get(&0).unwrap());
     let proj_mat = transforms::make_proj_mat4(&cam);
 
-    let uniform_buffer = vulkano::buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
-                         ::new(device.clone(), BufferUsage::all());
+    let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
+                         ::new(device.clone(), buffer::BufferUsage::all());
 
     // The next step is to create the shaders.
     //
@@ -317,7 +333,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         #[src = "
 #version 450
 
-layout(location = 0) in vec4 ver_posit;
+layout(location = 0) in vec4 vert_posit;
 layout(location = 1) in vec4 shape_posit;
 layout(location = 2) in vec4 cam_posit;
 layout(location = 3) out vec4 fragColor;
@@ -337,7 +353,7 @@ void main() {
     vec4 tempColor = vec4(0., 1., 0., 0.);
 
     // For model transform, position after the transform
-    vec4 positionedPt = (uniforms.model * vert_posit) + shape_posit;
+    vec4 positioned_pt = (uniforms.model * vert_posit) + shape_posit;
     // for view transform, position first.
     positioned_pt = uniforms.view * (positioned_pt - cam_posit);
 
@@ -345,8 +361,8 @@ void main() {
     // and the projection matrix is set up for 3d homogenous vectors.
     vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
 
-    gl_Position = uniforms.proj * vec4(positioned_3d);
-//    fragColor = tempColor;
+    gl_Position = uniforms.proj * positioned_3d;
+    fragColor = tempColor;
 }
 "]
         struct Dummy;
@@ -357,12 +373,11 @@ void main() {
         #[ty = "fragment"]
         #[src = "
 #version 450
-
+layout(location = 0) in vec4 fragColor;
 layout(location = 0) out vec4 f_color;
 
 void main() {
-    f_color = vec4(1.0, 0.0, 0.0, 1.0);
-//    gl_FragColor = f_color;
+    f_color = vec4(fragColor);
 }
 "]
         struct Dummy;
@@ -378,41 +393,49 @@ void main() {
     // The next step is to create a *render pass*, which is an object that describes where the
     // output of the graphics pipeline will go. It describes the layout of the images
     // where the colors, depth and/or stencil information will be written.
-    let render_pass = Arc::new(single_pass_renderpass!(device.clone(),
-        attachments: {
-            // `color` is a custom name we give to the first and only attachment.
-            color: {
-                // `load: Clear` means that we ask the GPU to clear the content of this
-                // attachment at the start of the drawing.
+    let render_pass = Arc::new(
+        single_pass_renderpass!(device.clone(),
+            attachments: {
+                // `color` is a custom name we give to the first and only attachment.
+                color: {
+                    // `load: Clear` means that we ask the GPU to clear the content of this
+                    // attachment at the start of the drawing.
+                    load: Clear,
+                    // `store: Store` means that we ask the GPU to store the output of the draw
+                    // in the actual image. We could also ask it to discard the result.
+                    store: Store,
+                    // `format: <ty>` indicates the type of the format of the image. This has to
+                    // be one of the types of the `vulkano::format` module (or alternatively one
+                    // of your structs that implements the `FormatDesc` trait). Here we use the
+                    // generic `vulkano::format::Format` enum because we don't know the format in
+                    // advance.
+                    format: swapchain_.format(),
+                    samples: 1,
+                },
+                depth: {
                 load: Clear,
-                // `store: Store` means that we ask the GPU to store the output of the draw
-                // in the actual image. We could also ask it to discard the result.
-                store: Store,
-                // `format: <ty>` indicates the type of the format of the image. This has to
-                // be one of the types of the `vulkano::format` module (or alternatively one
-                // of your structs that implements the `FormatDesc` trait). Here we use the
-                // generic `vulkano::format::Format` enum because we don't know the format in
-                // advance.
-                format: swapchain.format(),
-                // TODO:
+                store: DontCare,
+                format: format::Format::D16Unorm,
                 samples: 1,
+                }
+            },
+            pass: {
+                // We use the attachment named `color` as the one and only color attachment.
+                color: [color],
+                // No depth-stencil attachment is indicated with empty brackets.
+                depth_stencil: {depth}
             }
-        },
-        pass: {
-            // We use the attachment named `color` as the one and only color attachment.
-            color: [color],
-            // No depth-stencil attachment is indicated with empty brackets.
-            depth_stencil: {}
-        }
-    ).unwrap());
+        ).unwrap()
+    );
 
     // Before we draw we have to create what is called a pipeline. This is similar to an OpenGL
     // program, but much more specific.
-    let pipeline = Arc::new(GraphicsPipeline::start()
+    let pipeline_ = Arc::new(pipeline::GraphicsPipeline::start()
         // We need to indicate the layout of the vertices.
         // The type `SingleBufferDefinition` actually contains a template parameter corresponding
         // to the type of each vertex. But in this code it is automatically inferred.
-        .vertex_input_single_buffer()
+//        .vertex_input_single_buffer()
+        .vertex_input(pipeline::vertex::TwoBuffersDefinition::new())
         // A Vulkan shader can in theory contain multiple entry points, so we have to specify
         // which one. The `main` word of `main_entry_point` actually corresponds to the name of
         // the entry point.
@@ -423,9 +446,10 @@ void main() {
         .viewports_dynamic_scissors_irrelevant(1)
         // See `vertex_shader`.
         .fragment_shader(fs.main_entry_point(), ())
+        .depth_stencil_simple_depth()
         // We have to indicate which subpass of which render pass this pipeline is going to be used
         // in. The pipeline will only be usable from this particular subpass.
-        .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+        .render_pass(framebuffer::Subpass::from(render_pass.clone(), 0).unwrap())
         // Now that our builder is filled, we call `build()` to obtain an actual pipeline.
         .build(device.clone())
         .unwrap());
@@ -435,7 +459,7 @@ void main() {
     //
     // Since we need to draw to multiple images, we are going to create a different framebuffer for
     // each image.
-    let mut framebuffers: Option<Vec<Arc<vulkano::framebuffer::Framebuffer<_,_>>>> = None;
+    let mut framebuffers: Option<Vec<Arc<framebuffer::Framebuffer<_,_>>>> = None;
 
     // Initialization is finally finished!
 
@@ -456,33 +480,33 @@ void main() {
     //
     // Destroying the `GpuFuture` blocks until the GPU is finished executing it. In order to avoid
     // that, we store the submission of the previous frame here.
-    let mut previous_frame_end = Box::new(now(device.clone())) as Box<GpuFuture>;
+    let mut previous_frame = Box::new(sync::now(device.clone())) as Box<sync::GpuFuture>;
 
     loop {
         // It is important to call this function from time to time, otherwise resources will keep
         // accumulating and you will eventually reach an out of memory error.
         // Calling this function polls various fences in order to determine what the GPU has
         // already processed, and frees the resources that are no longer needed.
-        previous_frame_end.cleanup_finished();
+        previous_frame.cleanup_finished();
 
         // If the swapchain needs to be recreated, recreate it
         if recreate_swapchain {
             // Get the new dimensions for the viewport/framebuffers.
             dimensions = surface.capabilities(physical)
                 .expect("failed to get surface capabilities")
-                .current_extent.unwrap();
+                .current_extent.unwrap_or([WIDTH, HEIGHT]);
 
-            let (new_swapchain, new_images) = match swapchain.recreate_with_dimension(dimensions) {
+            let (new_swapchain, new_images) = match swapchain_.recreate_with_dimension(dimensions) {
                 Ok(r) => r,
                 // This error tends to happen when the user is manually resizing the window.
                 // Simply restarting the loop is the easiest way to fix this issue.
-                Err(SwapchainCreationError::UnsupportedDimensions) => {
+                Err(swapchain::SwapchainCreationError::UnsupportedDimensions) => {
                     continue;
                 },
                 Err(err) => panic!("{:?}", err)
             };
 
-            mem::replace(&mut swapchain, new_swapchain);
+            mem::replace(&mut swapchain_, new_swapchain);
             mem::replace(&mut images, new_images);
 
             framebuffers = None;
@@ -494,8 +518,9 @@ void main() {
         // recreate framebuffers as well.
         if framebuffers.is_none() {
             let new_framebuffers = Some(images.iter().map(|image| {
-                Arc::new(Framebuffer::start(render_pass.clone())
+                Arc::new(framebuffer::Framebuffer::start(render_pass.clone())
                     .add(image.clone()).unwrap()
+                    .add(depth_buffer.clone()).unwrap()
                     .build().unwrap())
             }).collect::<Vec<_>>());
             mem::replace(&mut framebuffers, new_framebuffers);
@@ -505,13 +530,21 @@ void main() {
             // maybe increment rotation here.
 
             let uniform_data = vs::ty::Data {
-                model: model_mat,
-                view: view_mat,
-                proj: proj_mat,
+//                model: model_mat,
+//                view: view_mat,
+//                proj: proj_mat,
+                model: I_42,
+                view: I_42,
+                proj: I_42,
             };
 
             uniform_buffer.next(uniform_data).unwrap()
         };
+
+        let set = Arc::new(descriptor::descriptor_set::PersistentDescriptorSet::start(pipeline_.clone(), 0)
+            .add_buffer(uniform_buffer_subbuffer).unwrap()
+            .build().unwrap()
+        );
 
         // Before we can draw on the output, we have to *acquire* an image from the swapchain. If
         // no image is available (which happens if you submit draw commands too quickly), then the
@@ -520,10 +553,10 @@ void main() {
         //
         // This function can block if no image is available. The parameter is an optional timeout
         // after which the function call will return an error.
-        let (image_num, acquire_future) = match swapchain::acquire_next_image(swapchain.clone(),
+        let (image_num, acquire_future) = match swapchain::acquire_next_image(swapchain_.clone(),
                                                                               None) {
             Ok(r) => r,
-            Err(AcquireError::OutOfDate) => {
+            Err(swapchain::AcquireError::OutOfDate) => {
                 recreate_swapchain = true;
                 continue;
             },
@@ -539,7 +572,9 @@ void main() {
         //
         // Note that we have to pass a queue family when we create the command buffer. The command
         // buffer will only be executable on that given queue family.
-        let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(device.clone(), queue.family()).unwrap()
+        let command_buffer_ = command_buffer::AutoCommandBufferBuilder::primary_one_time_submit(
+            device.clone(), queue.family())
+            .unwrap()
             // Before we can draw, we have to *enter a render pass*. There are two methods to do
             // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
             // not covered here.
@@ -547,40 +582,41 @@ void main() {
             // The third parameter builds the list of values to clear the attachments with. The API
             // is similar to the list of attachments when building the framebuffers, except that
             // only the attachments that use `load: Clear` appear in the list.
-            .begin_render_pass(framebuffers.as_ref().unwrap()[image_num].clone(), false,
-                               vec![[0.0, 0.0, 1.0, 1.0].into()])
-            .unwrap()
+            .begin_render_pass(
+                framebuffers.as_ref().unwrap()[image_num].clone(), false,
+                vec![
+                    [0.0, 0.0, 1.0, 1.0].into(),
+                1f32.into()
+                ]).unwrap()
 
             // We are now inside the first subpass of the render pass. We add a draw command.
             //
             // The last two parameters contain the list of resources to pass to the shaders.
             // Since we used an `EmptyPipeline` object, the objects have to be `()`.
 
-            .draw(pipeline.clone(),
-                  DynamicState {
-                      line_width: None,
-                      // TODO: Find a way to do this without having to dynamically allocate a Vec every frame.
-                      viewports: Some(vec![Viewport {
-                          origin: [0.0, 0.0],
-                          dimensions: [dimensions[0] as f32, dimensions[1] as f32],
-                          depth_range: 0.0..1.0,
-                      }]),
-                      scissors: None,
-                  },
-                  vertex_buffer.clone(), (), ())
-                .unwrap()
+            .draw_indexed(
+                pipeline_.clone(),
+                command_buffer::DynamicState {
+                    line_width: None,
+                    viewports: Some(vec![pipeline::viewport::Viewport {
+                        origin: [0.0, 0.0],
+                        dimensions: [dimensions[0] as f32, dimensions[1] as f32],
+                        depth_range: 0.0 .. 1.0,
+                    }]),
+                    scissors: None,
+                },
+                (vertex_buffer.clone(), normals_buffer.clone()),
+                index_buffer.clone(), set.clone(), ()).unwrap()
 
             // We leave the render pass by calling `draw_end`. Note that if we had multiple
             // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
             // next subpass.
-            .end_render_pass()
-            .unwrap()
-
+            .end_render_pass().unwrap()
             // Finish building the command buffer by calling `build`.
             .build().unwrap();
 
-        let future = previous_frame_end.join(acquire_future)
-            .then_execute(queue.clone(), command_buffer).unwrap()
+        let future = previous_frame.join(acquire_future)
+            .then_execute(queue.clone(), command_buffer_).unwrap()
 
             // The color output is now expected to contain our triangle. But in order to show it on
             // the screen, we have to *present* the image by calling `present`.
@@ -588,20 +624,20 @@ void main() {
             // This function does not actually present the image immediately. Instead it submits a
             // present command at the end of the queue. This means that it will only be presented once
             // the GPU has finished executing the command buffer that draws the triangle.
-            .then_swapchain_present(queue.clone(), swapchain.clone(), image_num)
+            .then_swapchain_present(queue.clone(), swapchain_.clone(), image_num)
             .then_signal_fence_and_flush();
 
         match future {
             Ok(future) => {
-                previous_frame_end = Box::new(future) as Box<_>;
+                previous_frame = Box::new(future) as Box<_>;
             }
-            Err(vulkano::sync::FlushError::OutOfDate) => {
+            Err(sync::FlushError::OutOfDate) => {
                 recreate_swapchain = true;
-                previous_frame_end = Box::new(vulkano::sync::now(device.clone())) as Box<_>;
+                previous_frame = Box::new(sync::now(device.clone())) as Box<_>;
             }
             Err(e) => {
                 println!("{:?}", e);
-                previous_frame_end = Box::new(vulkano::sync::now(device.clone())) as Box<_>;
+                previous_frame = Box::new(sync::now(device.clone())) as Box<_>;
             }
         }
 

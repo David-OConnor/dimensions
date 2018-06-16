@@ -5,6 +5,45 @@ use ndarray::prelude::*;
 use clipping;
 use types::{Camera, Shape};
 
+pub fn dot_mv4(M: [[f32; 4]; 4], v: [f32; 4]) -> [f32; 4] {
+    // Dot a len-4 matrix with a vec.
+    [
+        v[0]*M[0][0] + v[1]*M[0][1] + v[2]*M[0][2] + v[3]*M[0][3],
+        v[0]*M[1][0] + v[1]*M[1][1] + v[2]*M[1][2] + v[3]*M[1][3],
+        v[0]*M[2][0] + v[1]*M[2][1] + v[2]*M[2][2] + v[3]*M[2][3],
+        v[0]*M[3][0] + v[1]*M[3][1] + v[2]*M[3][2] + v[3]*M[3][3]
+    ]
+}
+
+pub fn dot_mm4(M0: [[f32; 4]; 4], M1: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    // Dot a len-4 matrix with another matrix.
+    [
+    // Row 0
+    [M0[0][0]*M1[0][0] + M0[0][1]*M1[1][0] + M0[0][2]*M1[2][0] + M0[0][3]*M1[3][0],
+    M0[0][0]*M1[0][1] + M0[0][1]*M1[1][1] + M0[0][2]*M1[2][1] + M0[0][3]*M1[3][1],
+    M0[0][0]*M1[0][2] + M0[0][1]*M1[1][2] + M0[0][2]*M1[2][2] + M0[0][3]*M1[3][2],
+    M0[0][0]*M1[0][3] + M0[0][1]*M1[1][3] + M0[0][2]*M1[2][3] + M0[0][3]*M1[3][3]],
+
+    // Row 1
+    [M0[1][0]*M1[0][0] + M0[1][1]*M1[1][0] + M0[1][2]*M1[2][0] + M0[1][3]*M1[3][0],
+    M0[1][0]*M1[0][1] + M0[1][1]*M1[1][1] + M0[1][2]*M1[2][1] + M0[1][3]*M1[3][1],
+    M0[1][0]*M1[0][2] + M0[1][1]*M1[1][2] + M0[1][2]*M1[2][2] + M0[1][3]*M1[3][2],
+    M0[1][0]*M1[0][3] + M0[1][1]*M1[1][3] + M0[1][2]*M1[2][3] + M0[1][3]*M1[3][3]],
+
+    // Row 2
+    [M0[2][0]*M1[0][0] + M0[2][1]*M1[1][0] + M0[2][2]*M1[2][0] + M0[2][3]*M1[3][0],
+    M0[2][0]*M1[0][1] + M0[2][1]*M1[1][1] + M0[2][2]*M1[2][1] + M0[2][3]*M1[3][1],
+    M0[2][0]*M1[0][2] + M0[2][1]*M1[1][2] + M0[2][2]*M1[2][2] + M0[2][3]*M1[3][2],
+    M0[2][0]*M1[0][3] + M0[2][1]*M1[1][3] + M0[2][2]*M1[2][3] + M0[2][3]*M1[3][3]],
+
+    // Row 3
+    [M0[3][0]*M1[0][0] + M0[3][1]*M1[1][0] + M0[3][2]*M1[2][0] + M0[3][3]*M1[3][0],
+    M0[3][0]*M1[0][1] + M0[3][1]*M1[1][1] + M0[3][2]*M1[2][1] + M0[3][3]*M1[3][1],
+    M0[3][0]*M1[0][2] + M0[3][1]*M1[1][2] + M0[3][2]*M1[2][2] + M0[3][3]*M1[3][2],
+    M0[3][0]*M1[0][3] + M0[3][1]*M1[1][3] + M0[3][2]*M1[2][3] + M0[3][3]*M1[3][3]],
+    ]
+}
+
 fn make_rotator(θ: &Array1<f32>) -> Array2<f32> {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
@@ -87,6 +126,81 @@ fn make_rotator(θ: &Array1<f32>) -> Array2<f32> {
     R_1.dot(&R_2)
 }
 
+fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
+    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
+    // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
+    // http://eusebeia.dyndns.org/4d/vis/10-rot-1
+    // We rotation around each of six planes; the combinations of the 4
+    // dimensions.
+
+    // cache trig computations
+    let cos_xy = θ[0].cos();
+    let sin_xy = θ[0].sin();
+    let cos_yz = θ[1].cos();
+    let sin_yz = θ[1].sin();
+    let cos_xz = θ[2].cos();
+    let sin_xz = θ[2].sin();
+    let cos_xu = θ[3].cos();
+    let sin_xu = θ[3].sin();
+    let cos_yu = θ[4].cos();
+    let sin_yu = θ[4].sin();
+    let cos_zu = θ[5].cos();
+    let sin_zu = θ[5].sin();
+
+    // Potentially there exist 4 hyperrotations as well? ie combinations of
+    // 3 axes ?  xyz  yzu  zux  uxy
+
+    // Rotations around the xy, yz, and xz planes should appear normal.
+    let R_xy = [
+        [cos_xy, sin_xy, 0., 0.],
+        [-sin_xy, cos_xy, 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.],
+    ];
+
+    let R_yz = [
+        [1., 0., 0., 0.],
+        [0., cos_yz, sin_yz, 0.],
+        [0., -sin_yz, cos_yz, 0.],
+        [0., 0., 0., 1.],
+    ];
+
+    let R_xz = [
+        [cos_xz, 0., -sin_xz, 0.],
+        [0., 1., 0., 0.],
+        [sin_xz, 0., cos_xz, 0.],
+        [0., 0., 0., 1.],
+    ];
+
+    // Rotations involving u, the fourth dimension, should distort 3d objects.
+    let R_xu = [
+        [cos_xu, 0., 0., sin_xu],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [-sin_xu, 0., 0., cos_xu],
+    ];
+
+    let R_yu = [
+        [1., 0., 0., 0.],
+        [0., cos_yu, 0., -sin_yu],
+        [0., 0., 1., 0.],
+        [0., sin_yu, 0., cos_yu],
+    ];
+
+    let R_zu = [
+        [1., 0., 0., 0.],
+        [0., 1., 0., 0.],
+        [0., 0., cos_zu, -sin_zu],
+        [0., 0., sin_zu, cos_zu],
+    ];
+
+    // Combine the rotations.
+
+    let R_1 = dot_mm4(R_xy, dot_mm4(R_yz, R_xz));
+    let R_2 = dot_mm4(R_xu, dot_mm4(R_yu, R_xu));
+    dot_mm4(R_1, R_2)
+}
+
 fn make_translator(position: &Array1<f32>) -> Array2<f32> {
     // Return a translation matrix; the pt must have 1 appended to its end.
     // We do this augmentation so we can add a constant term.  Scale and
@@ -102,16 +216,24 @@ fn make_translator(position: &Array1<f32>) -> Array2<f32> {
     ]
 }
 
-fn make_scaler(scale: &Array1<f32>) -> Array2<f32> {
+fn make_scaler(scale: f32) -> Array2<f32> {
     // Return a scale matrix; the pt must have 1 appended to its end.
-    assert_eq![scale.len(), 4];
-
     array![
-        [scale[0], 0., 0., 0., 0.],
-        [0., scale[1], 0., 0., 0.],
-        [0., 0., scale[2], 0., 0.],
-        [0., 0., 0., scale[3], 0.],
+        [scale, 0., 0., 0., 0.],
+        [0., scale, 0., 0., 0.],
+        [0., 0., scale, 0., 0.],
+        [0., 0., 0., scale, 0.],
         [0., 0., 0., 0., 1.],
+    ]
+}
+
+fn make_scaler4(scale: f32) -> [[f32; 4]; 4] {
+    // Return a scale matrix; the pt must have 1 appended to its end.
+    [
+        [scale, 0., 0., 0.],
+        [0., scale, 0., 0.],
+        [0., 0., scale, 0.],
+        [0., 0., 0., scale],
     ]
 }
 
@@ -202,7 +324,7 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
 pub fn make_model_mat(shape: &Shape) -> Array2<f32> {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
-    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
+    let S = make_scaler(shape.scale);
     let R = make_rotator(&shape.orientation);
     let T = make_translator(&shape.position);
     T.dot(&(R.dot(&S)))
@@ -210,11 +332,9 @@ pub fn make_model_mat(shape: &Shape) -> Array2<f32> {
 
 pub fn make_model_mat4(shape: &Shape) -> [[f32; 4]; 4] {
     // We ommit translation, since we are constrained
-    // todo put scaling back in, once you sort out custom dot products.
-//    let S = make_scaler(&array![shape.scale, shape.scale, shape.scale, shape.scale]);
-//    let R = make_rotator(&shape.orientation);
+    let S = make_scaler4(shape.scale);
     let R = make_rotator4(&shape.orientation);
-    R
+    dot_mm4(R, S)
 }
 
 pub fn make_view_mat(cam: &Camera) -> Array2<f32> {
@@ -234,11 +354,7 @@ pub fn make_view_mat(cam: &Camera) -> Array2<f32> {
 pub fn make_view_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     // Non-homogenous, in the nested-array format used by Vulkan.
     let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
-//    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1.];
-
-//    let T = make_translator(&negPos);
-    let R = make_rotator(&negθ);
-    R
+    make_rotator4(&negθ)
 }
 
 fn project(pt: &Array1<f32>, T: &Array2<f32>, R: &Array2<f32>,

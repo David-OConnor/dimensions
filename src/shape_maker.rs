@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 
-use types::{Node, Edge, Face, Shape};
+use types::{Vertex, Edge, Face, Shape};
 
 // We'll define y as vertical, and z as forward/back.  All shapes are given
 // four coordinates. Leave
@@ -30,12 +30,12 @@ pub fn make_box(lens: (f32, f32, f32),
         [-1., 1., 1., 0.],
     ];
 
-    let mut nodes = HashMap::new();
+    let mut vertices = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as u32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1,
-                      coord[2] * lens.2, coord[3]] / 2.
-        });
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] * lens.0 / 2., coord[1] * lens.1 / 2.,
+            coord[2] * lens.2 / 2., coord[3] / 2.
+        ));
     }
 
     let edges = vec![
@@ -73,9 +73,16 @@ pub fn make_box(lens: (f32, f32, f32),
         Face {edges: vec![edges[1].clone(), edges[9].clone(), edges[5].clone(), edges[10].clone()]},
     ];
 
-    let faces_vert = Vec::new();
+    let faces_vert = vec![  // Vertex indices for each face.
+                            array![0, 1, 2, 3],  // Front
+                            array![4, 5, 6, 7],  // Back
+                            array![3, 2, 6, 7],  // Top
+                            array![0, 1, 5, 4],  // Bottom
+                            array![0, 4, 7, 3],  // Left
+                            array![1, 5, 6, 2],  // Right
+    ];
 
-    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
@@ -92,12 +99,12 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
         [0., 1., 0., 0.],
     ];
 
-    let mut nodes = HashMap::new();
+    let mut vertices = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as u32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1,
-                      coord[2] * lens.2, coord[3]] / 2.
-        });
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] / 2. * lens.0, coord[1] / 2. * lens.1,
+            coord[2] / 2. * lens.2, coord[3] / 2.
+        ));
     }
 
     let edges = vec![
@@ -127,9 +134,15 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
         Face {edges: vec![edges[3].clone(), edges[7].clone(), edges[4].clone()]},
     ];
 
-    let faces_vert = Vec::new();
+    let faces_vert = vec![  // Vertex indices for each face.
+                            array![0, 1, 2, 3],  // Base
+                            array![0, 1, 4],  // Front
+                            array![1, 2, 4],  // Right
+                            array![2, 3, 4],  // Back
+                            array![3, 0, 4],  // Left
+    ];
 
-    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
  pub fn make_house(lens: (f32, f32, f32),
@@ -150,15 +163,16 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
 
      // Now that we've made the shapes, recompose them to be one shape.
      // todo make this a separate, (reusable) func?1
-     let id_addition = base.nodes.len() as u32;
+     let id_addition = base.vertices.len() as u32;
 
-     for (id, node) in &roof.nodes {
+     for (id, vertex) in &roof.vertices {
          // For the roof, modify the ids to be unique.
-         base.nodes.insert(
+         base.vertices.insert(
              id + id_addition,
              // Raise the roof.
-             Node {a: array![node.a[0], node.a[1] + lens.1 / 2., node.a[2], node.a[3]]}
-         );
+             Vertex::new(vertex.position.0, vertex.position.1 + lens.1 / 2.,
+                         vertex.position.2, vertex.position.3
+             ));
      }
      for edge in &roof.edges {
          base.edges.push(Edge {
@@ -195,11 +209,12 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
         [0., 0., 0., 1.],
     ];
 
-    let mut nodes = HashMap::new();
+    let mut vertices = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as u32, Node {
-            a: Array::from_vec(coord.to_vec()) * len
-        });
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] * len / 2., coord[1] * len / 2.,
+            coord[2] * len / 2.,coord[3] * len / 2.
+        ));
     }
 
     let edges = vec![
@@ -210,9 +225,9 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
     ];
 
     let faces = vec![];
-    let faces_vert = Vec::new();
+    let faces_vert = vec![array![]]; // todo temp
 
-    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 //pub fn make_street(width: f32, position: Array1<f32>, scale: f32, orientation: Array1<f32>,
@@ -269,12 +284,12 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
         [-1., 1., 1., 1.],
     ];
 
-    let mut nodes = HashMap::new();
+    let mut vertices = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
-        nodes.insert(id as u32, Node {
-            a: array![coord[0] * lens.0, coord[1] * lens.1,
-                      coord[2] * lens.2, coord[3] * lens.3] / 2.
-        });
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] * lens.0 / 2., coord[1] * lens.1 / 2.,
+            coord[2] * lens.2 / 2., coord[3] * lens.3 / 2.
+        ));
     }
 
     let edges = vec![
@@ -328,9 +343,39 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
     ];
 
     let faces = vec![];
-    let faces_vert = Vec::new();
+    let faces_vert = vec![  // Vertex indices for each face.
+        array![0, 1, 2, 3],  // Front inner
+        array![4, 5, 6, 7],  // Back inner
+        array![3, 2, 6, 7],  // Top inner
+        array![0, 1, 5, 4],  // Bottom inner
+        array![0, 4, 7, 3],  // Left inner
+        array![1, 5, 6, 2],  // Right inner
 
-    Shape::new(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+        array![8, 9, 10, 11],  // Front outer
+        array![12, 13, 14, 15],  // Back outer
+        array![11, 10, 14, 15],  // Top outer
+        array![8, 9, 13, 12],  // Bottom outer
+        array![8, 12, 15, 11],  // Left outer
+        array![9, 13, 14, 10],  // Right outer
+
+        array![8, 9, 1, 0],  // Front bottom
+        array![12, 13, 5, 4],  // Back bottom
+        array![12, 8, 0, 4],  // Left bottom
+        array![9, 13, 5, 1],  // Right bottom
+
+        array![11, 10, 2, 3],  // Front top
+        array![15, 14, 6, 7],  // Back top
+        array![15, 11, 3, 7],  // Left top
+        array![14, 10, 2, 6],  // Right top
+
+        array![11, 8, 0, 3],  // Left forward
+        array![15, 12, 4, 7],  // Left back
+        array![10, 9, 1, 2],  // Right forward
+        array![14, 13, 5, 6],  // Right back
+
+    ];
+
+    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
 }
 
 pub fn make_hypercube(side_len: f32,

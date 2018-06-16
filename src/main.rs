@@ -22,25 +22,6 @@ extern crate vulkano_shader_derive;
 extern crate winit;
 extern crate vulkano_win;
 
-use vulkano_win::VkSurfaceBuild;
-
-use vulkano::device::Device;
-use vulkano::instance::Instance;
-use vulkano::swapchain;
-use vulkano::swapchain::PresentMode;
-use vulkano::swapchain::SurfaceTransform;
-use vulkano::swapchain::Swapchain;
-use vulkano::swapchain::AcquireError;
-use vulkano::swapchain::SwapchainCreationError;
-use vulkano::sync::now;
-use vulkano::sync::GpuFuture;
-
-//use cgmath::Matrix4;
-//use cgmath::SquareMatrix;
-//use cgmath::Vector3;
-
-use std::mem;
-
 use std::collections::HashMap;
 
 mod clipping;
@@ -48,6 +29,8 @@ mod shape_maker;
 mod types;
 mod transforms;
 mod render_vulcano;
+
+mod test;
 
 fn main() {
     let empty_6 = array![0., 0., 0., 0., 0., 0.];
@@ -85,6 +68,7 @@ fn main() {
 
 //    render_ggez::run(shapes);
     render_vulcano::render(shapes);
+//    test::main();
 }
 
 #[cfg(test)]

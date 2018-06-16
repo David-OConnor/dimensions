@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 
+use vulkano;
+
 #[derive(Debug)]
 pub struct Pt2D {
     pub x: f32,
@@ -9,16 +11,17 @@ pub struct Pt2D {
 }
 
 #[derive(Debug, Clone)]
-pub struct Node {
+pub struct Vertex {
     // a may be relative or absolute.
-    pub a: Array1<f32>,
+//    pub position: [f32; 4],
+    pub position: (f32, f32, f32, f32),
 }
+impl_vertex!(Vertex, position);
 
-impl Node {
-    pub fn augmented(&self) -> Array1<f32> {
-        // For use with translation matrices, and others that have
-        // the same dimension.
-        array![self.a[0], self.a[1], self.a[2], self.a[3], 1.]
+impl Vertex {
+    pub fn new(x: f32, y: f32, z: f32, u: f32) -> Vertex {
+//        Vertex{ position: [x, y, z, u] }
+        Vertex{ position: (x, y, z, u) }
     }
 }
 
@@ -47,7 +50,7 @@ impl Face {
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
-    pub nodes: HashMap<u32, Node>,
+    pub vertices: HashMap<u32, Vertex>,
     pub edges: Vec<Edge>,
     pub faces: Vec<Face>,
     pub faces_vert: Vec<Array1<u32>>,
@@ -55,24 +58,28 @@ pub struct Shape {
     pub scale: f32,
     pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
-    tris: Array1<u32>,
+    pub tris: Array1<u32>,
 }
 
 impl Shape {
-    pub fn new(nodes: HashMap<u32, Node>, edges: Vec<Edge>, faces: Vec<Face>,
+    pub fn new(nodes: HashMap<u32, Vertex>, edges: Vec<Edge>, faces: Vec<Face>,
                faces_vert: Vec<Array1<u32>>,
                position: Array1<f32>, orientation: Array1<f32>,
                rotation_speed: Array1<f32>) -> Shape {
-        Shape{nodes, edges, faces, faces_vert, position, scale: 1., orientation, rotation_speed, tris: array![]}
+        Shape{ vertices: nodes, edges, faces, faces_vert, position, scale: 1., orientation, rotation_speed, tris: array![]}
     }
 
-    pub fn get_tris(&mut self) -> &Array1<u32> {
-        // get cached triangles if avail; if not, create and cache.
-        if !self.tris.len() > 0 {
-            self.make_tris()
-        }
-        &self.tris
-    }
+//    pub fn get_tris(&mut self) -> &Array1<u32> {
+//        // get cached triangles if avail; if not, create and cache.
+//        if !self.tris.len() > 0 {
+//            self.make_tris()
+//        }
+//        &self.tris
+//    }
+//    pub fn get_tris(&self) -> &Array1<u32> {
+//        // get cached triangles if avail; if not, create and cache.
+//        &self.tris
+//    }
 
     pub fn make_tris(&mut self) {
         // Divide faces into triangles of indices. These indices aren't of node
@@ -80,6 +87,8 @@ impl Shape {
         // Result is a 1d array; Float32array-style.
         let mut result = Vec::new();
         let mut current_i = 0;
+
+        println!("FV: {:?}", &self.faces_vert);
 
         for face in &self.faces_vert {
             match face.len() {
@@ -111,7 +120,7 @@ impl Shape {
     pub fn num_face_verts(&self) -> u32 {
         // Find the number of vertices used in drawing faces.  Ie for a box,
         // it's 6 faces x 4 vertices/face.
-        this.faces_vert.iter().fold(0, |acc, face| acc + face.len())
+        self.faces_vert.iter().fold(0, |acc, face| acc + face.len() as u32)
     }
 }
 
