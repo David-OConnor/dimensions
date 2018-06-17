@@ -242,42 +242,87 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         device.clone(), dimensions, format::D16Unorm).unwrap();
 
     //todo
+
+    // todo combine multiple objects (like cam/shape posit) into one buff?
     use test;
+    use vulkano;
 
     #[derive(Copy, Clone, Debug)]
     struct Vertex3 {  // todo temp
         position: (f32, f32, f32)
     }
-    use vulkano;
     impl_vertex!(Vertex3, position);
 
+    #[derive(Copy, Clone, Debug)]
+    struct Normal3 {  // todo temp
+        normal: (f32, f32, f32)
+    }
+    impl_vertex!(Normal3, normal);
+
+    #[derive(Copy, Clone, Debug)]
+    struct CamPosit3 {  // todo temp
+        cam_posit: (f32, f32, f32)
+    }
+    impl_vertex!(CamPosit3, cam_posit);
+
+    #[derive(Copy, Clone, Debug)]
+    struct ShapePosit3 {  // todo temp
+        shape_posit: (f32, f32, f32)
+    }
+    impl_vertex!(ShapePosit3, shape_posit);
+
     // todo separate into buffer maker funcs.
-    let vertex_buffer = {
-        let mut shape_vertices = Vec::new();
-        for (s_id, shape) in &shapes {
-            for (v_id, vertex) in &shape.vertices {
-//                let vertex2 = &vertex.position;  // todo fix this; why not 4d??
-//                shape_vertices.push(vertex)
+
+    let mut shape_vertices = Vec::new();
+    let mut normals = Vec::new();
+    let mut cam_posits = Vec::new();  // todo this doesn't change here...
+    let mut shape_posits = Vec::new();  // todo this doesn't change as much as verticies...
+    for (s_id, shape) in &shapes {
+        for face in &shape.faces_vert {
+            for id in face {
+                //              let vertex2 = &vertex.position;  // todo fix this; why not 4d??
+//                  shape_vertices.push(vertex)
+                let vertex = shape.vertices.get(id).unwrap();
                 shape_vertices.push(
-                    Vertex3 {position: (vertex.position.0, vertex.position.1, vertex.position.2)}
+//                    Vertex3 {position: (vertex.position.0, vertex.position.1, vertex.position.2)}
+                    vertex.clone()
+                );
+                let normal = shape.normals.get(id).unwrap();
+                normals.push(
+                    Normal3 {normal: (normal.normal.0, normal.normal.1, normal.normal.2)}
+                );
+
+                // todo does this need to be repeated so?
+                shape_posits.push(
+                    ShapePosit3 {shape_posit: (shape.position[0], shape.position[1], shape.position[2])}
+                );
+                cam_posits.push(
+                    CamPosit3 {cam_posit: (cam.position[0], cam.position[1], cam.position[2])}
                 );
             }
         }
+    }
 
-        println!("VERTS: {:?}", shape_vertices);
+    println!("NORMS: {:?}", normals);
+    println!("NORMS: {:?}", normals.len());
+    println!("VERTS: {:?}", shape_vertices);
+    println!("VERTS: {:?}", shape_vertices.len());
 
-        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                               shape_vertices.iter().cloned()) // todo .cloned ?
-            .expect("failed to create vertex buffer")
-    };
+    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                                           shape_vertices.iter().cloned()) // todo .cloned ?
+        .expect("failed to create vertex buffer");
 
-    let normals_buffer = {
-        // todo fill this in
-//        let normals = Vec::new();
-        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                           test::NORMALS.iter().cloned())
-            .expect("failed to create buffer")
-    };
+    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                                            normals.iter().cloned())
+        .expect("failed to create buffer");
+
+    let cam_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                                            cam_posits.iter().cloned())
+        .expect("failed to create buffer");
+
+    let shape_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                                            shape_posits.iter().cloned())
+        .expect("failed to create buffer");
 
     let index_buffer = {
 //        let mut indices = Vec::new();
@@ -289,6 +334,9 @@ pub fn render(shapes: HashMap<u32, Shape>) {
 //            indices.append(tri_indices);
             // todo fix this; for now just adding tri_Indices
             indexModifier += shape.num_face_verts();
+
+        println!("indicies: {:?}", tri_indices);
+        println!("indicies: {:?}", tri_indices.len());
         }
 
         buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
@@ -333,11 +381,14 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         #[src = "
 #version 450
 
-layout(location = 0) in vec4 vert_posit;
-layout(location = 1) in vec4 shape_posit;
-layout(location = 2) in vec4 cam_posit;
-layout(location = 3) out vec4 fragColor;
-// layout(location = 4) in vec4 normal;
+// todo should be vec4 once you sort this.
+layout(location = 0) in vec4 position;
+//layout(location = 1) in vec3 shape_posit;
+//layout(location = 2) in vec3 cam_posit;
+layout(location = 3) in vec3 normal;
+
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec3 v_normal;
 
 layout(set = 0, binding = 0) uniform Data {
     mat4 model;
@@ -351,16 +402,20 @@ out gl_PerVertex {
 
 void main() {
     vec4 tempColor = vec4(0., 1., 0., 0.);
+    vec4 temp_shape_posit = vec4(0., 0., 0., 1.);
+    vec4 temp_cam_posit = vec4(0., 0., -4., 1.);
 
     // For model transform, position after the transform
-    vec4 positioned_pt = (uniforms.model * vert_posit) + shape_posit;
+//    vec4 positioned_pt = (uniforms.model * vec4(position, 1.0)) + temp_shape_posit;
+    vec4 positioned_pt = (uniforms.model * position) + temp_shape_posit;
     // for view transform, position first.
-    positioned_pt = uniforms.view * (positioned_pt - cam_posit);
+    positioned_pt = uniforms.view * (positioned_pt - temp_cam_posit);
 
     // Now remove the u coord; replace with 1. We no longer need it,
     // and the projection matrix is set up for 3d homogenous vectors.
     vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
 
+    v_normal = vec3(1., 1., 1.); // todo temp
     gl_Position = uniforms.proj * positioned_3d;
     fragColor = tempColor;
 }
@@ -374,6 +429,8 @@ void main() {
         #[src = "
 #version 450
 layout(location = 0) in vec4 fragColor;
+layout(location = 1) in vec3 v_normal;
+
 layout(location = 0) out vec4 f_color;
 
 void main() {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 
-use types::{Vertex, Edge, Face, Shape};
+use types::{Vertex, Normal, Edge, Face, Shape};
 
 // We'll define y as vertical, and z as forward/back.  All shapes are given
 // four coordinates. Leave
@@ -37,6 +37,21 @@ pub fn make_box(lens: (f32, f32, f32),
             coord[2] * lens.2 / 2., coord[3] / 2.
         ));
     }
+
+    // Divide the vertex position by its length to make normalized vectors.
+    // The distance from the center to a corner.
+    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2) + (lens.2 / 2.).powi(2)).sqrt();
+
+    let mut normals = HashMap::new();
+    normals.insert(0, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, 0.));
+    normals.insert(1, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, 0.));
+    normals.insert(2, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, 0.));
+    normals.insert(3, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, 0.));
+
+    normals.insert(4, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, 0.));
+    normals.insert(5, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, 0.));
+    normals.insert(6, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, 0.));
+    normals.insert(7, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, 0.));
 
     let edges = vec![
         // Front
@@ -82,14 +97,14 @@ pub fn make_box(lens: (f32, f32, f32),
                             array![1, 5, 6, 2],  // Right
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
 pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
                                 position: Array1<f32>, orientation: Array1<f32>,
                                 rotation_speed: Array1<f32>) -> Shape {
     let coords = [
-        // Base
+        // Base  (Center of this shape is the center of the base square)
         [-1., 0., -1., 0.],
         [1., 0., -1., 0.],
         [1., 0., 1., 0.],
@@ -106,6 +121,15 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
             coord[2] / 2. * lens.2, coord[3] / 2.
         ));
     }
+    // Divide the vertex position by its length to make normalized vectors.
+    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2)).sqrt();
+    let mut normals = HashMap::new();
+    normals.insert(0, Normal::new(-lens.0 / d, 0., -lens.2 / d, 0.));
+    normals.insert(1, Normal::new(lens.0 / d, 0., -lens.2 / d, 0.));
+    normals.insert(2, Normal::new(lens.0 / d, 0., lens.2 / d, 0.));
+    normals.insert(3, Normal::new(-lens.0 / d, 0., lens.2 / d, 0.));
+
+    normals.insert(4, Normal::new(0., lens.1, 0., 0.));
 
     let edges = vec![
         // Front
@@ -142,7 +166,7 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
                             array![3, 0, 4],  // Left
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
  pub fn make_house(lens: (f32, f32, f32),
@@ -184,6 +208,9 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
          base.faces.push(face.clone());
      }
      base
+
+     // todo do normals...
+
  }
 
 pub fn make_cube(side_len: f32,
@@ -226,8 +253,10 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
 
     let faces = vec![];
     let faces_vert = vec![array![]]; // todo temp
+    let normals = HashMap::new(); // todo temp
 
-    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
+
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
 //pub fn make_street(width: f32, position: Array1<f32>, scale: f32, orientation: Array1<f32>,
@@ -291,6 +320,29 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
             coord[2] * lens.2 / 2., coord[3] * lens.3 / 2.
         ));
     }
+    
+    // Divide the vertex position by its length to make normalized vectors.
+    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2) + (lens.2 / 2.).powi(2) + (lens.3 / 2.).powi(2)).sqrt();
+    let mut normals = HashMap::new();
+    normals.insert(0, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, -lens.3 / d));
+    normals.insert(1, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, -lens.3 / d));
+    normals.insert(2, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, -lens.3 / d));
+    normals.insert(3, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, -lens.3 / d));
+
+    normals.insert(4, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, -lens.3 / d));
+    normals.insert(5, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, -lens.3 / d));
+    normals.insert(6, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, -lens.3 / d));
+    normals.insert(7, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, -lens.3 / d));
+
+    normals.insert(8, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, lens.3 / d));
+    normals.insert(9, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, lens.3 / d));
+    normals.insert(10, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, lens.3 / d));
+    normals.insert(11, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, lens.3 / d));
+
+    normals.insert(12, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, lens.3 / d));
+    normals.insert(13, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, lens.3 / d));
+    normals.insert(14, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, lens.3 / d));
+    normals.insert(15, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, lens.3 / d));
 
     let edges = vec![
         // Front inner
@@ -375,7 +427,7 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
 
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
 pub fn make_hypercube(side_len: f32,

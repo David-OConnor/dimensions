@@ -10,7 +10,7 @@ pub struct Pt2D {
     pub y: f32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     // a may be relative or absolute.
 //    pub position: [f32; 4],
@@ -22,6 +22,19 @@ impl Vertex {
     pub fn new(x: f32, y: f32, z: f32, u: f32) -> Vertex {
 //        Vertex{ position: [x, y, z, u] }
         Vertex{ position: (x, y, z, u) }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Normal {
+    pub normal: (f32, f32, f32, f32)
+}
+impl_vertex!(Normal, normal);
+
+impl Normal {
+    pub fn new(x: f32, y: f32, z: f32, u: f32) -> Normal {
+//        Vertex{ position: [x, y, z, u] }
+        Normal{ normal: (x, y, z, u) }
     }
 }
 
@@ -54,6 +67,7 @@ pub struct Shape {
     pub edges: Vec<Edge>,
     pub faces: Vec<Face>,
     pub faces_vert: Vec<Array1<u32>>,
+    pub normals: HashMap<u32, Normal>,
     pub position: Array1<f32>,
     pub scale: f32,
     pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
@@ -63,10 +77,11 @@ pub struct Shape {
 
 impl Shape {
     pub fn new(nodes: HashMap<u32, Vertex>, edges: Vec<Edge>, faces: Vec<Face>,
-               faces_vert: Vec<Array1<u32>>,
+               faces_vert: Vec<Array1<u32>>, normals: HashMap<u32, Normal>,
                position: Array1<f32>, orientation: Array1<f32>,
                rotation_speed: Array1<f32>) -> Shape {
-        Shape{ vertices: nodes, edges, faces, faces_vert, position, scale: 1., orientation, rotation_speed, tris: array![]}
+        Shape{ vertices: nodes, edges, faces, faces_vert, normals, position, scale: 1., orientation,
+               rotation_speed, tris: array![]}
     }
 
 //    pub fn get_tris(&mut self) -> &Array1<u32> {
