@@ -238,7 +238,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
                                   None).expect("failed to create swapchain")
     };
 
-    let mut depth_buffer = image::attachment::AttachmentImage::transient(
+    let depth_buffer = image::attachment::AttachmentImage::transient(
         device.clone(), dimensions, format::D16Unorm).unwrap();
 
     //todo
@@ -248,28 +248,24 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     use vulkano;
 
     #[derive(Copy, Clone, Debug)]
-    struct Vertex3 {  // todo temp
-        position: (f32, f32, f32)
+    struct CamPosit {  // todo temp
+        cam_posit: (f32, f32, f32, f32)
     }
-    impl_vertex!(Vertex3, position);
+    impl_vertex!(CamPosit, cam_posit);
 
     #[derive(Copy, Clone, Debug)]
-    struct Normal3 {  // todo temp
-        normal: (f32, f32, f32)
+    struct ShapePosit {  // todo temp
+        shape_posit: (f32, f32, f32, f32)
     }
-    impl_vertex!(Normal3, normal);
+    impl_vertex!(ShapePosit, shape_posit);
 
     #[derive(Copy, Clone, Debug)]
-    struct CamPosit3 {  // todo temp
-        cam_posit: (f32, f32, f32)
+    struct VertAndExtras {  // todo temp
+        position: (f32, f32, f32, f32),
+        shape_posit: (f32, f32, f32, f32),
+        cam_posit: (f32, f32, f32, f32),
     }
-    impl_vertex!(CamPosit3, cam_posit);
-
-    #[derive(Copy, Clone, Debug)]
-    struct ShapePosit3 {  // todo temp
-        shape_posit: (f32, f32, f32)
-    }
-    impl_vertex!(ShapePosit3, shape_posit);
+    impl_vertex!(VertAndExtras, position, shape_posit, cam_posit);
 
     // todo separate into buffer maker funcs.
 
@@ -280,24 +276,28 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     for (s_id, shape) in &shapes {
         for face in &shape.faces_vert {
             for id in face {
-                //              let vertex2 = &vertex.position;  // todo fix this; why not 4d??
-//                  shape_vertices.push(vertex)
-                let vertex = shape.vertices.get(id).unwrap();
-                shape_vertices.push(
-//                    Vertex3 {position: (vertex.position.0, vertex.position.1, vertex.position.2)}
-                    vertex.clone()
-                );
-                let normal = shape.normals.get(id).unwrap();
-                normals.push(
-                    Normal3 {normal: (normal.normal.0, normal.normal.1, normal.normal.2)}
-                );
+                shape_vertices.push(shape.vertices.get(id).unwrap().clone());
+                let v = shape.vertices.get(id).unwrap().position;
+                let info = VertAndExtras {
+                    position: (v.0, v.1, v.2, v.3),
+                    shape_posit: (shape.position[0], shape.position[1],
+                                  shape.position[2], shape.position[3]),
+                    cam_posit: (cam.position[0], cam.position[1],
+                                cam.position[2], cam.position[3]),
+                };
+//                shape_vertices.push(shape.vertices.get(id).unwrap().clone());
+
+
+                normals.push(shape.normals.get(id).unwrap().clone());
 
                 // todo does this need to be repeated so?
                 shape_posits.push(
-                    ShapePosit3 {shape_posit: (shape.position[0], shape.position[1], shape.position[2])}
+                    ShapePosit {shape_posit: (shape.position[0], shape.position[1],
+                                              shape.position[2], shape.position[3])}
                 );
                 cam_posits.push(
-                    CamPosit3 {cam_posit: (cam.position[0], cam.position[1], cam.position[2])}
+                    CamPosit {cam_posit: (cam.position[0], cam.position[1],
+                                          cam.position[2], cam.position[3])}
                 );
             }
         }
@@ -344,19 +344,12 @@ pub fn render(shapes: HashMap<u32, Shape>) {
             .expect("Failed to create index buffer")
     };
 
-    let I_4: [f32; 16] = [
-        1., 0., 0., 0.,
-        0., 1., 0., 0.,
-        0., 0., 1., 0.,
-        0., 0., 0., 1.
-    ];
-
-    let I_42: [[f32; 4]; 4] = [
-        [1., 0., 0., 0.],
-        [0., 1., 0., 0.],
-        [0., 0., 1., 0.],
-        [0., 0., 0., 1.]
-    ];
+//    let I_4: [[f32; 4]; 4] = [
+//        [1., 0., 0., 0.],
+//        [0., 1., 0., 0.],
+//        [0., 0., 1., 0.],
+//        [0., 0., 0., 1.]
+//    ];
 
     let view_mat = transforms::make_view_mat4(&cam);
     // todo we need one for each shape; only one shape for now though.
@@ -381,14 +374,13 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         #[src = "
 #version 450
 
-// todo should be vec4 once you sort this.
 layout(location = 0) in vec4 position;
-//layout(location = 1) in vec3 shape_posit;
-//layout(location = 2) in vec3 cam_posit;
-layout(location = 3) in vec3 normal;
+layout(location = 1) in vec4 normal;
+//layout(location = 2) in vec4 shape_posit;
+//layout(location = 3) in vec4 cam_posit;
 
 layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec3 v_normal;
+layout(location = 1) out vec4 v_normal;
 
 layout(set = 0, binding = 0) uniform Data {
     mat4 model;
@@ -396,17 +388,16 @@ layout(set = 0, binding = 0) uniform Data {
     mat4 proj;
 } uniforms;
 
-out gl_PerVertex {
-    vec4 gl_Position;
-};
+//out gl_PerVertex {
+//    vec4 gl_Position;
+//};
 
 void main() {
-    vec4 tempColor = vec4(0., 1., 0., 0.);
+    vec4 tempColor = vec4(0., 1., 0., 1.);
     vec4 temp_shape_posit = vec4(0., 0., 0., 1.);
-    vec4 temp_cam_posit = vec4(0., 0., -4., 1.);
+    vec4 temp_cam_posit = vec4(0., 0., 4., 1.);
 
     // For model transform, position after the transform
-//    vec4 positioned_pt = (uniforms.model * vec4(position, 1.0)) + temp_shape_posit;
     vec4 positioned_pt = (uniforms.model * position) + temp_shape_posit;
     // for view transform, position first.
     positioned_pt = uniforms.view * (positioned_pt - temp_cam_posit);
@@ -415,8 +406,8 @@ void main() {
     // and the projection matrix is set up for 3d homogenous vectors.
     vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
 
-    v_normal = vec3(1., 1., 1.); // todo temp
     gl_Position = uniforms.proj * positioned_3d;
+    v_normal = normal; // todo temp
     fragColor = tempColor;
 }
 "]
@@ -429,12 +420,12 @@ void main() {
         #[src = "
 #version 450
 layout(location = 0) in vec4 fragColor;
-layout(location = 1) in vec3 v_normal;
+layout(location = 1) in vec4 v_normal;
 
 layout(location = 0) out vec4 f_color;
 
 void main() {
-    f_color = vec4(fragColor);
+    f_color = fragColor;
 }
 "]
         struct Dummy;
@@ -587,12 +578,9 @@ void main() {
             // maybe increment rotation here.
 
             let uniform_data = vs::ty::Data {
-//                model: model_mat,
-//                view: view_mat,
-//                proj: proj_mat,
-                model: I_42,
-                view: I_42,
-                proj: I_42,
+                model: model_mat,
+                view: view_mat,
+                proj: proj_mat,
             };
 
             uniform_buffer.next(uniform_data).unwrap()

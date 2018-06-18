@@ -1,4 +1,4 @@
-import {Camera, Shape} from "./interfaces";
+import {Camera, Shape} from "./types";
 import * as shapeMaker from "./shapeMaker";
 
 // todo global shapes and cam for now
@@ -8,10 +8,12 @@ export let shapes = new Map()
 
 export let colorMax = 15  // At this z distance, our blue/red shift fully saturated.
 export let currentlyPressedKeys: number[] = []
-export const moveSensitivity = .1
-export const rotateSensitivity = .017
+export const moveSensitivity = .1  // units per millisecond
+export const rotateSensitivity = .3  // radians per millisecond.
 
 export let staticBuffers = {}
+
+export let scene = 0
 
 const defaultCam = new Camera (
     new Float32Array([0., 0., 0., 0.]),
@@ -50,4 +52,8 @@ export function emptyStaticBuffers() {
     // We have these two steps so we can initiate the reset from the UI, which
     // doesn't have access to the GL object directly; render owns it.
     staticBuffers = {}
+}
+
+export function setScene(scene_: number) {
+    scene = scene_
 }

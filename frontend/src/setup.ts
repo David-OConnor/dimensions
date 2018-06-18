@@ -4,7 +4,7 @@
 import * as transforms from './transforms';
 import * as shapeMaker from './shapeMaker';
 import * as state from './state';
-import {Camera} from './interfaces'
+import {Camera} from './types'
 
 const τ = 2 * Math.PI
 const empty = new Float32Array([0, 0, 0, 0])
@@ -82,7 +82,7 @@ const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
 // todo we have a reversal issue with cam; for now throw in τ/2 fudge factors.
 
 export function setScene(scene: number, subScene: number) {
-    document.onkeydown = e => transforms.handleKeyDown(e, scene)
+    state.setScene(scene)
     if (scene === 0) {  // Single hypercube
         state.setCam(new Camera(
             new Float32Array([0., 0., -2., 0.]),

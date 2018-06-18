@@ -1,29 +1,13 @@
 // This file mirrors transforms.rs.
 
 import {dotMM4, dotMV4, mulVConst4, addVecs4} from './util'
-import {Shape, Camera} from './interfaces'
+import {Shape, Camera} from './types'
 import * as state from "./state";
+import {setCam} from "./state";
 
 // Note: We use matrix conventions that make our 1D matrices, when written
 // here, appear as they would in standard linear algebra conventions; this may
 // not be the same as OpenGl etc conventions; ie transposed.
-
-function moveCam(unitVec: Float32Array, fps: boolean) {
-    // Modifies the global camera
-    // With first-person-shooter controls, ignore all input except rotation
-    // around the y axis.
-    const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
-    const R = makeRotator(new Float32Array(16), θ)
-
-    let v = new Float32Array(4)
-    dotMV4(v, R, unitVec)
-
-    mulVConst4(v, v, state.moveSensitivity)
-
-    addVecs4(state.cam.position, state.cam.position, v)
-    // The skybox moves with the camera, but doesn't rotate with it.
-    addVecs4(state.skybox.position, state.skybox.position, v)
-}
 
 function makeRotator(out: Float32Array, θ: number[]): Float32Array {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
@@ -163,187 +147,202 @@ export function makeViewMat4(cam: Camera): Float32Array {
     return R
 }
 
-export function handleKeyDown(event: any, scene_: number) {
-    // Add if it's not already there.
-    if (state.currentlyPressedKeys.indexOf(event.keyCode) === -1) {
-        state.currentlyPressedKeys.push(event.keyCode)
-    }
+function moveCam(unitVec: Float32Array, amount: number, fps: boolean) {
+    // Modifies the global camera
+    // With first-person-shooter controls, ignore all input except rotation
+    // around the y axis.
+    const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
+    const R = makeRotator(new Float32Array(16), θ)
 
+    let v = new Float32Array(4)
+    dotMV4(v, R, unitVec)
+
+    mulVConst4(v, v, amount)
+
+    addVecs4(state.cam.position, state.cam.position, v)
+    // The skybox moves with the camera, but doesn't rotate with it.
+    addVecs4(state.skybox.position, state.skybox.position, v)
+}
+
+export function handleKeys(currentlyPressed: number[], deltaT: number,
+                           moveSensitivity: number, rotateSensitivity: number) {
+    // Add if it's not already there.
+    const moveAmount = moveSensitivity * deltaT
+    const rotateAmount = rotateSensitivity * deltaT
+    
     for (let code of state.currentlyPressedKeys) {
         switch(code) {
             // todo fudge factors on f and back to reverse.
             case 87:  // w
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, -1, 0]), false)
+                    moveCam(new Float32Array([0, 0, -1, 0]), moveAmount, false)
                 }
-                event.preventDefault()
                 break
             case 83:  // s
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 1, 0]), false)
+                    moveCam(new Float32Array([0, 0, 1, 0]), moveAmount, false)
                 }
                 break
             case 68:  // d
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([1, 0, 0, 0]), false)
+                    moveCam(new Float32Array([1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 65:  // a
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([-1, 0, 0, 0]), false)
+                    moveCam(new Float32Array([-1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 32:  // Space
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
-                } else if (scene_ === 2) {
+                } else if (state.scene === 2) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 1, 0, 0]), false)
+                    moveCam(new Float32Array([0, 1, 0, 0]), moveAmount, false)
                 }
-                event.preventDefault()
                 break
             case 67:  // c
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
-                } else if (scene_ === 2) {
+                } else if (state.scene === 2) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, -1, 0, 0]), false)
+                    moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 17:  // Control
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
-                } else if (scene_ === 2) {
+                } else if (state.scene === 2) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, -1, 0, 0]), false)
+                    moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 82:  // r
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 0, 1]), false)
+                    moveCam(new Float32Array([0, 0, 0, 1]), moveAmount, false)
                 }
                 break
             case 70:  // f
-                if (scene_ === 0) {
+                if (state.scene === 0) {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 0, -1]), false)
+                    moveCam(new Float32Array([0, 0, 0, -1]), moveAmount, false)
                 }
                 break
             // todo add deltaTime!
             case 38:  // Up
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[1] -= state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[1] -= rotateAmount
                 } else {
-                    state.cam.θ[1] += state.rotateSensitivity
+                    state.cam.θ[1] += rotateAmount
                 }
-                event.preventDefault();
                 break
             case 40:  // Down
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[1] += state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[1] += rotateAmount
                 } else {
-                    state.cam.θ[1] -= state.rotateSensitivity
+                    state.cam.θ[1] -= rotateAmount
                 }
-                event.preventDefault();
                 break
             case 39:  // Right
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[2] += state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[2] += rotateAmount
                 } else {
-                    state.cam.θ[2] -= state.rotateSensitivity
+                    state.cam.θ[2] -= rotateAmount
                 }
-                event.preventDefault();
                 break
             case 37:  // Left
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[2] -= state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[2] -= rotateAmount
                 } else {
-                    state.cam.θ[2] += state.rotateSensitivity
-                    event.preventDefault();
+                    state.cam.θ[2] += rotateAmount
                 }
                 break
             case 69:  // E
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[0] += state.rotateSensitivity
-                } else if (scene_ === 2) {
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[0] += rotateAmount
+                } else if (state.scene === 2) {
                     console.log()
                 } else {
-                    state.cam.θ[0] += state.rotateSensitivity
+                    state.cam.θ[0] += rotateAmount
                 }
                 break
             case 81:  // Q
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[0] -= state.rotateSensitivity
-                } else if (scene_ === 2) {
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[0] -= rotateAmount
+                } else if (state.scene === 2) {
                     console.log()
                 } else {
-                    state.cam.θ[0] -= state.rotateSensitivity
+                    state.cam.θ[0] -= rotateAmount
                 }
                 break
             case 45:  // Ins
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[3] += state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[3] += rotateAmount
                 } else {
-                    state.cam.θ[3] += state.rotateSensitivity
+                    state.cam.θ[3] += rotateAmount
                 }
                 break
             case 46:  // Del
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[3] -= state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[3] -= rotateAmount
                 } else {
-                    state.cam.θ[3] -= state.rotateSensitivity
+                    state.cam.θ[3] -= rotateAmount
                 }
-                event.preventDefault();
                 break
             case 36:  // Home
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[4] += state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[4] += rotateAmount
                 } else {
-                    state.cam.θ[4] += state.rotateSensitivity
+                    state.cam.θ[4] += rotateAmount
                 }
-                event.preventDefault();
                 break
             case 35:  // End
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[4] -= state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[4] -= rotateAmount
                 } else {
-                    state.cam.θ[4] -= state.rotateSensitivity
+                    state.cam.θ[4] -= rotateAmount
                 }
-                event.preventDefault();
                 break
             case 33:  // Pgup
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[5] += state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[5] += rotateAmount
                 } else {
-                    state.cam.θ[5] += state.rotateSensitivity
+                    state.cam.θ[5] += rotateAmount
                 }
-                event.preventDefault();
                 break
             case 34:  // Pgdn
-                if (scene_ === 0) {
-                    state.shapes.get(0).orientation[5] -= state.rotateSensitivity
+                if (state.scene === 0) {
+                    state.shapes.get(0).orientation[5] -= rotateAmount
                 } else {
-                    state.cam.θ[5] -= state.rotateSensitivity
+                    state.cam.θ[5] -= rotateAmount
                 }
-                event.preventDefault();
                 break
             default:
                 break
         }
+    }
+}
+
+export function handleKeyDown(event: any) {
+    // Prevent scrolling etc behavior from keys we use.
+    if ([87, 83, 68, 65, 32, 67, 17, 82, 70, 38, 40, 39, 37, 59, 81, 45, 46, 36,35, 33, 34 ].
+        indexOf(event.keyCode) > -1) { event.preventDefault() }
+    if (state.currentlyPressedKeys.indexOf(event.keyCode) === -1) {
+        state.currentlyPressedKeys.push(event.keyCode)
     }
 }
 

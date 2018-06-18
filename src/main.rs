@@ -25,6 +25,7 @@ extern crate vulkano_win;
 use std::collections::HashMap;
 
 mod clipping;
+mod import_bitmap;
 mod shape_maker;
 mod types;
 mod transforms;

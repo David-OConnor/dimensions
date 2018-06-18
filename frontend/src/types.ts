@@ -30,19 +30,22 @@ export class Shape {
     // iterating over over faces/edges due to edges being used in multiple directions.
     // Vertex indices for each face.
     faces_vert: number[][]
+    normals: Map<number, Float32Array>
     position: Float32Array
     scale: number
     orientation: number[]
     rotation_speed: number[]
     tris: number[]
 
-    constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[], faces_vert: number[][],
+    constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
+                faces_vert: number[][], normals: Map<number, Float32Array>,
                 position: Float32Array, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
         this.edges = edges
         this.faces = faces
         this.faces_vert = faces_vert
+        this.normals = normals
         this.position = position
         this.scale = 1
         this.orientation = orientation

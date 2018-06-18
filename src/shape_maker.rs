@@ -122,7 +122,7 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
         ));
     }
     // Divide the vertex position by its length to make normalized vectors.
-    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2)).sqrt();
+    let d = ((lens.0 / 2.).powi(2) + (lens.2 / 2.).powi(2)).sqrt();
     let mut normals = HashMap::new();
     normals.insert(0, Normal::new(-lens.0 / d, 0., -lens.2 / d, 0.));
     normals.insert(1, Normal::new(lens.0 / d, 0., -lens.2 / d, 0.));

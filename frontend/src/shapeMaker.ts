@@ -2,7 +2,7 @@
 // interoperability. Uses semicolons in many places, other like other parts
 // of the frontend.
 
-import {Shape, Node2, Edge, Face} from "./interfaces"
+import {Shape, Node2, Edge, Face} from "./types"
 
 export function make_box(lens: [number, number, number],
                          position: Float32Array, orientation: number[],
@@ -30,6 +30,21 @@ export function make_box(lens: [number, number, number],
         nodes.set(id, new Node2(new Float32Array([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3]])))
     }
+
+    // Divide the vertex position by its length to make normalized vectors.
+    // The distance from the center to a corner.
+    let d = Math.sqrt(Math.pow(lens[0] / 2, 2) + Math.pow(lens[1], 2) + Math.pow(lens[2] / 2., 2))
+
+    let normals = new Map()
+    normals.set(0, new Float32Array([-lens[0] / d, -lens[1] / d, -lens[2] / d, 0.]))
+    normals.set(1, new Float32Array([lens[0] / d, -lens[1] / d, -lens[2] / d, 0.]))
+    normals.set(2, new Float32Array([lens[0] / d, lens[1] / d, -lens[2] / d, 0.]))
+    normals.set(3, new Float32Array([-lens[0] / d, lens[1] / d, -lens[2] / d, 0.]))
+
+    normals.set(4, new Float32Array([-lens[0] / d, -lens[1] / d, lens[2] / d, 0.]))
+    normals.set(5, new Float32Array([lens[0] / d, -lens[1] / d, lens[2] / d, 0.]))
+    normals.set(6, new Float32Array([lens[0] / d, lens[1] / d, lens[2] / d, 0.]))
+    normals.set(7, new Float32Array([-lens[0] / d, lens[1] / d, lens[2] / d, 0.]))
 
     const edges = [
         // Front
@@ -75,8 +90,8 @@ export function make_box(lens: [number, number, number],
         [1, 5, 6, 2],  // Right
     ];
 
-    return new Shape(nodes, edges, faces, faces_vert, position,
-        orientation, rotation_speed)
+    return new Shape(nodes, edges, faces, faces_vert, normals, position,
+                     orientation, rotation_speed)
 }
 
 export function make_cube(side_len: number,
@@ -107,6 +122,17 @@ export function make_rectangular_pyramid(lens: [number, number, number],
         nodes.set(id, new Node2(new Float32Array([coord[0] * lens[0]/2, coord[1] * lens[1]/2,
             coord[2] * lens[2]/2, coord[3]/2])))
     }
+
+    // Divide the vertex position by its length to make normalized vectors.
+    let d = Math.sqrt(Math.pow(lens[0] / 2, 2) + Math.pow(lens[2] / 2., 2))
+
+    let normals = new Map()
+    normals.set(0, new Float32Array([-lens[0] / d, 0., -lens[2] / d, 0.]))
+    normals.set(1, new Float32Array([lens[0] / d, 0., -lens[2] / d, 0.]))
+    normals.set(2, new Float32Array([lens[0] / d, 0., -lens[2] / d, 0.]))
+    normals.set(3, new Float32Array([-lens[0] / d, 0., -lens[2] / d, 0.]))
+
+    normals.set(4, new Float32Array([0., lens[1], 0., 0.]))
 
     const edges = [
         // Base
@@ -143,7 +169,7 @@ export function make_rectangular_pyramid(lens: [number, number, number],
         [3, 0, 4],  // Left
     ];
 
-    return new Shape(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+    return new Shape(nodes, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
 export function make_house(lens: [number, number, number],
@@ -177,6 +203,7 @@ export function make_house(lens: [number, number, number],
             )
         }
     )
+    // todo combine normals.
 
     for (let edge of roof.edges) {
         base.edges.push(new Edge(edge.node0 + base_node_count, edge.node1 + base_node_count))
@@ -235,6 +262,32 @@ export function make_hyperrect(lens: [number, number, number, number],
             coord[2] * lens[2]/2, coord[3] * lens[3]/2])))
     }
 
+    // Divide the vertex position by its length to make normalized vectors.
+    // The distance from the center to a corner.
+    let d = Math.sqrt(Math.pow(lens[0] / 2, 2) + Math.pow(lens[1], 2) + 
+                      Math.pow(lens[2] / 2., 2) + Math.pow(lens[3] / 2., 2))
+
+    let normals = new Map()
+    normals.set(0, new Float32Array([-lens[0] / d, -lens[1] / d, -lens[2] / d, -lens[3] / d]))
+    normals.set(1, new Float32Array([lens[0] / d, -lens[1] / d, -lens[2] / d, -lens[3] / d]))
+    normals.set(2, new Float32Array([lens[0] / d, lens[1] / d, -lens[2] / d, -lens[3] / d]))
+    normals.set(3, new Float32Array([-lens[0] / d, lens[1] / d, -lens[2] / d, -lens[3] / d]))
+
+    normals.set(4, new Float32Array([-lens[0] / d, -lens[1] / d, lens[2] / d, -lens[3] / d]))
+    normals.set(5, new Float32Array([lens[0] / d, -lens[1] / d, lens[2] / d, -lens[3] / d]))
+    normals.set(6, new Float32Array([lens[0] / d, lens[1] / d, lens[2] / d, -lens[3] / d]))
+    normals.set(7, new Float32Array([-lens[0] / d, lens[1] / d, lens[2] / d, -lens[3] / d]))
+    
+    normals.set(8, new Float32Array([-lens[0] / d, -lens[1] / d, -lens[2] / d, lens[3] / d]))
+    normals.set(9, new Float32Array([lens[0] / d, -lens[1] / d, -lens[2] / d, lens[3] / d]))
+    normals.set(10, new Float32Array([lens[0] / d, lens[1] / d, -lens[2] / d, lens[3] / d]))
+    normals.set(11, new Float32Array([-lens[0] / d, lens[1] / d, -lens[2] / d, lens[3] / d]))
+
+    normals.set(12, new Float32Array([-lens[0] / d, -lens[1] / d, lens[2] / d, lens[3] / d]))
+    normals.set(13, new Float32Array([lens[0] / d, -lens[1] / d, lens[2] / d, lens[3] / d]))
+    normals.set(14, new Float32Array([lens[0] / d, lens[1] / d, lens[2] / d, lens[3] / d]))
+    normals.set(15, new Float32Array([-lens[0] / d, lens[1] / d, lens[2] / d, lens[3] / d]))
+    
     let edges = [
         // Front inner
         new Edge(0, 1),
@@ -319,7 +372,7 @@ export function make_hyperrect(lens: [number, number, number, number],
 
     ];
 
-    return new Shape(nodes, edges, faces, faces_vert, position, orientation, rotation_speed)
+    return new Shape(nodes, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
 export function make_hypercube(side_len: number,
@@ -352,6 +405,9 @@ export function make_origin(len: number, position: Float32Array,
         nodes.set(id, new Node2(new Float32Array([coord[0] * len, coord[1] * len,
             coord[2] * len, coord[3] * len])))
     }
+
+    let normals = new Map()
+
     const edges = [
         new Edge(0, 1),
         new Edge(2, 3),
@@ -359,7 +415,7 @@ export function make_origin(len: number, position: Float32Array,
         new Edge(6, 7),
     ];
 
-    return new Shape(nodes, edges, [], [], position, orientation, rotation_speed)
+    return new Shape(nodes, edges, [], [], normals, position, orientation, rotation_speed)
 }
 
 export function make_terrain(dims: [number, number], res: number,
@@ -406,6 +462,8 @@ export function make_terrain(dims: [number, number], res: number,
         x += dims[0] / res
     }
 
+    let normals = new Map()  // todo
+
     let edges = [];
     let faces: Face[] = [];  // todo later
     let row_adder = 0;
@@ -428,8 +486,8 @@ export function make_terrain(dims: [number, number], res: number,
         row_adder += res;
     }
 
-    return new Shape(nodes, edges, faces, faces_vert, position,
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+    return new Shape(nodes, edges, faces, faces_vert, normals, position,
+                     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }
 
 export function make_cube_hypergrid(dims: [number, number, number],
@@ -489,6 +547,8 @@ export function make_5cell(radius: number, position: Float32Array, orientation: 
             coord[2] * radius/2., coord[3] * radius/2.])))
     }
 
+    let normals = new Map()  // todo
+
     const edges = [
         // Base
         new Edge(0, 1),
@@ -538,7 +598,7 @@ export function make_5cell(radius: number, position: Float32Array, orientation: 
         [4, 2, 3],  // Center back top
     ]
 
-    return new Shape(nodes, edges, faces, faces_vert, position,
+    return new Shape(nodes, edges, faces, faces_vert, normals, position,
         orientation, rotation_speed)
 }
 

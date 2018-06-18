@@ -2,7 +2,7 @@ import {mat4} from 'gl-matrix'
 
 import * as state from './state'
 import * as transforms from './transforms'
-import {Camera, ProgramInfo, Shape} from './interfaces'
+import {Camera, ProgramInfo, Shape} from './types'
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -114,6 +114,17 @@ function drawScene(
                 gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
             }
 
+            gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffers.normalBuffers.get(s_id).normal)
+            gl.vertexAttribPointer(
+                programInfo.attribLocations.normal,
+                4,
+                gl.FLOAT ,
+                false ,
+                0,
+                0
+            )
+            gl.enableVertexAttribArray(programInfo.attribLocations.shapePosition)
+
             gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).shapePosition)
             gl.vertexAttribPointer(
                 programInfo.attribLocations.shapePosition,
@@ -222,11 +233,12 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
     // This array defines each face as two triangles, using the
     // indices into the vertex array to specify each triangle's
     // position.
-    let indices: number[] = []
+    let indices: number[] = [], normals: number[], normal: Float32Array
     let indexModifier = 0
-    let tri_indices, indexBuffer
+    let tri_indices, indexBuffer, normalBuffer
     let indexBuffers = new Map()
-
+    let normalBuffers = new Map()
+    // todo do we need to update normals each frame, or is once per shape suffient?
     shapes_.forEach(
         (shape, s_id, map_) => {
             indexBuffer = gl.createBuffer()
@@ -236,6 +248,7 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
             // indices into the vertex array to specify each triangle's
             // position.
             indices = []
+            normals = []
             indexModifier = 0
             tri_indices = shape.get_tris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
@@ -246,6 +259,23 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
                 new Uint16Array(indices), gl.STATIC_DRAW)
 
             indexBuffers.set(s_id, indexBuffer)
+
+            normalBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, normalBuffer)
+
+            for (let face of shape.faces_vert) {
+                for (let vertex_i of face) {
+                    normal = shape.normals.get(vertex_i) as any
+                    for (let i=0; i < 4; i++) {
+                        normals.push(normal[i])
+                    }
+                }
+            }
+
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+                new Float32Array(normals), gl.STATIC_DRAW)
+
+            normalBuffers.set(s_id, normalBuffer)
         }
     )
 
@@ -255,6 +285,7 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
 
     return {
         indexBuffers: indexBuffers,
+        normalBuffers: normalBuffers,
         skybox: skyboxTexBuffer,
     }
 }
@@ -366,11 +397,13 @@ export function gl_main() {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-    document.onkeyup = transforms.handleKeyUp
+    document.onkeyup = e => transforms.handleKeyUp(e)
+    document.onkeydown = e => transforms.handleKeyDown(e)
 
     // Vertex shader program
     const vsSource = `
         attribute vec4 aVertexPosition;
+        attribute vec4 aNormal;
         // attribute vec4 aVertexColor;
         
         attribute vec4 aShapePosition;
@@ -385,13 +418,12 @@ export function gl_main() {
                
         uniform float uColorMax;
                
-        varying lowp vec4 vColor;
+        varying lowp vec4 f_color;
+        varying vec4 v_normal;
     
         void main() {
-            vec4 positionedPt;
-                      
             // For model transform, position after the transform
-            positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
+            vec4 positionedPt = (uModelMatrix * aVertexPosition) + aShapePosition;
             // for view transform, position first.
             positionedPt = uViewMatrix * (positionedPt - aCamPosition);
             
@@ -421,17 +453,26 @@ export function gl_main() {
                 calced_color = vec4(colorVal, baseGray, baseGray, 0.2);  // Red
             }
 
-            vColor = calced_color;
+            f_color = calced_color;
+            v_normal = aNormal;
         }
     `
 
     // Fragment shader program
     const fsSource = `
-        varying lowp vec4 vColor;
+        varying lowp vec4 f_color;
+        varying highp vec4 v_normal;
 
+        const highp vec4 LIGHT = vec4(0.0, 0.0, 1.0, 0.5);
 
         void main() {
-            gl_FragColor = vColor;
+            // gl_FragColor = f_color;
+                 
+            highp float brightness = dot(normalize(v_normal), normalize(LIGHT));
+            highp vec4 dark_color = vec4(0.2, 0.2, 0.2, 1.0);
+            highp vec4 regular_color = vec4(0.5, 0.5, 0.5, 1.0);
+            
+            gl_FragColor = vec4(mix(dark_color, regular_color, brightness));
         }
     `
 
@@ -481,6 +522,7 @@ export function gl_main() {
         skyboxProgram: shaderSkybox,
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+            normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
             shapePosition: gl.getAttribLocation(shaderProgram, 'aShapePosition'),
             camPosition: gl.getAttribLocation(shaderProgram, 'aCamPosition'),
             skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
@@ -516,6 +558,9 @@ export function gl_main() {
         now *= 0.001;  // convert to seconds
         const deltaTime = now - then;
         then = now;
+
+        transforms.handleKeys(state.currentlyPressedKeys, deltaTime,
+                              state.moveSensitivity, state.rotateSensitivity)
 
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
