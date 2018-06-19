@@ -167,6 +167,24 @@ impl Camera {
     }
 }
 
+#[derive(Debug)]
+pub enum CameraType {
+    Single,  // No camera changes; rotate the shape instead
+    // Move foward, back, left, right, and look around. No roll look.  Not sure
+    // which 4d rotations/movement to allow or block.
+    FPS,
+    Full, // No restriction on movement
+}
+
+#[derive(Debug)]
+pub struct Scene {
+    id: u32,
+    shapes: HashMap<u32, Shape>,
+    cam_start: Camera,
+    cam_type: CameraType,
+    color_max: f32, // distance thresh for max 4d-color indicator.
+}
+
 pub struct _Quaternion {
     // Borrowed heavily from cgmath.
     // Ref: https://github.com/brendanzab/cgmath/blob/master/src/quaternion.rs

@@ -1,13 +1,112 @@
 // This file contains information to set up the camera, shapes, and some constants,
 // based on the selected scene.
 
-import * as transforms from './transforms';
 import * as shapeMaker from './shapeMaker';
 import * as state from './state';
-import {Camera} from './types'
+import {Camera, Scene} from './types'
 
 const τ = 2 * Math.PI
-const empty = new Float32Array([0, 0, 0, 0])
+const EMPTY = new Float32Array([0, 0, 0, 0])
+
+let mapFlat = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+let hypercubeScene: Scene
+{
+    let hypercubeShapes = new Map;
+    hypercubeShapes.set(0, shapeMaker.make_hypercube(1, EMPTY,
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+    hypercubeScene = {
+        id: 0,
+        shapes: hypercubeShapes,
+        camStart: new Camera(
+            new Float32Array([0., 0., -2., 0.]),
+            [0., 0., τ / 2, 0., 0., 0.],
+            τ / 5.5,
+            4 / 3.,
+            1.,
+            200.,
+            0.1,
+            1.0,
+        ),
+        colorMax: 0.4
+    }
+}
+
+// Such a janky way of cloning...
+let fivecellScene = JSON.parse(JSON.stringify(hypercubeScene))
+fivecellScene.shapes.set(0, shapeMaker.make_5cell(2, EMPTY,
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+
+let cubeScene = JSON.parse(JSON.stringify(hypercubeScene))
+cubeScene.shapes.set(0, shapeMaker.make_cube(1, EMPTY,
+                [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+
+let townScene: Scene
+{
+    // todo you could generate these with a loop
+    const housePositions = [
+        [-8., 2, 0., -2.],
+        [-8., 2, 12., -2.],
+        [-8., 2, 24., -2.],
+        [-8., 2, 36., -2.],
+
+        [8., 2, 0., -2.],
+        [8., 2, 12., -2.],
+        [8., 2, 24., -2.],
+        [8., 2, 36., -2.],
+
+        [-8., 2, 0., 2.],
+        [-8., 2, 12., 2.],
+        [-8., 2, 24., 2.],
+        [-8., 2, 36., 2.],
+
+        [8., 2, 0., 2.],
+        [8., 2, 12., 2.],
+        [8., 2, 24., 2.],
+        [8., 2, 36., 2.],
+    ]
+
+    const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
+    new Float32Array(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+
+    let shapeTownList = [
+        shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat,
+            EMPTY),
+        ...houses
+    ]
+
+    let townShapes = new Map()
+    for (let id = 0; id < shapeTownList.length; id++) {
+        townShapes.set(id, shapeTownList[id])
+    }
+
+    townScene = {
+        id: 2,
+        shapes: townShapes,
+        camStart: new Camera(
+            new Float32Array([0., 0., -2., 0.]),
+            [0., 0., τ / 2, 0., 0., 0.],
+            τ / 5.5,
+            4 / 3.,
+            1.,
+            200.,
+            0.1,
+            1.0,
+        ),
+        colorMax: 0.4
+    }
+}
 
 let heightMap = [
     [1.3, 1.3, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
@@ -35,49 +134,14 @@ let spissMap = [
     [7, 7, 7, 3.5, 2, 0, 0, 0, 2, 2.5],
 ]
 
-let mapFlat = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-]
-
 let mapFlat3d = [
     [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
     [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
 ]
 
-// todo you could generate these with a loop
-const housePositions = [
-    [-8., 2, 0., -2.],
-    [-8., 2, 12., -2.],
-    [-8., 2, 24., -2.],
-    [-8., 2, 36., -2.],
 
-    [8., 2, 0., -2.],
-    [8., 2, 12., -2.],
-    [8., 2, 24., -2.],
-    [8., 2, 36., -2.],
 
-    [-8., 2, 0., 2.],
-    [-8., 2, 12., 2.],
-    [-8., 2, 24., 2.],
-    [-8., 2, 36., 2.],
 
-    [8., 2, 0., 2.],
-    [8., 2, 12., 2.],
-    [8., 2, 24., 2.],
-    [8., 2, 36., 2.],
-]
-
-const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
-    new Float32Array(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
 
 // todo we have a reversal issue with cam; for now throw in τ/2 fudge factors.
 
@@ -97,13 +161,13 @@ export function setScene(scene: number, subScene: number) {
 
         let selectedShape
         if (subScene === 0) {
-            selectedShape = shapeMaker.make_hypercube(1, empty,
+            selectedShape = shapeMaker.make_hypercube(1, EMPTY,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else if (subScene === 1) {
-            selectedShape = shapeMaker.make_5cell(2, empty,
+            selectedShape = shapeMaker.make_5cell(2, EMPTY,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else if (subScene === 2) {
-            selectedShape = shapeMaker.make_cube(1, empty,
+            selectedShape = shapeMaker.make_cube(1, EMPTY,
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
         } else {
             throw "Oops; a non-existant key was selected. :("
@@ -129,7 +193,7 @@ export function setScene(scene: number, subScene: number) {
         ))
 
         let shapeList0 = [
-            shapeMaker.make_terrain([20, 20], 10, heightMap, spissMap, empty),
+            shapeMaker.make_terrain([20, 20], 10, heightMap, spissMap, EMPTY),
 
             shapeMaker.make_box([1, 2, 1], new Float32Array([-1, 3, 4, 1]),
                 [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
@@ -175,7 +239,7 @@ export function setScene(scene: number, subScene: number) {
 
         let shapeTownList = [
             shapeMaker.make_terrain([1000, 1000], 10, mapFlat, mapFlat,
-                empty),
+                EMPTY),
             ...houses
         ]
 
@@ -233,7 +297,7 @@ export function setScene(scene: number, subScene: number) {
         const spissMap_ = subScene === 1 ? mapTest3dWarped : mapTest3d
 
         state.setShapes(
-            shapeMaker.make_cube_hypergrid([20, 20, 20], 8, spissMap_, empty)
+            shapeMaker.make_cube_hypergrid([20, 20, 20], 8, spissMap_, EMPTY)
         )
         state.setColorMax(30)
     } else {

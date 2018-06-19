@@ -1,5 +1,6 @@
 import {mat4} from 'gl-matrix'
 
+import * as input from './input'
 import * as state from './state'
 import * as transforms from './transforms'
 import {Camera, ProgramInfo, Shape} from './types'
@@ -397,8 +398,8 @@ export function gl_main() {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-    document.onkeyup = e => transforms.handleKeyUp(e)
-    document.onkeydown = e => transforms.handleKeyDown(e)
+    document.onkeyup = e => input.handleKeyUp(e)
+    document.onkeydown = e => input.handleKeyDown(e)
 
     // Vertex shader program
     const vsSource = `
@@ -559,7 +560,7 @@ export function gl_main() {
         const deltaTime = now - then;
         then = now;
 
-        transforms.handleKeys(state.currentlyPressedKeys, deltaTime,
+        input.handlePressed(state.currentlyPressedKeys, deltaTime,
                               state.moveSensitivity, state.rotateSensitivity)
 
         // Here's where we call the routine that builds all the

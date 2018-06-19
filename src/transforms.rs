@@ -411,33 +411,6 @@ fn project(pt: &Array1<f32>, T: &Array2<f32>, R: &Array2<f32>,
 //    result
 //}
 
-pub enum MoveDirection{
-    Forward,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down,
-    Ana,
-    Kata,
-}
-
-pub fn move_camera(direction: MoveDirection, θ: &Array1<f32>) -> Array1<f32> {
-    // Move the camera to a new position, based on where it's pointing.
-    let unit_vec = match direction {
-        MoveDirection::Forward => array![0., 0., 1., 0.],
-        MoveDirection::Back => array![0., 0., -1., 0.],
-        MoveDirection::Left => array![-1., 0., 0., 0.],
-        MoveDirection::Right => array![1., 0., 0., 0.],
-        MoveDirection::Up => array![0., 1., 0., 0.],
-        MoveDirection::Down => array![0., -1., 0., 0.],
-        MoveDirection::Ana => array![0., 0., 0., 1.],
-        MoveDirection::Kata => array![0., 0., 0., -1.],
-    };
-
-    unit_vec
-    // transforms::rotate_4d(θ).dot(&unit_vec)
-}
 
 #[cfg(test)]
 mod tests {

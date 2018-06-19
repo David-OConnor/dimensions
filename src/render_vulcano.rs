@@ -34,12 +34,16 @@ use vulkano_win;
 use vulkano_win::VkSurfaceBuild;
 use winit;
 
+use input;
 use shape_maker;
 use transforms;
 use types::{Camera, Shape, Vertex};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
+
+const MOVE_SENSITIVITY: f32 = 0.1;  // units per millisecond
+const ROTATE_SENSITIVITY: f32 = 0.3;  // radians per millisecond.
 
 const τ: f32 = 2. * PI;
 
@@ -87,7 +91,8 @@ mod state {
 
 pub fn render(shapes: HashMap<u32, Shape>) {
     // todo for now, we'll keep state in this func.
-    let cam = Camera {
+    // todo sync aspect with window dims.
+    let mut cam = Camera {
         // If 3d, the 4th items for position isn't used.
         position: array![0., 0., -2., 0.],
         θ: array![0., 0., 0., 0., 0., 0.],
@@ -108,6 +113,8 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     for (id, shape) in &mut shapes {
         shape.make_tris();
     }
+
+    let mut currently_pressed: Vec<u32> = Vec::new();
 
     // The first step of any vulkan program is to create an instance.
     let instance = {
@@ -303,25 +310,24 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         }
     }
 
-    println!("NORMS: {:?}", normals);
-    println!("NORMS: {:?}", normals.len());
     println!("VERTS: {:?}", shape_vertices);
     println!("VERTS: {:?}", shape_vertices.len());
 
-    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                                           shape_vertices.iter().cloned()) // todo .cloned ?
+     // todo .cloned ?
+    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
         .expect("failed to create vertex buffer");
 
-    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                                            normals.iter().cloned())
+    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), normals.iter().cloned())
         .expect("failed to create buffer");
 
-    let cam_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                                            cam_posits.iter().cloned())
+    let cam_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), cam_posits.iter().cloned())
         .expect("failed to create buffer");
 
-    let shape_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                                            shape_posits.iter().cloned())
+    let shape_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), shape_posits.iter().cloned())
         .expect("failed to create buffer");
 
     let index_buffer = {
@@ -355,6 +361,13 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     // todo we need one for each shape; only one shape for now though.
     let model_mat = transforms::make_model_mat4(&shapes.get(&0).unwrap());
     let proj_mat = transforms::make_proj_mat4(&cam);
+    let proj_mat2 = cgmath::perspective(cgmath::Rad(cam.fov), cam.aspect, cam.near, cam.far);
+    let pm2: [[f32; 4]; 4] = proj_mat2.into();
+
+    println!("V: {:?}", view_mat);
+    println!("m: {:?}", model_mat);
+    println!("p: {:?}", proj_mat);
+    println!("p2: {:?}", pm2);
 
     let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
                          ::new(device.clone(), buffer::BufferUsage::all());
@@ -393,9 +406,9 @@ layout(set = 0, binding = 0) uniform Data {
 //};
 
 void main() {
-    vec4 tempColor = vec4(0., 1., 0., 1.);
-    vec4 temp_shape_posit = vec4(0., 0., 0., 1.);
-    vec4 temp_cam_posit = vec4(0., 0., 4., 1.);
+    vec4 tempColor = vec4(0., 1., 0., 0.5);
+    vec4 temp_shape_posit = vec4(0.1, 0., 0., 0.);
+    vec4 temp_cam_posit = vec4(0., 0., 0., 0.);
 
     // For model transform, position after the transform
     vec4 positioned_pt = (uniforms.model * position) + temp_shape_posit;
@@ -404,9 +417,9 @@ void main() {
 
     // Now remove the u coord; replace with 1. We no longer need it,
     // and the projection matrix is set up for 3d homogenous vectors.
-    vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
+    positioned_pt = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
 
-    gl_Position = uniforms.proj * positioned_3d;
+    gl_Position = uniforms.proj * positioned_pt;
     v_normal = normal; // todo temp
     fragColor = tempColor;
 }
@@ -530,7 +543,12 @@ void main() {
     // that, we store the submission of the previous frame here.
     let mut previous_frame = Box::new(sync::now(device.clone())) as Box<sync::GpuFuture>;
 
+//    let then = 0.;
     loop {
+//        now *= 0.001;  // convert to seconds
+//        const deltaTime = now - then;
+//        then = now;
+
         // It is important to call this function from time to time, otherwise resources will keep
         // accumulating and you will eventually reach an out of memory error.
         // Calling this function polls various fences in order to determine what the GPU has
@@ -580,7 +598,7 @@ void main() {
             let uniform_data = vs::ty::Data {
                 model: model_mat,
                 view: view_mat,
-                proj: proj_mat,
+                proj: proj_mat.into(),
             };
 
             uniform_buffer.next(uniform_data).unwrap()
@@ -696,13 +714,42 @@ void main() {
 
         // Handling the window events in order to close the program when the user wants to close
         // it.
+        // todo take framerate into account
         let mut done = false;
+
+        println!("Cam: {}  {}", &cam.position, &cam.θ);
+
         events_loop.poll_events(|ev| {
             match ev {
                 winit::Event::WindowEvent { event: winit::WindowEvent::Closed, .. } => done = true,
+
+                winit::Event::WindowEvent {
+                    event: winit::WindowEvent::KeyboardInput {
+                        input: winit::KeyboardInput{
+                            // We use Scancode rather than virtual_keycode, since
+                            // it's tied to physical key location rather than semantics;
+                            // controls like this are a good example of when to
+                            // use this approach.
+                            scancode: code,
+                            state: el_state,
+                            ..
+                        }, ..
+                    }, ..
+                } => match el_state {
+                    winit::ElementState::Pressed => {
+                        if !currently_pressed.contains(&code) { currently_pressed.push(code) }
+                    },
+                    winit::ElementState::Released => {
+                        currently_pressed.remove_item(&code);
+                    }
+                },
                 _ => ()
             }
         });
         if done { return; }
+
+        let delta_t = 1. / 60.;  // todo temp
+        input::handle_pressed(&currently_pressed, delta_t, MOVE_SENSITIVITY,
+                              ROTATE_SENSITIVITY, &mut cam);
     }
 }

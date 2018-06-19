@@ -1,5 +1,5 @@
-import {Camera, Shape} from "./types";
 import * as shapeMaker from "./shapeMaker";
+import {Camera, Scene, Shape} from "./types";
 
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
@@ -14,6 +14,7 @@ export const rotateSensitivity = .3  // radians per millisecond.
 export let staticBuffers = {}
 
 export let scene = 0
+// export let scene2 = // todo
 
 const defaultCam = new Camera (
     new Float32Array([0., 0., 0., 0.]),

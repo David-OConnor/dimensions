@@ -8,6 +8,7 @@
 #![allow(unused_variables)] // todo remove this later
 #![allow(unused_imports)] // todo remove this later
 #![feature(non_ascii_idents)]
+#![feature(vec_remove_item)]
 
 #[macro_use]
 extern crate ndarray;
@@ -26,6 +27,7 @@ use std::collections::HashMap;
 
 mod clipping;
 mod import_bitmap;
+mod input;
 mod shape_maker;
 mod types;
 mod transforms;

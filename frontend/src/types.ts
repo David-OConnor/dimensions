@@ -1,3 +1,5 @@
+// Similar to types.rs.
+
 export class Node2 {
     a: Float32Array
     constructor(a: Float32Array) {
@@ -122,6 +124,14 @@ export class Camera {
         this.far = far
         this.strange = strange
     }
+}
+
+export interface Scene {
+    id: number,
+    shapes: Map<number, Shape>,
+    camStart: Camera,
+    camType: string,  // 'single', 'fps', or 'full'
+    colorMax: number, // distance thresh for max 4d-color indicator.
 }
 
 export interface MainState {
