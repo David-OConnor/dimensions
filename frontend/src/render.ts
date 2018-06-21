@@ -8,9 +8,8 @@ import {Camera, ProgramInfo, Shape} from './types'
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
-function initShaderProgram(gl: any, vsSource: any, fsSource: any) {
+function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
     // Initialize a shader program, so WebGL knows how to draw our data
-
     const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource)
     const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource)
 
@@ -29,7 +28,7 @@ function initShaderProgram(gl: any, vsSource: any, fsSource: any) {
     return shaderProgram
 }
 
-function loadShader(gl: any, type: any, source: any) {
+function loadShader(gl: WebGLRenderingContext, type: number, source: string) {
     // creates a shader of the given type, uploads the source and
     // compiles it.
     const shader = gl.createShader(type)
@@ -51,7 +50,7 @@ function loadShader(gl: any, type: any, source: any) {
 }
 
 function drawScene(
-    gl: any,
+    gl: WebGLRenderingContext,
     programInfo: ProgramInfo,
     staticBuffers: any,
     pfBuffers: any,
@@ -124,7 +123,7 @@ function drawScene(
                 0,
                 0
             )
-            gl.enableVertexAttribArray(programInfo.attribLocations.shapePosition)
+            // gl.enableVertexAttribArray(programInfo.attribLocations.normal)
 
             gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).shapePosition)
             gl.vertexAttribPointer(
@@ -164,11 +163,6 @@ function drawScene(
                 projectionMatrix
             )
 
-            // gl.uniformMatrix4fv(
-            //     programInfo.uniformLocations.modelViewMatrix,
-            //     false,
-            //     modelViewMat)
-
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.modelMatrix,
                 false,
@@ -192,9 +186,8 @@ function drawScene(
     )
 }
 
-export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_: Shape) {
+export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number, Shape>, skybox_: Shape) {
     // Create a buffer for our shapes' positions and color.
-
     // todo skybox texture wip
     // look up where the vertex data needs to go.
     // const positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
@@ -291,7 +284,7 @@ export function makeStaticBuffers(gl: any, shapes_: Map<number, Shape>, skybox_:
     }
 }
 
-function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
+function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shape>, cam: Camera):
     Map<number, any> {
     let vertexPositionBuffer, uDistBuffer, shapePositionBuffer, camPositionBuffer,
         vertexPositions, faceColors, vertex, dists, shapePositDuped, camPositDuped
@@ -349,7 +342,7 @@ function makePerFrameBuffers(gl: any, shapes: Map<number, Shape>, cam: Camera):
     return result
 }
 
-function makeSkyboxPositBuffer(gl: any, skybox: Shape, cam: Camera) {
+function makeSkyboxPositBuffer(gl: WebGLRenderingContext, skybox: Shape, cam: Camera) {
     // Run this every frame.
      // Now process the skybox positions.
 
@@ -435,7 +428,6 @@ export function gl_main() {
             gl_Position = uProjectionMatrix * positioned3d;
           
             // Now calculate the color, based on passed u dist from cam.
-            vec4 calced_color;
             
             float u_dist = aCamPosition[3] - positionedPt[3];
             
@@ -448,14 +440,15 @@ export function gl_main() {
             float baseGray = 0.0;
             float colorVal = baseGray + portion_through * 1. - baseGray;
             
+            vec4 calced_color;
             if (u_dist > 0.) {
                 calced_color = vec4(baseGray, baseGray, colorVal, 0.2);  // Blue
             } else {
                 calced_color = vec4(colorVal, baseGray, baseGray, 0.2);  // Red
             }
 
-            f_color = calced_color;
             v_normal = aNormal;
+            f_color = calced_color;
         }
     `
 
@@ -589,12 +582,12 @@ export function gl_main() {
         state.shapes.forEach(
             (shape, id, map) => {
                 // todo need vector addition to simplify...
-                shape.orientation[0] += shape.rotation_speed[0]
-                shape.orientation[1] += shape.rotation_speed[1]
-                shape.orientation[2] += shape.rotation_speed[2]
-                shape.orientation[3] += shape.rotation_speed[3]
-                shape.orientation[4] += shape.rotation_speed[4]
-                shape.orientation[5] += shape.rotation_speed[5]
+                shape.orientation[0] += shape.rotation_speed[0] * deltaTime
+                shape.orientation[1] += shape.rotation_speed[1] * deltaTime
+                shape.orientation[2] += shape.rotation_speed[2] * deltaTime
+                shape.orientation[3] += shape.rotation_speed[3] * deltaTime
+                shape.orientation[4] += shape.rotation_speed[4] * deltaTime
+                shape.orientation[5] += shape.rotation_speed[5] * deltaTime
             }
         )
     }

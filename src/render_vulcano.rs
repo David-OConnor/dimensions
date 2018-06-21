@@ -10,7 +10,8 @@
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::sync::Arc;
-use std::mem;
+use std::time;
+use std;
 
 use vulkano::buffer;
 use vulkano::command_buffer;
@@ -21,6 +22,7 @@ use vulkano::format;
 use vulkano::framebuffer;
 use vulkano::image;
 use vulkano::instance;
+use vulkano::memory;
 use vulkano::pipeline;
 use vulkano::swapchain;
 use vulkano::sync;
@@ -35,81 +37,137 @@ use vulkano_win::VkSurfaceBuild;
 use winit;
 
 use input;
+use scenes;
+use shaders;
 use shape_maker;
 use transforms;
-use types::{Camera, Shape, Vertex};
+use types::{Camera, Shape, Vertex, VertAndExtras, Normal};
 
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
-const MOVE_SENSITIVITY: f32 = 0.1;  // units per millisecond
-const ROTATE_SENSITIVITY: f32 = 0.3;  // radians per millisecond.
+const MOVE_SENSITIVITY: f32 = 1.0;  // units per second
+const ROTATE_SENSITIVITY: f32 = 0.8;  // radians per second
 
 const τ: f32 = 2. * PI;
+//
+//mod state {
+//    use std::cell;
+//    use std::collections::HashMap;
+//    use std::f32::consts::PI;
+//    use std::sync::{Arc, Mutex, RwLock};
+//
+//    use ndarray::prelude::*;
+//
+//    use types::{Camera, Shape};
+//
+//    const τ: f32 = 2. * PI;
+//
+//    fn default_camera() -> Camera {
+//        // Effectively a global constant.
+//        Camera {
+//            // If 3d, the 4th items for position isn't used.
+//            position: array![0., 1., -6., -2.],
+//            θ: array![0., 0., 0., 0., 0., 0.],
+//            fov: τ / 5.,
+//            aspect: 1.,
+//            aspect_4: 1.,
+//            far: 50.,
+//            near: 0.1,
+//            strange: 1.0,
+//        }
+//    }
+//
+//    struct State_ {
+//        cam: Camera,
+//        shapes: HashMap<u32, Shape>,
+//    }
+//
+////    let state1 = State_ {
+////        cam: default_camera(),
+////        shapes: HashMap::new(),
+////    };
+//
+////    let data = Arc::new(Mutex::new(0));
+//
+//}
 
-mod state {
-    use std::cell;
-    use std::collections::HashMap;
-    use std::f32::consts::PI;
-    use std::sync::{Arc, Mutex, RwLock};
+fn print_type_of<T>(_: &T) {
+    // For debugging.
+    println!("{}", unsafe { std::intrinsics::type_name::<T>() });
+}
 
-    use ndarray::prelude::*;
+pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
+        Arc<buffer::cpu_access::CpuAccessibleBuffer<[u32]>> {
+    let index_buffer = {
+        let mut indices = Vec::new();
+        let mut indexModifier = 0;
 
-    use types::{Camera, Shape};
+        for (s_id, shape) in shapes {
+            let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + indexModifier).collect();
+            indices.append(&mut tri_indices);
+            indexModifier += shape.num_face_verts();
 
-    const τ: f32 = 2. * PI;
+        }
+        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device, buffer::BufferUsage::all(),
+                                                           indices.iter().cloned())
+            .expect("Failed to create index buffer")
+    };
 
-    fn default_camera() -> Camera {
-        // Effectively a global constant.
-        Camera {
-            // If 3d, the 4th items for position isn't used.
-            position: array![0., 1., -6., -2.],
-            θ: array![0., 0., 0., 0., 0., 0.],
-            fov: τ / 5.,
-            aspect: 1.,
-            aspect_4: 1.,
-            far: 50.,
-            near: 0.1,
-            strange: 1.0,
+    index_buffer
+}
+
+pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device: Arc<device::Device>) -> (
+        Arc<buffer::cpu_access::CpuAccessibleBuffer<[VertAndExtras]>>,
+        Arc<buffer::cpu_access::CpuAccessibleBuffer<[Normal]>>
+    ){
+//pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device: Arc<device::Device>) -> (
+
+//    ){
+    let mut shape_vertices = Vec::new();
+    let mut normals = Vec::new();
+    for (s_id, shape) in shapes {
+        for face in &shape.faces_vert {
+            for id in face {
+//                shape_vertices.push(shape.vertices[id].unwrap().clone());
+                let v = shape.vertices[id].position;
+                let info = VertAndExtras {
+                    position: (v.0, v.1, v.2, v.3),
+                    shape_posit: (shape.position[0], shape.position[1],
+                                   shape.position[2], shape.position[3]),
+                    cam_posit: (cam.position[0], cam.position[1],
+                                 cam.position[2], cam.position[3]),
+                };
+                shape_vertices.push(info);
+
+                normals.push(shape.normals[id].clone());
+            }
         }
     }
 
-    struct State_ {
-        cam: Camera,
-        shapes: HashMap<u32, Shape>,
-    }
+     // todo .cloned ?
+    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
+        .expect("failed to create vertex buffer");
 
-//    let state1 = State_ {
-//        cam: default_camera(),
-//        shapes: HashMap::new(),
-//    };
+    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+        device, buffer::BufferUsage::all(), normals.iter().cloned())
+        .expect("failed to create buffer");
 
-//    let data = Arc::new(Mutex::new(0));
-
+    (vertex_buffer, normals_buffer)
 }
 
 
 pub fn render(shapes: HashMap<u32, Shape>) {
     // todo for now, we'll keep state in this func.
     // todo sync aspect with window dims.
-    let mut cam = Camera {
-        // If 3d, the 4th items for position isn't used.
-        position: array![0., 0., -2., 0.],
-        θ: array![0., 0., 0., 0., 0., 0.],
-        fov: τ / 5.,
-        aspect: 1.,
-        aspect_4: 1.,
-        far: 200.,
-        near: 0.1,
-        strange: 1.0,
-    };
 
-    let mut shapes = HashMap::new();
-    shapes.insert(0, shape_maker::make_cube(1.,
-                                            array![0., 0., 0., 0.],
-                                            array![0., 0., 0., 0., 0., 0.],
-                                            array![0., 0., 0., 0., 0., 0.]
-    ));
+    let scene = scenes::world_scene();
+
+
+    let mut cam = scene.cam_start.clone();
+    let mut shapes = scene.shapes.clone();
+
     for (id, shape) in &mut shapes {
         shape.make_tris();
     }
@@ -196,7 +254,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     //   much it should prioritize queues between one another.
     //
     // The list of created queues is returned by the function alongside with the device.
-    let (device, mut queues) = {
+    let (device_, mut queues) = {
         let device_ext = device::DeviceExtensions {
             khr_swapchain: true,
             .. device::DeviceExtensions::none()
@@ -238,7 +296,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         let format = caps.supported_formats[0].0;
 
         // Please take a look at the docs for the meaning of the parameters we didn't mention.
-        swapchain::Swapchain::new(device.clone(), surface.clone(), caps.min_image_count, format,
+        swapchain::Swapchain::new(device_.clone(), surface.clone(), caps.min_image_count, format,
                                   dimensions, 1, usage, &queue,
                                   swapchain::SurfaceTransform::Identity, alpha,
                                   swapchain::PresentMode::Fifo, true,
@@ -246,131 +304,17 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     };
 
     let depth_buffer = image::attachment::AttachmentImage::transient(
-        device.clone(), dimensions, format::D16Unorm).unwrap();
+        device_.clone(), dimensions, format::D16Unorm).unwrap();
 
-    //todo
+    let index_buffer = make_static_buffers(&shapes, device_.clone());
 
-    // todo combine multiple objects (like cam/shape posit) into one buff?
-    use test;
-    use vulkano;
+    // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
-    #[derive(Copy, Clone, Debug)]
-    struct CamPosit {  // todo temp
-        cam_posit: (f32, f32, f32, f32)
-    }
-    impl_vertex!(CamPosit, cam_posit);
-
-    #[derive(Copy, Clone, Debug)]
-    struct ShapePosit {  // todo temp
-        shape_posit: (f32, f32, f32, f32)
-    }
-    impl_vertex!(ShapePosit, shape_posit);
-
-    #[derive(Copy, Clone, Debug)]
-    struct VertAndExtras {  // todo temp
-        position: (f32, f32, f32, f32),
-        shape_posit: (f32, f32, f32, f32),
-        cam_posit: (f32, f32, f32, f32),
-    }
-    impl_vertex!(VertAndExtras, position, shape_posit, cam_posit);
-
-    // todo separate into buffer maker funcs.
-
-    let mut shape_vertices = Vec::new();
-    let mut normals = Vec::new();
-    let mut cam_posits = Vec::new();  // todo this doesn't change here...
-    let mut shape_posits = Vec::new();  // todo this doesn't change as much as verticies...
-    for (s_id, shape) in &shapes {
-        for face in &shape.faces_vert {
-            for id in face {
-                shape_vertices.push(shape.vertices.get(id).unwrap().clone());
-                let v = shape.vertices.get(id).unwrap().position;
-                let info = VertAndExtras {
-                    position: (v.0, v.1, v.2, v.3),
-                    shape_posit: (shape.position[0], shape.position[1],
-                                  shape.position[2], shape.position[3]),
-                    cam_posit: (cam.position[0], cam.position[1],
-                                cam.position[2], cam.position[3]),
-                };
-//                shape_vertices.push(shape.vertices.get(id).unwrap().clone());
-
-
-                normals.push(shape.normals.get(id).unwrap().clone());
-
-                // todo does this need to be repeated so?
-                shape_posits.push(
-                    ShapePosit {shape_posit: (shape.position[0], shape.position[1],
-                                              shape.position[2], shape.position[3])}
-                );
-                cam_posits.push(
-                    CamPosit {cam_posit: (cam.position[0], cam.position[1],
-                                          cam.position[2], cam.position[3])}
-                );
-            }
-        }
-    }
-
-    println!("VERTS: {:?}", shape_vertices);
-    println!("VERTS: {:?}", shape_vertices.len());
-
-     // todo .cloned ?
-    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
-        .expect("failed to create vertex buffer");
-
-    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), normals.iter().cloned())
-        .expect("failed to create buffer");
-
-    let cam_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), cam_posits.iter().cloned())
-        .expect("failed to create buffer");
-
-    let shape_posit_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), shape_posits.iter().cloned())
-        .expect("failed to create buffer");
-
-    let index_buffer = {
-//        let mut indices = Vec::new();
-        let mut tri_indices: Vec<u32> = Vec::new();  // todo put this back in the loop.
-        for (s_id, shape) in &shapes {
-            let mut indexModifier = 0;
-            tri_indices = shape.tris.iter().map(|ind| ind + indexModifier).collect();
-//            let tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + indexModifier).collect();
-//            indices.append(tri_indices);
-            // todo fix this; for now just adding tri_Indices
-            indexModifier += shape.num_face_verts();
-
-        println!("indicies: {:?}", tri_indices);
-        println!("indicies: {:?}", tri_indices.len());
-        }
-
-        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                           tri_indices.iter().cloned())
-            .expect("Failed to create index buffer")
-    };
-
-//    let I_4: [[f32; 4]; 4] = [
-//        [1., 0., 0., 0.],
-//        [0., 1., 0., 0.],
-//        [0., 0., 1., 0.],
-//        [0., 0., 0., 1.]
-//    ];
-
-    let view_mat = transforms::make_view_mat4(&cam);
-    // todo we need one for each shape; only one shape for now though.
-    let model_mat = transforms::make_model_mat4(&shapes.get(&0).unwrap());
     let proj_mat = transforms::make_proj_mat4(&cam);
     let proj_mat2 = cgmath::perspective(cgmath::Rad(cam.fov), cam.aspect, cam.near, cam.far);
-    let pm2: [[f32; 4]; 4] = proj_mat2.into();
 
-    println!("V: {:?}", view_mat);
-    println!("m: {:?}", model_mat);
-    println!("p: {:?}", proj_mat);
-    println!("p2: {:?}", pm2);
-
-    let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
-                         ::new(device.clone(), buffer::BufferUsage::all());
+    let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<shaders::vs::ty::Data>
+                         ::new(device_.clone(), buffer::BufferUsage::all());
 
     // The next step is to create the shaders.
     //
@@ -381,71 +325,9 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     // https://docs.rs/vulkano-shader-derive/*/vulkano_shader_derive/
     //
     // TODO: explain this in details
-    mod vs {
-        #[derive(VulkanoShader)]
-        #[ty = "vertex"]
-        #[src = "
-#version 450
 
-layout(location = 0) in vec4 position;
-layout(location = 1) in vec4 normal;
-//layout(location = 2) in vec4 shape_posit;
-//layout(location = 3) in vec4 cam_posit;
-
-layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec4 v_normal;
-
-layout(set = 0, binding = 0) uniform Data {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-} uniforms;
-
-//out gl_PerVertex {
-//    vec4 gl_Position;
-//};
-
-void main() {
-    vec4 tempColor = vec4(0., 1., 0., 0.5);
-    vec4 temp_shape_posit = vec4(0.1, 0., 0., 0.);
-    vec4 temp_cam_posit = vec4(0., 0., 0., 0.);
-
-    // For model transform, position after the transform
-    vec4 positioned_pt = (uniforms.model * position) + temp_shape_posit;
-    // for view transform, position first.
-    positioned_pt = uniforms.view * (positioned_pt - temp_cam_posit);
-
-    // Now remove the u coord; replace with 1. We no longer need it,
-    // and the projection matrix is set up for 3d homogenous vectors.
-    positioned_pt = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
-
-    gl_Position = uniforms.proj * positioned_pt;
-    v_normal = normal; // todo temp
-    fragColor = tempColor;
-}
-"]
-        struct Dummy;
-    }
-
-    mod fs {
-        #[derive(VulkanoShader)]
-        #[ty = "fragment"]
-        #[src = "
-#version 450
-layout(location = 0) in vec4 fragColor;
-layout(location = 1) in vec4 v_normal;
-
-layout(location = 0) out vec4 f_color;
-
-void main() {
-    f_color = fragColor;
-}
-"]
-        struct Dummy;
-    }
-
-    let vs = vs::Shader::load(device.clone()).expect("failed to create shader module");
-    let fs = fs::Shader::load(device.clone()).expect("failed to create shader module");
+    let vs = shaders::vs::Shader::load(device_.clone()).expect("failed to create shader module");
+    let fs = shaders::fs::Shader::load(device_.clone()).expect("failed to create shader module");
 
     // At this point, OpenGL initialization would be finished. However in Vulkan it is not. OpenGL
     // implicitely does a lot of computation whenever you draw. In Vulkan, you have to do all this
@@ -455,7 +337,7 @@ void main() {
     // output of the graphics pipeline will go. It describes the layout of the images
     // where the colors, depth and/or stencil information will be written.
     let render_pass = Arc::new(
-        single_pass_renderpass!(device.clone(),
+        single_pass_renderpass!(device_.clone(),
             attachments: {
                 // `color` is a custom name we give to the first and only attachment.
                 color: {
@@ -512,7 +394,7 @@ void main() {
         // in. The pipeline will only be usable from this particular subpass.
         .render_pass(framebuffer::Subpass::from(render_pass.clone(), 0).unwrap())
         // Now that our builder is filled, we call `build()` to obtain an actual pipeline.
-        .build(device.clone())
+        .build(device_.clone())
         .unwrap());
 
     // The render pass we created above only describes the layout of our framebuffers. Before we
@@ -541,13 +423,16 @@ void main() {
     //
     // Destroying the `GpuFuture` blocks until the GPU is finished executing it. In order to avoid
     // that, we store the submission of the previous frame here.
-    let mut previous_frame = Box::new(sync::now(device.clone())) as Box<sync::GpuFuture>;
+    let mut previous_frame = Box::new(sync::now(device_.clone())) as Box<sync::GpuFuture>;
 
-//    let then = 0.;
+    let mut prev_frame_start = time::Instant::now();
     loop {
-//        now *= 0.001;  // convert to seconds
-//        const deltaTime = now - then;
-//        then = now;
+        // delta_time is inverse frame rate. Used for making movements and
+        // rotations dependent on time rather than frame rate.
+        let frame_start = time::Instant::now();
+        let delta_time_raw = frame_start - prev_frame_start;
+        let delta_time = delta_time_raw.as_secs() as f32 + delta_time_raw.subsec_nanos() as f32 * 0.000000001;
+        prev_frame_start = frame_start;
 
         // It is important to call this function from time to time, otherwise resources will keep
         // accumulating and you will eventually reach an out of memory error.
@@ -572,8 +457,8 @@ void main() {
                 Err(err) => panic!("{:?}", err)
             };
 
-            mem::replace(&mut swapchain_, new_swapchain);
-            mem::replace(&mut images, new_images);
+            std::mem::replace(&mut swapchain_, new_swapchain);
+            std::mem::replace(&mut images, new_images);
 
             framebuffers = None;
 
@@ -589,13 +474,23 @@ void main() {
                     .add(depth_buffer.clone()).unwrap()
                     .build().unwrap())
             }).collect::<Vec<_>>());
-            mem::replace(&mut framebuffers, new_framebuffers);
+            std::mem::replace(&mut framebuffers, new_framebuffers);
         }
 
-        let uniform_buffer_subbuffer = {
-            // maybe increment rotation here.
+        // Update the view matrix once per frame.
+        let view_mat = transforms::make_view_mat4(&cam);
 
-            let uniform_data = vs::ty::Data {
+        let mut model_mats = HashMap::new();
+        for (id, shape) in &shapes {
+            model_mats.insert(*id as u32, transforms::make_model_mat4(shape));
+        }
+        // Updadate per-frame buffers
+        let (vertex_buffer, normals_buffer) = make_per_frame_buffers(&shapes, &cam, device_.clone());
+
+        let model_mat = transforms::make_model_mat4(&shapes[&0]);
+
+        let uniform_buffer_subbuffer = {
+            let uniform_data = shaders::vs::ty::Data {
                 model: model_mat,
                 view: view_mat,
                 proj: proj_mat.into(),
@@ -603,6 +498,11 @@ void main() {
 
             uniform_buffer.next(uniform_data).unwrap()
         };
+
+        // Rotate shapes.
+        for (id, shape) in &mut shapes {
+            shape.orientation += &(&shape.rotation_speed * delta_time);
+        }
 
         let set = Arc::new(descriptor::descriptor_set::PersistentDescriptorSet::start(pipeline_.clone(), 0)
             .add_buffer(uniform_buffer_subbuffer).unwrap()
@@ -636,7 +536,7 @@ void main() {
         // Note that we have to pass a queue family when we create the command buffer. The command
         // buffer will only be executable on that given queue family.
         let command_buffer_ = command_buffer::AutoCommandBufferBuilder::primary_one_time_submit(
-            device.clone(), queue.family())
+            device_.clone(), queue.family())
             .unwrap()
             // Before we can draw, we have to *enter a render pass*. There are two methods to do
             // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
@@ -648,7 +548,7 @@ void main() {
             .begin_render_pass(
                 framebuffers.as_ref().unwrap()[image_num].clone(), false,
                 vec![
-                    [0.0, 0.0, 1.0, 1.0].into(),
+                    [0.0, 1.0, 1.0, 1.0].into(),
                 1f32.into()
                 ]).unwrap()
 
@@ -696,11 +596,11 @@ void main() {
             }
             Err(sync::FlushError::OutOfDate) => {
                 recreate_swapchain = true;
-                previous_frame = Box::new(sync::now(device.clone())) as Box<_>;
+                previous_frame = Box::new(sync::now(device_.clone())) as Box<_>;
             }
             Err(e) => {
                 println!("{:?}", e);
-                previous_frame = Box::new(sync::now(device.clone())) as Box<_>;
+                previous_frame = Box::new(sync::now(device_.clone())) as Box<_>;
             }
         }
 
@@ -716,8 +616,6 @@ void main() {
         // it.
         // todo take framerate into account
         let mut done = false;
-
-        println!("Cam: {}  {}", &cam.position, &cam.θ);
 
         events_loop.poll_events(|ev| {
             match ev {
@@ -748,8 +646,7 @@ void main() {
         });
         if done { return; }
 
-        let delta_t = 1. / 60.;  // todo temp
-        input::handle_pressed(&currently_pressed, delta_t, MOVE_SENSITIVITY,
+        input::handle_pressed(&currently_pressed, delta_time, MOVE_SENSITIVITY,
                               ROTATE_SENSITIVITY, &mut cam);
     }
 }

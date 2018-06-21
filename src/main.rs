@@ -10,6 +10,9 @@
 #![feature(non_ascii_idents)]
 #![feature(vec_remove_item)]
 
+// todo temp:
+#![feature(core_intrinsics)]
+
 #[macro_use]
 extern crate ndarray;
 
@@ -28,12 +31,12 @@ use std::collections::HashMap;
 mod clipping;
 mod import_bitmap;
 mod input;
+mod scenes;
+mod shaders;
 mod shape_maker;
 mod types;
 mod transforms;
 mod render_vulcano;
-
-mod test;
 
 fn main() {
     let empty_6 = array![0., 0., 0., 0., 0., 0.];

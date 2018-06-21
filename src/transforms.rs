@@ -197,7 +197,7 @@ fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     // Combine the rotations.
 
     let R_1 = dot_mm4(R_xy, dot_mm4(R_yz, R_xz));
-    let R_2 = dot_mm4(R_xu, dot_mm4(R_yu, R_xu));
+    let R_2 = dot_mm4(R_xu, dot_mm4(R_yu, R_zu));
     dot_mm4(R_1, R_2)
 }
 
@@ -237,58 +237,12 @@ fn make_scaler4(scale: f32) -> [[f32; 4]; 4] {
     ]
 }
 
-pub fn make_projector(cam: &Camera) -> Array2<f32> {
-    // Create the projection matrix, used to transform translated and
-    // rotated points.
-
-    // Let's compile the different versions you've seen:
-    // 1: http://learnwebgl.brown37.net/08_projections/projections_perspective.html
-    // 2: https://en.wikipedia.org/wiki/3D_projection
-    // 3: https://solarianprogrammer.com/2013/05/22/opengl-101-matrices-projection-view-model/
-    // 4: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-
-    // projection-matrix/building-basic-perspective-projection-matrix
-    // 5: https://github.com/brendanzab/cgmath/blob/master/src/projection.rs
-    // 6: https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_model_view_projection
-    // 7: http://www.songho.ca/opengl/gl_projectionmatrix.html
-
-    // 7's on point with my calcs, although stated in terms of right/top.
-
-    let y_scale = 1. / (cam.fov / 2. as f32).tan();
-    let x_scale = y_scale / cam.aspect;
-    let u_scale = y_scale / cam.aspect_4;  // depth for 4d
-
-    // We are defining z as the axis that determines how x and y points are
-    // scaled, for both 4d and 3d projections. U points don't play a factor
-    // in our final result; their data is only included during rotations;
-    // This function transforms them, but that ultimately is not projected to
-    // 2d screens.
-
-    // Insight: z (or u, depending on which convention we settle on) is used
-    // for two things: Determining how we should scale x and y (The vars that
-
-
-    // I've derived these matrices myself; none of the ones described in the
-    // above links seem to produce a unit cube for easy clipping.
-    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
-    // along each axis.
-    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
-    // as a decaying exponential from -1 to +1.
-
-    array![
-            [x_scale, 0., 0., 0., 0.],
-            [0., y_scale, 0., 0., 0.],
-            [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-                (-2. * cam.far * cam.near) / (cam.far - cam.near),  0.],
-            // u_scale is, ultimately, not really used.
-            [0., 0., 0., u_scale, 0.],
-
-        ]
-}
-
 pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     // This variant returns a 4x4, non-homogenous matrix in the array format used
     // by Vulkan.
-    let y_scale = 1. / (cam.fov / 2. as f32).tan();
+    // Vulkan uses a right-handed coordinate system with a depth range of [0,1],
+
+    let y_scale = 1. / (cam.fov / 2.).tan();
     let x_scale = y_scale / cam.aspect;
     let u_scale = y_scale / cam.aspect_4;  // depth for 4d
 
@@ -309,25 +263,40 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
     // as a decaying exponential from -1 to +1.
 
+//    [
+//        [x_scale, 0., 0., 0.],
+//        [0., y_scale, 0., 0.],
+//        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
+//            (-2. * cam.far * cam.near) / (cam.far - cam.near)],
+//        // u_scale is, ultimately, not really used.
+//        // This row allows us to divide by z after taking the dot product,
+//        // as part of our scaling operation.
+//        [0., 0., 1., 1.],
+//    ]
+
+
+    // Using this GL matrix, multiplied by a vulkan-corrector.
+    // http://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-
+    // matrix/opengl-perspective-projection-matrix
+
+    let t = (cam.fov / 2.).tan() * cam.near;
+    let b = -t;
+    let r = t * cam.aspect;
+    let l = -t * cam.aspect;
+    let n = cam.near;
+    let f = cam.far;
+
+
+    // todo QC that this is correct.
     [
-        [x_scale, 0., 0., 0.],
-        [0., y_scale, 0., 0.],
-        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-            (-2. * cam.far * cam.near) / (cam.far - cam.near)],
+        [2.*n / (r - l), 0., (r+l) / (r-l) / 2., 0.],
+        [0., -2.*n / (t-b), (t+b) / (t-b) / 2., (b+t) / (t-b) / 2.],
+        [0., 0., -(f+n) / (f-n) / 2., -(2.*f*n) / (f-n) + (-f-n) / (f-n) / 2.],
         // u_scale is, ultimately, not really used.
         // This row allows us to divide by z after taking the dot product,
         // as part of our scaling operation.
-        [0., 0., 1., 1.],
+        [0., 0., -0.5, -0.5],
     ]
-}
-
-pub fn make_model_mat(shape: &Shape) -> Array2<f32> {
-    // T must be done last, since we scale and rotate with respect to the orgin,
-    // defined in the shape's initial nodes. S may be applied at any point.
-    let S = make_scaler(shape.scale);
-    let R = make_rotator(&shape.orientation);
-    let T = make_translator(&shape.position);
-    T.dot(&(R.dot(&S)))
 }
 
 pub fn make_model_mat4(shape: &Shape) -> [[f32; 4]; 4] {
@@ -335,20 +304,6 @@ pub fn make_model_mat4(shape: &Shape) -> [[f32; 4]; 4] {
     let S = make_scaler4(shape.scale);
     let R = make_rotator4(&shape.orientation);
     dot_mm4(R, S)
-}
-
-pub fn make_view_mat(cam: &Camera) -> Array2<f32> {
-    // For a first-person sperspective, translate first; then rotate (around the
-    // camera=origin)
-
-    // Negate, since we're rotating the world relative to the camera.
-    let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
-    let negPos = array![-cam.position[0], -cam.position[1], -cam.position[2], -cam.position[3], 1.];
-
-    let T = make_translator(&negPos);
-    let R = make_rotator(&negθ);
-
-    R.dot(&T)
 }
 
 pub fn make_view_mat4(cam: &Camera) -> [[f32; 4]; 4] {

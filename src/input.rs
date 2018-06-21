@@ -32,16 +32,15 @@ pub fn move_camera(direction: MoveDirection, θ: &Array1<f32>, amount: f32) -> A
     // transforms::rotate_4d(θ).dot(&unit_vec)
 }
 
-pub fn handle_pressed(pressed: &Vec<u32>, delta_t: f32,
+pub fn handle_pressed(pressed: &Vec<u32>, delta_time: f32,
                       move_sensitivity: f32, rotate_sensitivity: f32,
                       cam: &mut Camera) -> () {
     // Add if it's not already there.
-    let move_amount = move_sensitivity * delta_t;
-    let rotate_amount = rotate_sensitivity * delta_t;
+    // delta_time is in seconds.
+    let move_amount = move_sensitivity * delta_time;
+    let rotate_amount = rotate_sensitivity * delta_time;
 
     for code in pressed {
-        // Some of the entries appear for reversed, for reasons I don't
-        // understand yet.
         match *code {
             17 => {  // W
                 cam.position += &move_camera(MoveDirection::Forward, &cam.θ, move_amount);
@@ -74,10 +73,10 @@ pub fn handle_pressed(pressed: &Vec<u32>, delta_t: f32,
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
             75 => {  // Left
-                cam.θ[2] += rotate_amount;  // todo why reverse?
+                cam.θ[2] -= rotate_amount;
             },
             77 => {  // Right
-                cam.θ[2] -= rotate_amount;
+                cam.θ[2] += rotate_amount;
             },
             // Don't allow us to look greater than τ/4 up or down.
             80 => {  // Down

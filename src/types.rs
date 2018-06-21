@@ -20,10 +20,19 @@ impl_vertex!(Vertex, position);
 
 impl Vertex {
     pub fn new(x: f32, y: f32, z: f32, u: f32) -> Vertex {
-//        Vertex{ position: [x, y, z, u] }
         Vertex{ position: (x, y, z, u) }
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct VertAndExtras {
+    // Used to pass attributes that go with each vertex.
+    // todo: Shape and cam don't need to be recalced for each vertex...
+    pub position: (f32, f32, f32, f32),
+    pub shape_posit: (f32, f32, f32, f32),
+    pub cam_posit: (f32, f32, f32, f32),
+}
+impl_vertex!(VertAndExtras, position, shape_posit, cam_posit);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Normal {
@@ -59,7 +68,7 @@ impl Face {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
@@ -139,7 +148,7 @@ impl Shape {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Camera {
     // Position shifts all points prior to the camera transform; this is what
     // we adjust with move keys.
@@ -173,16 +182,16 @@ pub enum CameraType {
     // Move foward, back, left, right, and look around. No roll look.  Not sure
     // which 4d rotations/movement to allow or block.
     FPS,
-    Full, // No restriction on movement
+    Free, // No restriction on movement
 }
 
 #[derive(Debug)]
 pub struct Scene {
-    id: u32,
-    shapes: HashMap<u32, Shape>,
-    cam_start: Camera,
-    cam_type: CameraType,
-    color_max: f32, // distance thresh for max 4d-color indicator.
+    pub id: u32,
+    pub shapes: HashMap<u32, Shape>,
+    pub cam_start: Camera,
+    pub cam_type: CameraType,
+    pub color_max: f32, // distance thresh for max 4d-color indicator.
 }
 
 pub struct _Quaternion {

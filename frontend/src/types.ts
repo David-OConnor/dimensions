@@ -130,7 +130,7 @@ export interface Scene {
     id: number,
     shapes: Map<number, Shape>,
     camStart: Camera,
-    camType: string,  // 'single', 'fps', or 'full'
+    camType: string,  // 'single', 'fps', or 'ffree'
     colorMax: number, // distance thresh for max 4d-color indicator.
 }
 

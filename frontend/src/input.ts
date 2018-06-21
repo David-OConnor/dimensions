@@ -14,69 +14,69 @@ export function handlePressed(pressed: number[], deltaT: number,
         switch(code) {
             // todo fudge factors on f and back to reverse.
             case 87:  // w
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, 0, -1, 0]), moveAmount, false)
                 }
                 break
             case 83:  // s
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, 0, 1, 0]), moveAmount, false)
                 }
                 break
             case 68:  // d
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 65:  // a
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([-1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 32:  // Space
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
-                } else if (state.scene === 2) {
+                } else if (state.camType === 'fps') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, 1, 0, 0]), moveAmount, false)
                 }
                 break
             case 67:  // c
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
-                } else if (state.scene === 2) {
+                } else if (state.camType === 'fps') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 17:  // Control
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
-                } else if (state.scene === 2) {
+                } else if (state.camType === 'fps') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 82:  // r
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, 0, 0, 1]), moveAmount, false)
                 }
                 break
             case 70:  // f
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     console.log()
                 } else {
                     moveCam(new Float32Array([0, 0, 0, -1]), moveAmount, false)
@@ -84,88 +84,88 @@ export function handlePressed(pressed: number[], deltaT: number,
                 break
             // todo add deltaTime!
             case 38:  // Up
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[1] -= rotateAmount
                 } else {
                     state.cam.θ[1] += rotateAmount
                 }
                 break
             case 40:  // Down
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[1] += rotateAmount
                 } else {
                     state.cam.θ[1] -= rotateAmount
                 }
                 break
             case 39:  // Right
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[2] += rotateAmount
                 } else {
                     state.cam.θ[2] -= rotateAmount
                 }
                 break
             case 37:  // Left
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[2] -= rotateAmount
                 } else {
                     state.cam.θ[2] += rotateAmount
                 }
                 break
             case 69:  // E
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[0] += rotateAmount
-                } else if (state.scene === 2) {
+                } else if (state.camType === 'fps') {
                     console.log()
                 } else {
                     state.cam.θ[0] += rotateAmount
                 }
                 break
             case 81:  // Q
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[0] -= rotateAmount
-                } else if (state.scene === 2) {
+                } else if (state.camType === 'fps') {
                     console.log()
                 } else {
                     state.cam.θ[0] -= rotateAmount
                 }
                 break
             case 45:  // Ins
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[3] += rotateAmount
                 } else {
                     state.cam.θ[3] += rotateAmount
                 }
                 break
             case 46:  // Del
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[3] -= rotateAmount
                 } else {
                     state.cam.θ[3] -= rotateAmount
                 }
                 break
             case 36:  // Home
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[4] += rotateAmount
                 } else {
                     state.cam.θ[4] += rotateAmount
                 }
                 break
             case 35:  // End
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[4] -= rotateAmount
                 } else {
                     state.cam.θ[4] -= rotateAmount
                 }
                 break
             case 33:  // Pgup
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[5] += rotateAmount
                 } else {
                     state.cam.θ[5] += rotateAmount
                 }
                 break
             case 34:  // Pgdn
-                if (state.scene === 0) {
+                if (state.camType === 'single') {
                     state.shapes.get(0).orientation[5] -= rotateAmount
                 } else {
                     state.cam.θ[5] -= rotateAmount
