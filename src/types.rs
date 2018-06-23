@@ -48,13 +48,13 @@ impl Normal {
 }
 
 // We derive clone, so we can clone edges when creating faces.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Edge {
     pub node0: u32,  // The node's id
     pub node1: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Face {
     // Edges should lie in a plane, and be in an order that links them together.
     pub edges: Vec<Edge>
@@ -68,30 +68,44 @@ impl Face {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
     pub vertices: HashMap<u32, Vertex>,
-    pub edges: Vec<Edge>,
-    pub faces: Vec<Face>,
+    pub edges: Vec<Edge>,  // todo Edges is currently unused.
+    pub faces: Vec<Face>,  // todo Faces is currently unused.
     pub faces_vert: Vec<Array1<u32>>,
-    pub normals: HashMap<u32, Normal>,
+    pub normals: Vec<Normal>,
     pub position: Array1<f32>,
     pub scale: f32,
     pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
+    pub per_face_vertices: Vec<Vertex>,
     pub tris: Array1<u32>,
 }
 
 impl Shape {
     pub fn new(nodes: HashMap<u32, Vertex>, edges: Vec<Edge>, faces: Vec<Face>,
-               faces_vert: Vec<Array1<u32>>, normals: HashMap<u32, Normal>,
+               faces_vert: Vec<Array1<u32>>, normals: Vec<Normal>,
                position: Array1<f32>, orientation: Array1<f32>,
                rotation_speed: Array1<f32>) -> Shape {
+
+        // todo use this, like in JS.
+        let per_face_vertices = {
+            let mut shape_vertices = vec![];
+            for face in &faces_vert {
+                for id in face {
+                    shape_vertices.push(nodes[id]);
+                }
+            }
+            shape_vertices
+        };
+
         Shape{ vertices: nodes, edges, faces, faces_vert, normals, position, scale: 1., orientation,
-               rotation_speed, tris: array![]}
+               rotation_speed, per_face_vertices, tris: array![]}
     }
+
 
 //    pub fn get_tris(&mut self) -> &Array1<u32> {
 //        // get cached triangles if avail; if not, create and cache.
@@ -111,8 +125,6 @@ impl Shape {
         // Result is a 1d array; Float32array-style.
         let mut result = Vec::new();
         let mut current_i = 0;
-
-        println!("FV: {:?}", &self.faces_vert);
 
         for face in &self.faces_vert {
             match face.len() {
@@ -148,7 +160,7 @@ impl Shape {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Camera {
     // Position shifts all points prior to the camera transform; this is what
     // we adjust with move keys.
@@ -176,7 +188,7 @@ impl Camera {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CameraType {
     Single,  // No camera changes; rotate the shape instead
     // Move foward, back, left, right, and look around. No roll look.  Not sure

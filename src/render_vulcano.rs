@@ -14,6 +14,7 @@ use std::time;
 use std;
 
 use vulkano::buffer;
+use vulkano::buffer::cpu_access::CpuAccessibleBuffer;
 use vulkano::command_buffer;
 use vulkano::descriptor;
 use vulkano::device;
@@ -98,7 +99,8 @@ fn print_type_of<T>(_: &T) {
 }
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
-        Arc<buffer::cpu_access::CpuAccessibleBuffer<[u32]>> {
+(Arc<CpuAccessibleBuffer<[u32]>>, Arc<CpuAccessibleBuffer<[Vertex]>>, Arc<CpuAccessibleBuffer<[Normal]>>) {
+    // TODO you should probably move vertex buffer to staticbuffers like in javascript.
     let index_buffer = {
         let mut indices = Vec::new();
         let mut indexModifier = 0;
@@ -109,17 +111,40 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
             indexModifier += shape.num_face_verts();
 
         }
-        buffer::cpu_access::CpuAccessibleBuffer::from_iter(device, buffer::BufferUsage::all(),
+        CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
                                                            indices.iter().cloned())
             .expect("Failed to create index buffer")
     };
 
-    index_buffer
+    let mut shape_vertices = Vec::new();
+    let mut normals = Vec::new();
+    for (s_id, shape) in shapes {
+        for face in &shape.faces_vert {
+            for id in face {
+                shape_vertices.push(shape.vertices[id]);
+            }
+        }
+        // Flatten normals
+        for face_normal in &shape.normals {
+            normals.push(face_normal.clone());
+        }
+    }
+
+     // todo .cloned ?
+    let vertex_buffer = CpuAccessibleBuffer::from_iter(
+        device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
+        .expect("failed to create vertex buffer");
+
+    let normals_buffer = CpuAccessibleBuffer::from_iter(
+        device, buffer::BufferUsage::all(), normals.iter().cloned())
+        .expect("failed to create buffer");
+
+    (index_buffer, vertex_buffer, normals_buffer)
 }
 
 pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device: Arc<device::Device>) -> (
-        Arc<buffer::cpu_access::CpuAccessibleBuffer<[VertAndExtras]>>,
-        Arc<buffer::cpu_access::CpuAccessibleBuffer<[Normal]>>
+        Arc<CpuAccessibleBuffer<[VertAndExtras]>>,
+        Arc<CpuAccessibleBuffer<[Normal]>>
     ){
 //pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device: Arc<device::Device>) -> (
 
@@ -129,8 +154,8 @@ pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device
     for (s_id, shape) in shapes {
         for face in &shape.faces_vert {
             for id in face {
-//                shape_vertices.push(shape.vertices[id].unwrap().clone());
                 let v = shape.vertices[id].position;
+                // todo Vertice position can be done in static buffers!
                 let info = VertAndExtras {
                     position: (v.0, v.1, v.2, v.3),
                     shape_posit: (shape.position[0], shape.position[1],
@@ -140,33 +165,44 @@ pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device
                 };
                 shape_vertices.push(info);
 
-                normals.push(shape.normals[id].clone());
+//                normals.push(shape.normals[id as &usize].clone());
+
             }
+        }
+        // todo normals  should be static too
+        // Flatten normals
+        for face_normal in &shape.normals {
+            normals.push(face_normal.clone());
         }
     }
 
      // todo .cloned ?
-    let vertex_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+    let extras_buffer = CpuAccessibleBuffer::from_iter(
         device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
         .expect("failed to create vertex buffer");
 
-    let normals_buffer = buffer::cpu_access::CpuAccessibleBuffer::from_iter(
+    let normals_buffer = CpuAccessibleBuffer::from_iter(
         device, buffer::BufferUsage::all(), normals.iter().cloned())
         .expect("failed to create buffer");
 
-    (vertex_buffer, normals_buffer)
+    (extras_buffer, normals_buffer)
 }
 
 
-pub fn render(shapes: HashMap<u32, Shape>) {
+pub fn render() {
     // todo for now, we'll keep state in this func.
     // todo sync aspect with window dims.
 
-    let scene = scenes::world_scene();
+    let aspect = WIDTH as f32 / HEIGHT as f32;
 
+    // todo take the scene as an arg to this func?
+//    let scene = scenes::world_scene(aspect);
+    let mut scene = scenes::world_scene(aspect);
 
-    let mut cam = scene.cam_start.clone();
     let mut shapes = scene.shapes.clone();
+    let mut cam = scene.cam_start.clone();
+    let mut cam_type = scene.cam_type.clone();
+    let mut color_max = scene.color_max;
 
     for (id, shape) in &mut shapes {
         shape.make_tris();
@@ -306,7 +342,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
     let depth_buffer = image::attachment::AttachmentImage::transient(
         device_.clone(), dimensions, format::D16Unorm).unwrap();
 
-    let index_buffer = make_static_buffers(&shapes, device_.clone());
+    let (index_buffer, vertex_buffer, normals_buffer) = make_static_buffers(&shapes, device_.clone());
 
     // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
@@ -356,10 +392,10 @@ pub fn render(shapes: HashMap<u32, Shape>) {
                     samples: 1,
                 },
                 depth: {
-                load: Clear,
-                store: DontCare,
-                format: format::Format::D16Unorm,
-                samples: 1,
+                    load: Clear,
+                    store: DontCare,
+                    format: format::Format::D16Unorm,
+                    samples: 1,
                 }
             },
             pass: {
@@ -385,10 +421,12 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         .vertex_shader(vs.main_entry_point(), ())
         // The content of the vertex buffer describes a list of triangles.
         .triangle_list()
+        .blend_alpha_blending()
         // Use a resizable viewport set to draw over the entire window
         .viewports_dynamic_scissors_irrelevant(1)
         // See `vertex_shader`.
         .fragment_shader(fs.main_entry_point(), ())
+//        .front_face_clockwise()
         .depth_stencil_simple_depth()
         // We have to indicate which subpass of which render pass this pipeline is going to be used
         // in. The pipeline will only be usable from this particular subpass.
@@ -485,6 +523,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
             model_mats.insert(*id as u32, transforms::make_model_mat4(shape));
         }
         // Updadate per-frame buffers
+        // todo currently duping vertex pos and normals in both index and static buffs.
         let (vertex_buffer, normals_buffer) = make_per_frame_buffers(&shapes, &cam, device_.clone());
 
         let model_mat = transforms::make_model_mat4(&shapes[&0]);
@@ -493,7 +532,8 @@ pub fn render(shapes: HashMap<u32, Shape>) {
             let uniform_data = shaders::vs::ty::Data {
                 model: model_mat,
                 view: view_mat,
-                proj: proj_mat.into(),
+                proj: proj_mat,
+                color_max,
             };
 
             uniform_buffer.next(uniform_data).unwrap()
@@ -548,7 +588,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
             .begin_render_pass(
                 framebuffers.as_ref().unwrap()[image_num].clone(), false,
                 vec![
-                    [0.0, 1.0, 1.0, 1.0].into(),
+                    [1.0, 1.0, 1.0, 1.0].into(),
                 1f32.into()
                 ]).unwrap()
 
@@ -647,6 +687,7 @@ pub fn render(shapes: HashMap<u32, Shape>) {
         if done { return; }
 
         input::handle_pressed(&currently_pressed, delta_time, MOVE_SENSITIVITY,
-                              ROTATE_SENSITIVITY, &mut cam);
+                              ROTATE_SENSITIVITY, &mut cam, &cam_type,
+                              &mut shapes.get_mut(&0).unwrap());
     }
 }

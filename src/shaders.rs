@@ -17,6 +17,7 @@ pub mod vs {
         mat4 model;
         mat4 view;
         mat4 proj;
+        float color_max;
     } uniforms;
 
     //out gl_PerVertex {
@@ -39,7 +40,7 @@ pub mod vs {
         // Now calculate the color, based on passed u dist from cam.
         float u_dist = cam_posit[3] - u;
 
-        float portion_through = abs(u_dist) / 1.;  // todo temp colormax.
+        float portion_through = abs(u_dist) / uniforms.color_max;
 
         if (portion_through > 1.) {
             portion_through = 1.;

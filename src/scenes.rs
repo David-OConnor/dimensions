@@ -10,7 +10,43 @@ use types::{Camera, Scene, Shape, CameraType};
 const τ: f32 = 2. * PI;
 
 
-pub fn world_scene() -> Scene {
+fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
+    let mut shapes = HashMap::new();
+    shapes.insert(0, shape);
+    Scene {
+        id: 0,
+        shapes,
+        cam_start: Camera {
+            position: array![0., 0., -3., 0.],
+            θ: array![0., 0., τ / 2., 0., 0., 0.],
+            fov: τ / 5.5,
+            aspect,
+            aspect_4: 1.,
+            near: 0.1,
+            far: 200.,
+            strange: 1.,
+        },
+        cam_type: CameraType::Single,
+        color_max: 0.4
+    }
+}
+
+pub fn hypercube_scene(aspect: f32) -> Scene {
+    make_single_scene(aspect, shape_maker::make_hypercube(1., array![0., 0., 0., 0.],
+        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.]))
+}
+
+pub fn fivecell_scene(aspect: f32) -> Scene {
+    make_single_scene(aspect, shape_maker::make_5cell(2., array![0., 0., 0., 0.],
+        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.]))
+}
+
+pub fn cube_scene(aspect: f32) -> Scene {
+    make_single_scene(aspect, shape_maker::make_cube(1., array![0., 0., 0., 0.],
+        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.]))
+}
+
+pub fn world_scene(aspect: f32) -> Scene {
     let shape_list = vec![
     //        shape_maker.make_terrain([20, 20], 10, heightMap, spissMap, EMPTY),
 
@@ -41,7 +77,7 @@ pub fn world_scene() -> Scene {
             position: array![0., 2., -3., 0.],
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             fov: τ / 4.,
-            aspect: 4. / 3.,
+            aspect,
             aspect_4: 1.,
             near: 0.1,
             far: 200.,

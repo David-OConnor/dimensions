@@ -25,22 +25,27 @@ export class Face {
 
 export class Shape {
     nodes: Map<number, Node2>
-    edges: Edge[]
-    faces: Face[]
-    // Corresponds to faces, but uses vertices rather than edges.  This corresponds
+    edges: Edge[]  // todo Edges is currently unused.
+    faces: Face[]  // todo faces is currently unused.
+    // faces_vert corresponds to faces, but uses vertices rather than edges.  This corresponds
     // to WebGl's implementation of faces.  We can't implicitly create this by
     // iterating over over faces/edges due to edges being used in multiple directions.
     // Vertex indices for each face.
     faces_vert: number[][]
-    normals: Map<number, Float32Array>
+    // normals is in the style of faces_vert; eg duplicate the vertices for each
+    // face. Vut instead of
+    normals: number[][]
     position: Float32Array
     scale: number
     orientation: number[]
     rotation_speed: number[]
+    // PerFaceVertices and tris are similar; in the indexed order. One is straight
+    // from the faces, the other is divided into tris.
+    perFaceVertices: Float32Array
     tris: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
-                faces_vert: number[][], normals: Map<number, Float32Array>,
+                faces_vert: number[][], normals: number[][],
                 position: Float32Array, orientation: number[],
                 rotation_speed: number[]) {
         this.nodes = nodes
@@ -52,7 +57,29 @@ export class Shape {
         this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
+        this.perFaceVertices = this.makePerFaceVertices()
         this.tris = []
+    }
+    //
+    // getPerFaceVertices(): Float32Array {
+    //     // get cached triangles if avail; if not, create and cache.
+    //     if (!this.perFaceVertices.length) {
+    //         this.makePerFaceVertices()
+    //     }
+    //     return this.perFaceVertices
+    // }
+
+    makePerFaceVertices(): Float32Array {
+        let result = [], vertex
+        for (let face of this.faces_vert) {
+            for (let vertex_i of face) {
+                vertex = (this.nodes.get(vertex_i) as any).a
+                for (let i=0; i < 4; i++) {  // Iterate through each coord.
+                    result.push(vertex[i])
+                }
+            }
+        }
+        return new Float32Array(result)
     }
 
     get_tris(): number[] {

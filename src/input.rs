@@ -2,8 +2,9 @@
 
 use ndarray::prelude::*;
 
-use types::Camera;
+use types::{Camera, CameraType, Shape};
 
+#[derive(Copy, Clone, Debug)]
 pub enum MoveDirection{
     Forward,
     Back,
@@ -32,10 +33,10 @@ pub fn move_camera(direction: MoveDirection, θ: &Array1<f32>, amount: f32) -> A
     // transforms::rotate_4d(θ).dot(&unit_vec)
 }
 
-pub fn handle_pressed(pressed: &Vec<u32>, delta_time: f32,
+pub fn handle_pressed(pressed: &[u32], delta_time: f32,
                       move_sensitivity: f32, rotate_sensitivity: f32,
-                      cam: &mut Camera) -> () {
-    // Add if it's not already there.
+                      cam: &mut Camera, cam_type: &CameraType, shape: &mut Shape) -> () {
+    // shape is only used when displaying single shapes.
     // delta_time is in seconds.
     let move_amount = move_sensitivity * delta_time;
     let rotate_amount = rotate_sensitivity * delta_time;
@@ -43,63 +44,140 @@ pub fn handle_pressed(pressed: &Vec<u32>, delta_time: f32,
     for code in pressed {
         match *code {
             17 => {  // W
-                cam.position += &move_camera(MoveDirection::Forward, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Forward, &cam.θ, move_amount)
+                }
             },
             31 => {  // S
-                cam.position += &move_camera(MoveDirection::Back, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Back, &cam.θ, move_amount)
+                }
             },
             30 => {  // A
-                cam.position += &move_camera(MoveDirection::Left, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Left, &cam.θ, move_amount)
+                }
             },
             32 => {  // D
-                cam.position += &move_camera(MoveDirection::Right, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Right, &cam.θ, move_amount)
+                }
             },
             46 => {  // C
-                cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    CameraType::FPS => (),
+                    _ => cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount)
+                }
             },
             29 => {  // Lctrl
-                cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    CameraType::FPS => (),
+                    _ => cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount)
+                }
             },
             57 => {  // Space
-                cam.position += &move_camera(MoveDirection::Up, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    CameraType::FPS => (),
+                    _ => cam.position += &move_camera(MoveDirection::Up, &cam.θ, move_amount)
+                }
             },
             33 => {  // F
-                cam.position += &move_camera(MoveDirection::Kata, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Kata, &cam.θ, move_amount)
+                }
             },
             19 => {  // R
-                cam.position += &move_camera(MoveDirection::Ana, &cam.θ, move_amount);
+                match cam_type {
+                    CameraType::Single => (),
+                    _ => cam.position += &move_camera(MoveDirection::Ana, &cam.θ, move_amount)
+                }
             },
 
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
             75 => {  // Left
-                cam.θ[2] -= rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[2] -= rotate_amount,
+                    _ => cam.θ[2] -= rotate_amount
+                }
             },
             77 => {  // Right
-                cam.θ[2] += rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[2] += rotate_amount,
+                    _ => cam.θ[2] += rotate_amount
+                }
             },
             // Don't allow us to look greater than τ/4 up or down.
             80 => {  // Down
-                cam.θ[1] -= rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[1] -= rotate_amount,
+                    _ => cam.θ[1] -= rotate_amount
+                }
             },
             72 => {  // Up
-                cam.θ[1] += rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[1] += rotate_amount,
+                    _ => cam.θ[1] += rotate_amount
+                }
             },
-
             16 => {  // Q
-                cam.θ[0] -= rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[0] -= rotate_amount,
+                    _ => cam.θ[0] -= rotate_amount
+                }
             },
             18 => {  // E
-                cam.θ[0] += rotate_amount;
+                match cam_type {
+                    CameraType::Single => shape.orientation[0] += rotate_amount,
+                    _ => cam.θ[0] += rotate_amount
+                }
             },
 
             // 4d rotations
-            82 => cam.θ[3] += rotate_amount,  // Ins
-            83 => cam.θ[3] -= rotate_amount,  // Del
-            71 => cam.θ[4] += rotate_amount,  // Home
-            79 => cam.θ[4] -= rotate_amount,  // End
-            73 => cam.θ[5] += rotate_amount,  // PgUp
-            81 => cam.θ[5] -= rotate_amount,  // PgDn
+            82 => {  // Ins
+                match cam_type {
+                    CameraType::Single => shape.orientation[3] += rotate_amount,
+                    _ => cam.θ[3] += rotate_amount
+                }
+            },
+            83 => {  // Del
+                match cam_type {
+                    CameraType::Single => shape.orientation[3] -= rotate_amount,
+                    _ => cam.θ[3] -= rotate_amount
+                }
+            },
+            71 => {  // Home
+                match cam_type {
+                    CameraType::Single => shape.orientation[4] += rotate_amount,
+                    _ => cam.θ[4] += rotate_amount
+                }
+            },
+            79 => {  // End
+                match cam_type {
+                    CameraType::Single => shape.orientation[4] -= rotate_amount,
+                    _ => cam.θ[4] -= rotate_amount
+                }
+            },
+            73 => {  // Pgup
+                match cam_type {
+                    CameraType::Single => shape.orientation[5] += rotate_amount,
+                    _ => cam.θ[5] += rotate_amount
+                }
+            },
+            81 => {  // Pgdn
+                match cam_type {
+                    CameraType::Single => shape.orientation[5] -= rotate_amount,
+                    _ => cam.θ[5] -= rotate_amount
+                }
+            },
 
             // todo reimplement some of these
 //            Keycode::V => cam.near -= 1. * ZOOM_SENSITIVITY,

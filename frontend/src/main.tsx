@@ -188,7 +188,7 @@ class Main extends React.Component<any, any> {
     }
 }
 
-setup.setScene([0, 0])
-render.gl_main()
+setup.setScene([0, 2])
+render.main()
 
 export default Main

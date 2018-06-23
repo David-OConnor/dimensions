@@ -5,8 +5,8 @@ import {Camera, Shape} from "./types";
 const τ = 2 * Math.PI
 
 export let currentlyPressedKeys: number[] = []
-export const moveSensitivity = .1  // units per millisecond
-export const rotateSensitivity = .3  // radians per millisecond.
+export const moveSensitivity = 1.  // units per millisecond
+export const rotateSensitivity = 1.  // radians per millisecond.
 
 export let staticBuffers = {}
 

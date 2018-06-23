@@ -38,21 +38,6 @@ pub fn make_box(lens: (f32, f32, f32),
         ));
     }
 
-    // Divide the vertex position by its length to make normalized vectors.
-    // The distance from the center to a corner.
-    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2) + (lens.2 / 2.).powi(2)).sqrt();
-
-    let mut normals = HashMap::new();
-    normals.insert(0, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, 0.));
-    normals.insert(1, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, 0.));
-    normals.insert(2, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, 0.));
-    normals.insert(3, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, 0.));
-
-    normals.insert(4, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, 0.));
-    normals.insert(5, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, 0.));
-    normals.insert(6, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, 0.));
-    normals.insert(7, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, 0.));
-
     let edges = vec![
         // Front
         Edge {node0: 0, node1: 1},
@@ -97,6 +82,16 @@ pub fn make_box(lens: (f32, f32, f32),
                             array![1, 5, 6, 2],  // Right
     ];
 
+    // Normals correspond to faces.
+    let normals = vec![
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-1., 0., 0., 0.),
+        Normal::new(1., 0., 0., 0.)
+    ];
+
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
 }
 
@@ -121,15 +116,6 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
             coord[2] / 2. * lens.2, coord[3] / 2.
         ));
     }
-    // Divide the vertex position by its length to make normalized vectors.
-    let d = ((lens.0 / 2.).powi(2) + (lens.2 / 2.).powi(2)).sqrt();
-    let mut normals = HashMap::new();
-    normals.insert(0, Normal::new(-lens.0 / d, 0., -lens.2 / d, 0.));
-    normals.insert(1, Normal::new(lens.0 / d, 0., -lens.2 / d, 0.));
-    normals.insert(2, Normal::new(lens.0 / d, 0., lens.2 / d, 0.));
-    normals.insert(3, Normal::new(-lens.0 / d, 0., lens.2 / d, 0.));
-
-    normals.insert(4, Normal::new(0., lens.1, 0., 0.));
 
     let edges = vec![
         // Front
@@ -164,6 +150,17 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
                             array![1, 2, 4],  // Right
                             array![2, 3, 4],  // Back
                             array![3, 0, 4],  // Left
+    ];
+    
+        // Normals correspond to faces.
+    // todo this is wrong! Placeholder while you work out the math.
+    let sqrt2_2 = (2. as f32).sqrt() / 2.;
+    let normals = vec![
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-sqrt2_2, sqrt2_2, -1., 0.),
+        Normal::new(sqrt2_2, sqrt2_2, 0., 0.),
+        Normal::new(0., sqrt2_2, -sqrt2_2, 0.),
+        Normal::new(-1., sqrt2_2, sqrt2_2, 0.),
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -253,7 +250,7 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
 
     let faces = vec![];
     let faces_vert = vec![array![]]; // todo temp
-    let normals = HashMap::new(); // todo temp
+    let normals = vec![];
 
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -281,6 +278,87 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
 //
 //    Shape {nodes, edges, faces, position, 1., orientation, rotation_speed}
 //}
+
+pub fn make_5cell(radius: f32,
+                   position: Array1<f32>, orientation: Array1<f32>,
+                   rotation_speed: Array1<f32>) -> Shape {
+    let coords = [
+        [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
+        [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // right base
+        [0., -1./3., (8./9. as f32).sqrt(), 0.],  // Back base
+        [0., 1., 0., 0.],  // Top
+        [0., 0., 0., 1.],  // middle
+    ];
+
+    let mut vertices = HashMap::new();
+    for (id, coord) in coords.iter().enumerate() {
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] * radius/2., coord[1] * radius/2., coord[2] * radius/2., coord[3] * radius/2.
+        ));
+    }
+
+    let edges = vec![
+        // Base
+        Edge {node0: 0, node1: 1},
+        Edge {node0: 1, node1: 2},
+        Edge {node0: 2, node1: 0},
+
+        // Connect base to top
+        Edge {node0: 0, node1: 3},
+        Edge {node0: 1, node1: 3},
+        Edge {node0: 2, node1: 1},
+
+        // Connect center to corners
+        Edge {node0: 4, node1: 0},
+        Edge {node0: 4, node1: 1},
+        Edge {node0: 4, node1: 2},
+        Edge {node0: 4, node1: 3},
+    ];
+
+    let faces = vec![
+        // In same order as faces_vert below
+        Face {edges: vec![edges[0].clone(), edges[1].clone(), edges[2].clone()]},
+        Face {edges: vec![edges[0].clone(), edges[4].clone(), edges[3].clone()]},
+        Face {edges: vec![edges[1].clone(), edges[5].clone(), edges[4].clone()]},
+        Face {edges: vec![edges[2].clone(), edges[3].clone(), edges[4].clone()]},
+
+        Face {edges: vec![edges[6].clone(), edges[0].clone(), edges[7].clone()]},
+        Face {edges: vec![edges[7].clone(), edges[1].clone(), edges[8].clone()]},
+        Face {edges: vec![edges[18].clone(), edges[2].clone(), edges[6].clone()]},
+
+        Face {edges: vec![edges[6].clone(), edges[3].clone(), edges[9].clone()]},
+        Face {edges: vec![edges[7].clone(), edges[4].clone(), edges[9].clone()]},
+        Face {edges: vec![edges[8].clone(), edges[5].clone(), edges[9].clone()]},
+    ];
+
+    let faces_vert = vec![  // Vertex indices for each face.
+        array![0, 1, 2], // Base
+        array![0, 1, 3],  // Front
+        array![1, 2, 3],  // Right
+        array![2, 0, 3],  // Left
+
+        array![4, 0, 1],  // Center front
+        array![4, 1, 2],  // Center right
+        array![4, 2, 0],  // Center left
+
+        array![4, 0, 3],  // Center left top
+        array![4, 1, 3],  // Center right top
+        array![4, 2, 3],  // Center back top
+    ];
+
+    let normals = vec![  // todo fix this.
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-1., 0., 0., 0.),
+        Normal::new(1., 0., 0., 0.),
+        Normal::new(0., 0., 0., 1.),
+        Normal::new(0., 0., 0., -1.),
+    ];
+
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+}
 
 pub fn make_hyperrect(lens: (f32, f32, f32, f32),
                       position: Array1<f32>, orientation: Array1<f32>,
@@ -321,29 +399,6 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
         ));
     }
     
-    // Divide the vertex position by its length to make normalized vectors.
-    let d = ((lens.0 / 2.).powi(2) + (lens.1 / 2.).powi(2) + (lens.2 / 2.).powi(2) + (lens.3 / 2.).powi(2)).sqrt();
-    let mut normals = HashMap::new();
-    normals.insert(0, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, -lens.3 / d));
-    normals.insert(1, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, -lens.3 / d));
-    normals.insert(2, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, -lens.3 / d));
-    normals.insert(3, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, -lens.3 / d));
-
-    normals.insert(4, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, -lens.3 / d));
-    normals.insert(5, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, -lens.3 / d));
-    normals.insert(6, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, -lens.3 / d));
-    normals.insert(7, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, -lens.3 / d));
-
-    normals.insert(8, Normal::new(-lens.0 / d, -lens.1 / d, -lens.2 / d, lens.3 / d));
-    normals.insert(9, Normal::new(lens.0 / d, -lens.1 / d, -lens.2 / d, lens.3 / d));
-    normals.insert(10, Normal::new(lens.0 / d, lens.1 / d, -lens.2 / d, lens.3 / d));
-    normals.insert(11, Normal::new(-lens.0 / d, lens.1 / d, -lens.2 / d, lens.3 / d));
-
-    normals.insert(12, Normal::new(-lens.0 / d, -lens.1 / d, lens.2 / d, lens.3 / d));
-    normals.insert(13, Normal::new(lens.0 / d, -lens.1 / d, lens.2 / d, lens.3 / d));
-    normals.insert(14, Normal::new(lens.0 / d, lens.1 / d, lens.2 / d, lens.3 / d));
-    normals.insert(15, Normal::new(-lens.0 / d, lens.1 / d, lens.2 / d, lens.3 / d));
-
     let edges = vec![
         // Front inner
         Edge {node0: 0, node1: 1},
@@ -424,7 +479,35 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
         array![15, 12, 4, 7],  // Left back
         array![10, 9, 1, 2],  // Right forward
         array![14, 13, 5, 6],  // Right back
+    ];
+    
+    let normals = vec![  // todo QC this; it's a guess.
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-1., 0., 0., 0.),
+        Normal::new(1., 0., 0., 0.),
+        Normal::new(0., 0., 0., 1.),
+        Normal::new(0., 0., 0., -1.),
 
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-1., 0., 0., 0.),
+        Normal::new(1., 0., 0., 0.),
+        Normal::new(0., 0., 0., 1.),
+        Normal::new(0., 0., 0., -1.),
+
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+        Normal::new(-1., 0., 0., 0.),
+        Normal::new(1., 0., 0., 0.),
+        Normal::new(0., 0., 0., 1.),
+        Normal::new(0., 0., 0., -1.),
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)

@@ -8,6 +8,8 @@ import {Camera, Scene} from './types'
 const τ = 2 * Math.PI
 const EMPTY = new Float32Array([0, 0, 0, 0])
 
+const ASPECT = 4 / 3;  // this must match gl canvas width and height.
+
 const mapFlat = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -56,7 +58,7 @@ let hypercubeScene: Scene
 {
     let hypercubeShapes = new Map;
     hypercubeShapes.set(0, shapeMaker.make_hypercube(1, EMPTY,
-        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+        [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
     hypercubeScene = {
         id: 0,
         shapes: hypercubeShapes,
@@ -64,7 +66,7 @@ let hypercubeScene: Scene
             new Float32Array([0., 0., -2., 0.]),
             [0., 0., τ / 2, 0., 0., 0.],
             τ / 5.5,
-            4 / 3.,
+            ASPECT,
             1.,
             200.,
             0.1,
@@ -79,39 +81,39 @@ let hypercubeScene: Scene
 let fivecellScene = JSON.parse(JSON.stringify(hypercubeScene))
 fivecellScene.shapes = new Map()
 fivecellScene.shapes.set(0, shapeMaker.make_5cell(2, EMPTY,
-    [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+    [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
 
 let cubeScene = JSON.parse(JSON.stringify(hypercubeScene))
 cubeScene.shapes = new Map()
-cubeScene.shapes.set(0, shapeMaker.make_cube(1, EMPTY,
-    [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+cubeScene.shapes.set(0, shapeMaker.makeCube(1, EMPTY,
+    [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
 
 let worldScene: Scene
 {
     let shapeList = [
         shapeMaker.make_terrain([20., 20.], 10, heightMap, spissMap, EMPTY),
 
-        shapeMaker.make_box([1., 2., 1.], new Float32Array([-1., 3., 4., 1.]),
-            [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+        shapeMaker.makeBox([1., 2., 1.], new Float32Array([-1., 3., 4., 1.]),
+            [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]),
 
-        shapeMaker.make_rectangular_pyramid([2., 1., 2.], new Float32Array([-2., 3., 3., -1.]),
-            [τ/6, τ/3, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+        shapeMaker.makeRectangularPyramid([2., 1., 2.], new Float32Array([-2., 3., 3., -1.]),
+            [τ/6, τ/3, 0, 0, 0, 0], [0., 0., 0., 0., 0., 0.]),
 
-        shapeMaker.make_cube(1., new Float32Array([2., 0., 5., 2.]),
-            [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+        shapeMaker.makeCube(1., new Float32Array([2., 0., 5., 2.]),
+            [0., 0., 0., 0., 0., 0.], [.002, 0, 0, 0, 0, 0]),
 
         // On ana of other cube.
-        shapeMaker.make_cube(1., new Float32Array([2., 0., 5., 10.]),
-            [0, 0, 0, 0, 0, 0], [.002, 0, 0, 0, 0, 0]),
+        shapeMaker.makeCube(1., new Float32Array([2., 0., 5., 10.]),
+            [0., 0., 0., 0., 0., 0.], [.002, 0, 0, 0, 0, 0]),
 
         shapeMaker.make_hypercube(1, new Float32Array([3., 3., 3., 0.]),
-            [0, 0, 0, 0, 0, 0], [0, 0, 0, .002, .0005, .001]),
+            [0., 0., 0., 0., 0., 0.], [0, 0, 0, .002, .0005, .001]),
 
         shapeMaker.make_hypercube(1, new Float32Array([-3., 1, 0., 1.5]),
-            [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]),
+            [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]),
 
         // rustClone.make_origin(1, new Vec5([0, 0, 0, 0]), 1,
-        //     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        //     [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.])
     ]
 
     let shapes = new Map()
@@ -126,7 +128,7 @@ let worldScene: Scene
             new Float32Array([0., 2., -3., 0.]),
             [0., 0, τ/2., 0., 0., 0.],
             τ / 4.,
-            4 / 3.,
+            ASPECT,
             1.,
             200.,
             0.1,
@@ -164,7 +166,7 @@ let townScene: Scene
     ]
 
     const houses = housePositions.map(posit => shapeMaker.make_house([4., 4., 4.],
-        new Float32Array(posit), [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0]))
+        new Float32Array(posit), [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
 
     let shapeTownList = [
         shapeMaker.make_terrain([1000., 1000.], 10, mapFlat, mapFlat,
@@ -184,7 +186,7 @@ let townScene: Scene
             new Float32Array([0., 0., -2., 0.]),
             [0., 0., τ / 2, 0., 0., 0.],
             τ / 5.5,
-            4 / 3.,
+            ASPECT,
             1.,
             200.,
             0.1,
@@ -233,7 +235,7 @@ let gridScene: Scene
             new Float32Array([0., 0., 0., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 4.,
-            4 / 3.,
+            ASPECT,
             1.,
             1000.,
             0.1,
@@ -282,7 +284,7 @@ let gridSceneWarped: Scene
             new Float32Array([0., 0., 0., 0.]),
             [0., 0., 0., 0., 0., 0.],
             τ / 4.,
-            4 / 3.,
+            ASPECT,
             1.,
             1000.,
             0.1,

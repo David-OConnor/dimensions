@@ -39,42 +39,7 @@ mod transforms;
 mod render_vulcano;
 
 fn main() {
-    let empty_6 = array![0., 0., 0., 0., 0., 0.];
-
-    let shape_vec = vec![
-        shape_maker::make_cube(1., array![-3., 0., 3.0, 0.], empty_6.clone(),
-                               array![0.0, 0., 0., 0., 0., 0.]),
-        // copycat cube in a dif 4d posit!
-        shape_maker::make_hypercube(1., array![-3., 0., 3.0, 3.], empty_6.clone(),
-                       array![0.0, 0., 0., 0., 0., 0.]),
-
-
-//        shape_maker::make_box(1.5, 0.5, 2.5, array![6., 0., 5., 0.], empty_6.clone(), empty_6.clone()),
-        shape_maker::make_rectangular_pyramid((1., 1., 1.), array![-3., 2., -3., 0.],
-                                              empty_6.clone(), array![0.001, -0.002, 0., 0., 0., 0.]),
-        shape_maker::make_house((1., 1., 1.), array![3., 0., 3., 0.], empty_6.clone(),
-                                array![0.0, 0., 0., 0., 0., 0.]),
-
-        // shape_maker::make_street(&array![0., 0., 2.], array![0., 0., 0.], 1.),
-
-        shape_maker::make_origin(1., array![0., 0., 0., 0.], empty_6.clone(), empty_6.clone()),
-        shape_maker::make_hypercube(1., array![6.5, 0., -5.0, 0.],
-                                    empty_6.clone(),
-                                    array![0., 0., 0., 0.005, 0.005, 0.005]),
-
-        shape_maker::make_hypercube(1., array![0., 0., 0.0, 0.],
-                                    empty_6.clone(),
-                                    array![0.0, 0., 0., 0.005, 0.0, 0.0]),
-    ];
-
-    let mut shapes = HashMap::new();
-    for (id, shape) in shape_vec.into_iter().enumerate() {
-        shapes.insert(id as u32, shape);
-    }
-
-//    render_ggez::run(shapes);
-    render_vulcano::render(shapes);
-//    test::main();
+    render_vulcano::render();
 }
 
 #[cfg(test)]
