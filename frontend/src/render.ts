@@ -1,6 +1,7 @@
 import {mat4} from 'gl-matrix'
 
 import * as input from './input'
+import * as shaders from './shaders'
 import * as state from './state'
 import * as transforms from './transforms'
 import {Camera, ProgramInfo, Shape} from './types'
@@ -123,29 +124,6 @@ function drawScene(
                 0,
                 0
             )
-            // gl.enableVertexAttribArray(programInfo.attribLocations.normal)
-
-            // gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).shapePosition)
-            // gl.vertexAttribPointer(
-            //     programInfo.attribLocations.shapePosition,
-            //     4,
-            //     gl.FLOAT ,
-            //     false ,
-            //     0,
-            //     0
-            // )
-            // gl.enableVertexAttribArray(programInfo.attribLocations.shapePosition)
-            //
-            // gl.bindBuffer(gl.ARRAY_BUFFER, pfBuffers.get(s_id).camPosition)
-            // gl.vertexAttribPointer(
-            //     programInfo.attribLocations.camPosition,
-            //     4,
-            //     gl.FLOAT ,
-            //     false ,
-            //     0,
-            //     0
-            // )
-            // gl.enableVertexAttribArray(programInfo.attribLocations.camPosition)
 
             // Tell WebGL how to pull out the colors from the color buffer
             // into the vertexColor attribute.
@@ -175,8 +153,16 @@ function drawScene(
             )
             gl.uniform1f(programInfo.uniformLocations.colorMax, state.colorMax)
 
-            gl.uniform4fv(programInfo.uniformLocations.shapePosition, new Float32Array(shape.position))
-            gl.uniform4fv(programInfo.uniformLocations.camPosition, new Float32Array(state.cam.position))
+            gl.uniform4fv(programInfo.uniformLocations.shapePosition,
+                new Float32Array(shape.position))
+            gl.uniform4fv(programInfo.uniformLocations.camPosition,
+                new Float32Array(state.cam.position))
+            gl.uniform4fv(programInfo.uniformLocations.ambientColor,
+                state.ambientColor)
+            gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
+                state.ambientLightColor)
+            gl.uniform4fv(programInfo.uniformLocations.ambientLightDirection,
+                state.ambientLightDirection)
 
             {
                 const type = gl.UNSIGNED_SHORT
@@ -230,7 +216,7 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
     // This array defines each face as two triangles, using the
     // indices into the vertex array to specify each triangle's
     // position.
-    let indices: number[] = [], normals: number[], normal: number[]
+    let indices: number[] = [], normals: number[]
     let indexModifier = 0
     let tri_indices, indexBuffer, vertexBuffer, normalBuffer
     let indexBuffers = new Map()
@@ -395,146 +381,34 @@ export function main() {
     document.onkeyup = e => input.handleKeyUp(e)
     document.onkeydown = e => input.handleKeyDown(e)
 
-    // Vertex shader program
-    const vsSource = `
-        attribute vec4 aVertexPosition;
-        attribute vec4 aNormal;
-        // attribute vec4 aVertexColor;
-        
-        // attribute vec4 aShapePosition;
-        // attribute vec4 aCamPosition;
-        
-        uniform mat4 uProjectionMatrix;
-                
-        // We can't pass 5x5 homogenous matrices to the shader, but can pass 4x4,
-        // non-homogenous matrices, then translate separately.
-        uniform mat4 uModelMatrix;
-        uniform mat4 uViewMatrix;
-               
-        uniform float uColorMax;
-        
-        uniform vec4 uShapePosition;
-        uniform vec4 uCamPosition;
-               
-        varying lowp vec4 f_color;
-        varying vec4 v_normal;
-    
-        void main() {
-            // For model transform, position after the transform
-            vec4 positionedPt = (uModelMatrix * aVertexPosition) + uShapePosition;
-            // for view transform, position first.
-            positionedPt = uViewMatrix * (positionedPt - uCamPosition);
-            
-            // Now remove the u coord; replace with 1. We no longer need it, 
-            // and the projection matrix is set up for 3d homogenous vectors.
-            vec4 positioned3d = vec4(positionedPt[0], positionedPt[1], positionedPt[2], 1.);
-            
-            gl_Position = uProjectionMatrix * positioned3d;
-          
-            // Now calculate the color, based on passed u dist from cam.
-            
-            float u_dist = uCamPosition[3] - positionedPt[3];
-            
-            float portion_through = abs(u_dist) / uColorMax;
-
-            if (portion_through > 1.) {
-                portion_through = 1.;
-            }
-            
-            float baseGray = 0.0;
-            float colorVal = baseGray + portion_through * 1. - baseGray;
-            
-            vec4 calced_color;
-            if (u_dist > 0.) {
-                calced_color = vec4(baseGray, baseGray, colorVal, 0.2);  // Blue
-            } else {
-                calced_color = vec4(colorVal, baseGray, baseGray, 0.2);  // Red
-            }
-
-            v_normal = aNormal;
-            f_color = calced_color;
-        }
-    `
-
-    // Fragment shader program
-    const fsSource = `
-        varying lowp vec4 f_color;
-        varying highp vec4 v_normal;
-
-        const highp vec4 LIGHT = vec4(0.0, 0.0, 1.0, 0.5);
-
-        void main() {
-            // gl_FragColor = f_color;
-                 
-            highp float brightness = dot(normalize(v_normal), normalize(LIGHT));
-            highp vec4 dark_color = vec4(0.2, 0.2, 0.2, 1.0);
-            highp vec4 regular_color = vec4(0.5, 0.5, 0.5, 1.0);
-            
-            gl_FragColor = vec4(mix(dark_color, regular_color, brightness));
-        }
-    `
-
-    // Vertex shader program
-    const vsSkybox = `
-        attribute vec4 a_position;
-        attribute vec2 a_texcoord;
-         
-        uniform mat4 u_matrix;
-         
-        varying vec2 v_texcoord;
-         
-        void main() {
-          // Multiply the position by the matrix.
-          gl_Position = u_matrix * a_position;
-         
-          // Pass the texcoord to the fragment shader.
-          v_texcoord = a_texcoord;
-        }
-    `
-
-    // Fragment shader program
-    const fsSkybox = `
-        precision mediump float;
-         
-        // Passed in from the vertex shader.
-        varying vec2 v_texcoord;
-         
-        // The texture.
-        uniform sampler2D u_texture;
-         
-        void main() {
-           gl_FragColor = texture2D(u_texture, v_texcoord);
-        }
-    `
-
     // Initialize a shader program; this is where all the lighting
     // for the vertices and so forth is established.
-    const shaderProgram = initShaderProgram(gl, vsSource, fsSource)
-    const shaderSkybox = initShaderProgram(gl, vsSkybox, fsSkybox)
+    const shaderProgram = initShaderProgram(gl, shaders.vsSource, shaders.fsSource)
+    const shaderSkybox = initShaderProgram(gl, shaders.vsSkybox, shaders.fsSkybox)
 
     // Collect all the info needed to use the shader program.
     // Look up which attribute our shader program is using
-    // for aVertexPosition and look up uniform locations.
+    // for a_vertex_position and look up uniform locations.
     const programInfo = {
         program: shaderProgram,
         skyboxProgram: shaderSkybox,
         attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-            normal: gl.getAttribLocation(shaderProgram, 'aNormal'),
-              // todo move this and camPOsit to uniforms.
-            // shapePosition: gl.getAttribLocation(shaderProgram, 'aShapePosition'),
-            // camPosition: gl.getAttribLocation(shaderProgram, 'aCamPosition'),
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'a_vertex_position'),
+            normal: gl.getAttribLocation(shaderProgram, 'a_normal'),
             skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
-            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-            // modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-            modelMatrix: gl.getUniformLocation(shaderProgram, 'uModelMatrix'),
-            viewMatrix: gl.getUniformLocation(shaderProgram, 'uViewMatrix'),
-            colorMax: gl.getUniformLocation(shaderProgram, 'uColorMax'),
+            projectionMatrix: gl.getUniformLocation(shaderProgram, 'u_projection_matrix'),
+            modelMatrix: gl.getUniformLocation(shaderProgram, 'u_model_matrix'),
+            viewMatrix: gl.getUniformLocation(shaderProgram, 'u_view_matrix'),
 
-            shapePosition: gl.getUniformLocation(shaderProgram, 'uShapePosition'),
-            camPosition: gl.getUniformLocation(shaderProgram, 'uCamPosition'),
+            shapePosition: gl.getUniformLocation(shaderProgram, 'u_shape_position'),
+            camPosition: gl.getUniformLocation(shaderProgram, 'u_cam_position'),
+            ambientColor: gl.getUniformLocation(shaderProgram, 'u_ambient_color'),
+            ambientLightColor: gl.getUniformLocation(shaderProgram, 'u_ambient_light_color'),
+            ambientLightDirection: gl.getUniformLocation(shaderProgram, 'u_ambient_light_direction'),
+
+            colorMax: gl.getUniformLocation(shaderProgram, 'u_color_max'),
         },
     }
 
@@ -568,7 +442,6 @@ export function main() {
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
         // const processedShapes = transforms.processShapes(state.cam, state.shapes)
-        // pfBuffers = perFrameBuffers(gl, processedShapes)
 
         // const viewMatrix = transforms.makeViewMat(state.cam)
         const viewMatrix = transforms.makeViewMat4(state.cam)
@@ -578,7 +451,8 @@ export function main() {
             state.updateStaticBuffers(gl, makeStaticBuffers(gl, state.shapes, state.skybox))
         }
 
-        const pfBuffers = makePerFrameBuffers(gl, state.shapes, state.cam)
+        // const pfBuffers = makePerFrameBuffers(gl, state.shapes, state.cam)
+        const pfBuffers = {}
         const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
 
         drawScene(gl, programInfo, state.staticBuffers, pfBuffers, skyboxPositBuffer,

@@ -30,9 +30,8 @@ pub struct VertAndExtras {
     // todo: Shape and cam don't need to be recalced for each vertex...
     pub position: (f32, f32, f32, f32),
     pub shape_posit: (f32, f32, f32, f32),
-    pub cam_posit: (f32, f32, f32, f32),
 }
-impl_vertex!(VertAndExtras, position, shape_posit, cam_posit);
+impl_vertex!(VertAndExtras, position, shape_posit);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Normal {
@@ -203,6 +202,8 @@ pub struct Scene {
     pub shapes: HashMap<u32, Shape>,
     pub cam_start: Camera,
     pub cam_type: CameraType,
+    pub ambient_light_color: [f32; 4],
+    pub ambient_light_direction: [f32; 4],
     pub color_max: f32, // distance thresh for max 4d-color indicator.
 }
 

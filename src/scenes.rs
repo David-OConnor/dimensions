@@ -27,6 +27,8 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
             strange: 1.,
         },
         cam_type: CameraType::Single,
+        ambient_light_color: [1., 1., 1., 1.],
+        ambient_light_direction: [1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.],
         color_max: 0.4
     }
 }
@@ -84,6 +86,8 @@ pub fn world_scene(aspect: f32) -> Scene {
             strange: 1.,
         },
         cam_type: CameraType::Free,
+        ambient_light_color: [1., 1., 1., 1.],
+        ambient_light_direction: [1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.],
         color_max: 10.
     }
 }

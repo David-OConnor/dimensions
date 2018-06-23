@@ -7,8 +7,8 @@ pub mod vs {
     layout(location = 0) in vec4 position;
 
     layout(location = 1) in vec4 shape_posit;
-    layout(location = 2) in vec4 cam_posit;
-    layout(location = 3) in vec4 normal;
+//    layout(location = 1) in vec4 cam_posit;
+    layout(location = 2) in vec4 normal;
 
     layout(location = 0) out vec4 fragColor;
     layout(location = 1) out vec4 v_normal;
@@ -17,7 +17,9 @@ pub mod vs {
         mat4 model;
         mat4 view;
         mat4 proj;
+        vec4 cam_position;
         float color_max;
+
     } uniforms;
 
     //out gl_PerVertex {
@@ -28,7 +30,7 @@ pub mod vs {
         // For model transform, position after the transform
         vec4 positioned_pt = (uniforms.model * position) + shape_posit;
         // for view transform, position first.
-        positioned_pt = uniforms.view * (positioned_pt - cam_posit);
+        positioned_pt = uniforms.view * (positioned_pt - uniforms.cam_position);
 
         // Now remove the u coord; replace with 1. We no longer need it,
         // and the projection matrix is set up for 3d homogenous vectors.
@@ -38,7 +40,7 @@ pub mod vs {
         gl_Position = uniforms.proj * positioned_pt;
 
         // Now calculate the color, based on passed u dist from cam.
-        float u_dist = cam_posit[3] - u;
+        float u_dist = uniforms.cam_position[3] - u;
 
         float portion_through = abs(u_dist) / uniforms.color_max;
 

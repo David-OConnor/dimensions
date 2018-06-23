@@ -73,6 +73,8 @@ let hypercubeScene: Scene
             1.0,
         ),
         camType: 'single',
+        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
+        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 0.4
     }
 }
@@ -135,6 +137,8 @@ let worldScene: Scene
             1.0,
         ),
         camType: 'free',
+        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
+        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 10.
     }
 
@@ -193,40 +197,32 @@ let townScene: Scene
             1.0,
         ),
         camType: 'fps',
+        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
+        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 10.
     }
 }
 
+function make3dGridEmpty(size: number): number[][][] {
+    let outer = [], middle, inner
+    for (let i=0; i < size; i++) {
+        middle = []
+        for (let j=0; j < size; j++) {
+            inner = []
+            for (let k=0; k < size; k++) {
+                inner.push(0)
+            }
+            middle.push(inner)
+        }
+        outer.push(middle)
+    }
+    return outer
+}
+
 let gridScene: Scene
 {
-    const mapTest = [
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-    ]
-
-    const mapTestWarped = [
-        [1, 1.5, 1.5, 1.5, 1.5, 0, 0, 0],
-        [1.5, 2, 2.5, 2, 1, 1, 0, 0],
-        [1, 2.5, 3, 2.5, 2, 1, 0, 0],
-        [1.5, 2, 2.5, 2, 1.5, 0, 0, 0],
-        [1, 1.5, 1.5, 1.5, 1, 0, 0, 0],
-        [1, 1, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-    ]
-
-    const mapTest3d = [
-        [...mapTest], [...mapTest], [...mapTest], [...mapTest],
-        [...mapTest], [...mapTest], [...mapTest], [...mapTest]
-    ]
-
-    const shapes = shapeMaker.make_cube_hypergrid([20, 20, 20], 8, mapTest3d, EMPTY)
+    const gridSize = 14
+    const shapes = shapeMaker.make_cube_hypergrid([200, 200, 200], gridSize, make3dGridEmpty(gridSize), EMPTY)
 
     gridScene = {
         id: 3,
@@ -242,6 +238,8 @@ let gridScene: Scene
             1.0,
         ),
         camType: 'free',
+        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
+        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 30,
     }
 }
@@ -275,7 +273,8 @@ let gridSceneWarped: Scene
         [...mapTest], [...mapTestWarped], [...mapTestWarped], [...mapTest]
     ]
 
-    const shapes = shapeMaker.make_cube_hypergrid([20, 20, 20], 8, mapTest3dWarped, EMPTY)
+    const gridSize = 8
+    const shapes = shapeMaker.make_cube_hypergrid([20, 20, 20], gridSize, mapTest3dWarped, EMPTY)
 
     gridSceneWarped = {
         id: 3,
@@ -291,6 +290,8 @@ let gridSceneWarped: Scene
             1.0,
         ),
         camType: 'free',
+        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
+        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 30,
     }
 }
@@ -313,4 +314,5 @@ export function setScene(sceneId: [number, number]) {
     state.setCamType(scene.camType)
     state.setShapes(scene.shapes)
     state.setColorMax(scene.colorMax)
+    state.setLighting(scene.ambientLightColor, scene.ambientLightDirection)
 }

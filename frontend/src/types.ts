@@ -158,6 +158,8 @@ export interface Scene {
     shapes: Map<number, Shape>,
     camStart: Camera,
     camType: string,  // 'single', 'fps', or 'ffree'
+    ambientLightColor: Float32Array,
+    ambientLightDirection: Float32Array,
     colorMax: number, // distance thresh for max 4d-color indicator.
 }
 

@@ -27,6 +27,12 @@ export let camType = 'single'
 export let shapes = new Map()
 export let colorMax = 15.  // At this z distance, our blue/red shift fully saturated.
 
+// todo make ambient color scene-specific
+export let ambientColor = new Float32Array([0.5, 0.5, 1.0, 1.0])
+
+export let ambientLightColor = new Float32Array([1., 1., 1., 1.])
+export let ambientLightDirection = new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.])
+
 export let skybox = shapeMaker.make_skybox(100, cam.position)
 
 // We can't modify values here directly; use setters instead.
@@ -38,6 +44,11 @@ export function setColorMax(val: number) {
 
 export function setShapes(shapes_: Map<number, Shape>) {
     shapes = shapes_
+}
+
+export function setLighting(color: Float32Array, direction: Float32Array) {
+    ambientLightColor = color
+    ambientLightDirection = direction
 }
 
 export function setCam(cam_: Camera) {

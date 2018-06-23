@@ -160,8 +160,8 @@ pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device
                     position: (v.0, v.1, v.2, v.3),
                     shape_posit: (shape.position[0], shape.position[1],
                                    shape.position[2], shape.position[3]),
-                    cam_posit: (cam.position[0], cam.position[1],
-                                 cam.position[2], cam.position[3]),
+//                    cam_posit: (cam.position[0], cam.position[1],
+//                                 cam.position[2], cam.position[3]),
                 };
                 shape_vertices.push(info);
 
@@ -533,6 +533,7 @@ pub fn render() {
                 model: model_mat,
                 view: view_mat,
                 proj: proj_mat,
+                cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
                 color_max,
             };
 
