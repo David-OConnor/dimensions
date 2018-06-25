@@ -115,15 +115,16 @@ function drawScene(
                 gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
             }
 
-            gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffers.normalBuffers.get(s_id).normal)
+            gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffers.normalBuffers.get(s_id))
             gl.vertexAttribPointer(
                 programInfo.attribLocations.normal,
                 4,
-                gl.FLOAT ,
-                false ,
+                gl.FLOAT,
+                false,
                 0,
                 0
             )
+            gl.enableVertexAttribArray(programInfo.attribLocations.normal)
 
             // Tell WebGL how to pull out the colors from the color buffer
             // into the vertexColor attribute.
@@ -152,22 +153,23 @@ function drawScene(
                 viewMatrix
             )
             gl.uniform1f(programInfo.uniformLocations.colorMax, state.colorMax)
+            gl.uniform1f(programInfo.uniformLocations.ambientStrength, state.ambientStrength)
 
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
                 new Float32Array(state.cam.position))
-            gl.uniform4fv(programInfo.uniformLocations.ambientColor,
-                state.ambientColor)
             gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
                 state.ambientLightColor)
-            gl.uniform4fv(programInfo.uniformLocations.ambientLightDirection,
-                state.ambientLightDirection)
+            gl.uniform4fv(programInfo.uniformLocations.diffuseLightColor,
+                state.diffuseLightColor)
+            gl.uniform4fv(programInfo.uniformLocations.diffuseLightDirection,
+                state.diffuseLightDirection)
 
             {
                 const type = gl.UNSIGNED_SHORT
                 const offset = 0
-                const vertexCount = shape.get_tris().length
+                const vertexCount = shape.getTris().length
 
                 gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
             }
@@ -216,7 +218,7 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
     // This array defines each face as two triangles, using the
     // indices into the vertex array to specify each triangle's
     // position.
-    let indices: number[] = [], normals: number[]
+    let indices: number[] = [], normals, vertices, face, vertex
     let indexModifier = 0
     let tri_indices, indexBuffer, vertexBuffer, normalBuffer
     let indexBuffers = new Map()
@@ -225,45 +227,46 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
     // todo do we need to update normals each frame, or is once per shape suffient?
     shapes_.forEach(
         (shape, s_id, map_) => {
-            indexBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
 
-            // todo do we need triangles??
             // This array defines each face as two triangles, using the
             // indices into the vertex array to specify each triangle's
             // position.
             indices = []
-            normals = []
             indexModifier = 0
-            tri_indices = shape.get_tris().map(ind => ind + indexModifier)
+            tri_indices = shape.getTris().map(ind => ind + indexModifier)
             indices.push(...tri_indices)
             indexModifier += shape.numFaceVerts()
 
-            // Now send the element array to GL
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Uint16Array(indices), gl.STATIC_DRAW)
-
+            // Now send the element array to GL.  ELEMENT_ARRAY_BUFFER is used for indices.
+            indexBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
             indexBuffers.set(s_id, indexBuffer)
 
-            normalBuffer = gl.createBuffer()
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, normalBuffer)
-
-            // Flatten normals.
-            for (let normalVec of shape.normals) {
-                for (let i=0; i < 4; i++) {
-                    normals.push(normalVec[i])
+            vertices = []
+            normals = []
+            for (let i=0; i < shape.faces_vert.length; i++) {
+                face = shape.faces_vert[i]
+                for (let vertId of face) {
+                    vertex = (shape.nodes.get(vertId) as any).a
+                    for (let coord = 0; coord < 4; coord++) {  // Iterate through each coord.
+                        vertices.push(vertex[coord])
+                        normals.push(shape.normals[i][coord])
+                    }
                 }
             }
 
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-                new Float32Array(normals), gl.STATIC_DRAW)
-
-            normalBuffers.set(s_id, normalBuffer)
-
             vertexBuffer = gl.createBuffer()
+            // ARRAY_BUFFER is used for indexed content; we don't need to take
+            // triangles into account.
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-            gl.bufferData(gl.ARRAY_BUFFER, shape.perFaceVertices, gl.STATIC_DRAW)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
             vertexBuffers.set(s_id, vertexBuffer)
+
+            normalBuffer = gl.createBuffer()
+            gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer)
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW)
+            normalBuffers.set(s_id, normalBuffer)
         }
     )
 
@@ -362,9 +365,9 @@ export function main() {
 
     // These settings affect transparency.
     gl.clearDepth(1.0)                 // Clear everything
-    // gl.enable(gl.DEPTH_TEST)           // Enable depth testing
     // gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
-    gl.disable(gl.DEPTH_TEST);
+    // Depth testing should be off for our shapes to be transparent.
+    gl.disable(gl.DEPTH_TEST)
     // gl.disable(gl.CULL_FACE)  // transparency TS
 
     gl.enable(gl.BLEND);
@@ -395,7 +398,7 @@ export function main() {
         attribLocations: {
             vertexPosition: gl.getAttribLocation(shaderProgram, 'a_vertex_position'),
             normal: gl.getAttribLocation(shaderProgram, 'a_normal'),
-            skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
+            // skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
             projectionMatrix: gl.getUniformLocation(shaderProgram, 'u_projection_matrix'),
@@ -404,11 +407,12 @@ export function main() {
 
             shapePosition: gl.getUniformLocation(shaderProgram, 'u_shape_position'),
             camPosition: gl.getUniformLocation(shaderProgram, 'u_cam_position'),
-            ambientColor: gl.getUniformLocation(shaderProgram, 'u_ambient_color'),
-            ambientLightColor: gl.getUniformLocation(shaderProgram, 'u_ambient_light_color'),
-            ambientLightDirection: gl.getUniformLocation(shaderProgram, 'u_ambient_light_direction'),
+            ambientlightColor: gl.getUniformLocation(shaderProgram, 'u_ambient_light_color'),
+            diffuseLightColor: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_color'),
+            diffuseLightDirection: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_direction'),
 
             colorMax: gl.getUniformLocation(shaderProgram, 'u_color_max'),
+            ambientStrength: gl.getUniformLocation(shaderProgram, 'u_ambient_strength'),
         },
     }
 

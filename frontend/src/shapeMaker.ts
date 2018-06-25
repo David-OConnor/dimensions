@@ -81,8 +81,8 @@ export function makeBox(lens: [number, number, number],
 
     // Normals correspond to faces.
     const normals = [
-        [0., 0., 1., 0.],
         [0., 0., -1., 0.],
+        [0., 0., 1., 0.],
         [0., 1., 0., 0.],
         [0., -1., 0., 0.],
         [-1., 0., 0., 0.],
@@ -90,12 +90,12 @@ export function makeBox(lens: [number, number, number],
     ]
 
     return new Shape(nodes, edges, faces, faces_vert, normals, position,
-                      orientation, rotation_speed)
+        orientation, rotation_speed)
 }
 
 export function makeCube(side_len: number,
-                           position: Float32Array, orientation: number[],
-                           rotation_speed: number[]): Shape {
+                         position: Float32Array, orientation: number[],
+                         rotation_speed: number[]): Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
     return makeBox([side_len, side_len, side_len], position, orientation, rotation_speed)
@@ -158,14 +158,13 @@ export function makeRectangularPyramid(lens: [number, number, number],
     ]
 
     // Normals correspond to faces.
-    // todo this is wrong! Placeholder while you work out the math.
-    let sqrt2_2 = Math.sqrt(2.) / 2.
+    // Note that these don't need to be normalized here; the shader will do it.
     const normals = [
         [0., -1., 0., 0.],
-        [-sqrt2_2, sqrt2_2, -1., 0.],
-        [sqrt2_2, sqrt2_2, 0., 0.],
-        [0., sqrt2_2, -sqrt2_2, 0.],
-        [-1., sqrt2_2, sqrt2_2, 0.],
+        [0., lens[2], lens[1], 0.],
+        [lens[2], lens[1], 0., 0.],
+        [0., lens[2], -lens[1], 0.],
+        [-lens[2], lens[1], 0., 0.],
     ]
 
     return new Shape(nodes, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -221,6 +220,10 @@ export function make_house(lens: [number, number, number],
         base.faces_vert.push(updated_fv);
     }
 
+    for (let normal of roof.normals) {
+        base.normals.push(normal)
+    }
+
     return base
 }
 
@@ -263,8 +266,8 @@ export function make_hyperrect(lens: [number, number, number, number],
 
     // Divide the vertex position by its length to make normalized vectors.
     // The distance from the center to a corner.
-    let d = Math.sqrt(Math.pow(lens[0] / 2, 2) + Math.pow(lens[1], 2) + 
-                      Math.pow(lens[2] / 2., 2) + Math.pow(lens[3] / 2., 2))
+    let d = Math.sqrt(Math.pow(lens[0] / 2, 2) + Math.pow(lens[1], 2) +
+        Math.pow(lens[2] / 2., 2) + Math.pow(lens[3] / 2., 2))
 
     let edges = [
         // Front inner
@@ -432,10 +435,58 @@ export function make_origin(len: number, position: Float32Array,
 
     return new Shape(nodes, edges, [], [], normals, position, orientation, rotation_speed)
 }
+//
+// // These functions generate Perlin noise. Taken from https://en.wikipedia.org/wiki/Perlin_noise
+// function lerp(a0: number, a1: number, w: number): number {
+//     // Function to linearly interpolate between a0 and a1
+//     // Weight w should be in the range [0.0, 1.0]
+//     return (1.0 - w)*a0 + w*a1;
+// }
+//
+//
+// function dotGridGradient(ix: number, iy: number, x: number, y: number): number {
+//     // Computes the dot product of the distance and gradient vectors.
+//     // Precomputed (or otherwise) gradient vectors at each grid node
+//     extern float Gradient[IYMAX][IXMAX][2];
+//
+//     // Compute the distance vector
+//     float dx = x - (float)ix;
+//     float dy = y - (float)iy;
+//
+//     // Compute the dot-product
+//     return (dx*Gradient[iy][ix][0] + dy*Gradient[iy][ix][1]);
+// }
+//
+// // Compute Perlin noise at coordinates x, y
+// float perlin(float x, float y) {
+//
+//     // Determine grid cell coordinates
+//     int x0 = int(x);
+//     int x1 = x0 + 1;
+//     int y0 = int(y);
+//     int y1 = y0 + 1;
+//
+//     // Determine interpolation weights
+//     // Could also use higher order polynomial/s-curve here
+//     float sx = x - (float)x0;
+//     float sy = y - (float)y0;
+//
+//     // Interpolate between grid point gradients
+//     float n0, n1, ix0, ix1, value;
+//     n0 = dotGridGradient(x0, y0, x, y);
+//     n1 = dotGridGradient(x1, y0, x, y);
+//     ix0 = lerp(n0, n1, sx);
+//     n0 = dotGridGradient(x0, y1, x, y);
+//     n1 = dotGridGradient(x1, y1, x, y);
+//     ix1 = lerp(n0, n1, sx);
+//     value = lerp(ix0, ix1, sy);
+//
+//     return value;
+// }
 
-export function make_terrain(dims: [number, number], res: number,
-                             heightMap: number[][], spissitudeMap: number[][],
-                             position: Float32Array): Shape {
+export function makeTerrain(dims: [number, number], res: number,
+                            heightMap: number[][], spissitudeMap: number[][],
+                            position: Float32Array): Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // u and y mappings for each x/z point...
@@ -445,8 +496,6 @@ export function make_terrain(dims: [number, number], res: number,
 
     // Note: When visually setting up a heighmap array, the z position
     // appears backwards from what you might expect.
-
-    // todo: Add this to rust.
 
     let nodes = new Map()
     let id = 0
@@ -463,8 +512,8 @@ export function make_terrain(dims: [number, number], res: number,
             if (isNaN(height) || isNaN(spissitude)) {
                 throw "Missing value(s) in heightmap or spissitude grid."
             }
-            // todo you could change which planes this is over by rearranging
-            // todo these node points.
+            // You could change which planes this is over by rearranging
+            // these node points.
             nodes.set(id, new Node2(new Float32Array([
                 x,
                 height,
@@ -481,6 +530,8 @@ export function make_terrain(dims: [number, number], res: number,
     let faces: Face[] = [];  // todo later
     let row_adder = 0;
 
+    // Faces for this terrain are triangles. Don't try to make square faces;
+    // they'd really have creases down a diagonal.
     let faces_vert = [];
     // todo need front and right edges of overall terrain.
     for (let i=0; i < res - 1; i++) {
@@ -488,10 +539,15 @@ export function make_terrain(dims: [number, number], res: number,
             edges.push(new Edge(row_adder + j, row_adder + j + 1));  // edges across constant x
             edges.push(new Edge(row_adder + j, row_adder + j + res));  // edges across constant z
 
-            // Build from the back-left corner of each face.
-            faces_vert.push([
+            // two face triangles per grid square. There are two ways to split
+            // up the squares into triangles; picking one arbitrarily.
+            faces_vert.push([  // shows front right
                 row_adder + j,  // back left
                 row_adder + j + 1,  // back right
+                row_adder + j + res + 1  // front left
+            ]);
+            faces_vert.push([  // shows front left  not j + res, not j
+                row_adder + j,
                 row_adder + j + res,  // front right
                 row_adder + j + res + 1  // front left
             ]);
@@ -501,17 +557,10 @@ export function make_terrain(dims: [number, number], res: number,
 
     const normals = [  // wrong!
         [0., 0., 1., 0.],
-        [0., 0., -1., 0.],
-        [0., 1., 0., 0.],
-        [0., -1., 0., 0.],
-        [-1., 0., 0., 0.],
-        [1., 0., 0., 0.],
-        [0., 0., 0., 1.],
-        [0., 0., 0., -1.],
     ]
 
     return new Shape(nodes, edges, faces, faces_vert, normals, position,
-                     [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }
 
 export function make_cube_hypergrid(dims: [number, number, number],
@@ -532,7 +581,7 @@ export function make_cube_hypergrid(dims: [number, number, number],
                 result.set(
                     Math.pow(res, 2) * i + res * j + k,
                     makeCube(.5, new Float32Array([x, y, z, spissitudeMap[i][j][k]]),
-                              [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+                        [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
                 )
                 z += dims[2] / res
             }
@@ -543,14 +592,41 @@ export function make_cube_hypergrid(dims: [number, number, number],
     return result
 }
 
-// export function make_hypergrid(dims: [number, number, number],
-//                                spissitudeMap: number[][][],
-//                                position: Float32Array): Shape {
-//
-// }
+export function make_cube_hypergrid_4d(dims: [number, number, number, number],
+                                       res: number,
+                                       spissitudeMap: number[][][][],
+                                       position: Float32Array): Map<number, Shape> {
+    // Position is the center.
+    // todo incorporate position.
+    let result = new Map()
 
-export function make_5cell(radius: number, position: Float32Array, orientation: number[],
-                           rotation_speed: number[]): Shape {
+    let y, z, u
+    let x = -dims[0] / 2.
+    for (let i=0; i < res; i++) {  // x
+        y = -dims[1] / 2.
+        for (let j=0; j < res; j++) {  // y
+            z = -dims[2] / 2.
+            for (let k=0; k < res; k++) {  // z
+                u = -dims[3] / 2.
+                for (let l=0; l < res; l++) {
+                    result.set(
+                        Math.pow(res, 3) * i + Math.pow(res, 2) * j + res * k + l,
+                        // todo hypercube?
+                        makeCube(.5, new Float32Array([x, y, z, u]),
+                            [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
+                    )
+                }
+                z += dims[2] / res
+            }
+            y += dims[1] / res
+        }
+        x += dims[0] / res
+    }
+    return result
+}
+
+export function make5Cell(radius: number, position: Float32Array, orientation: number[],
+                          rotation_speed: number[]): Shape {
     // AKA pentachoron, or tetrahedral pyramid
     // https://en.wikipedia.org/wiki/5-cell
     // todo add to Rust.
@@ -598,7 +674,7 @@ export function make_5cell(radius: number, position: Float32Array, orientation: 
 
         new Face([edges[6], edges[0], edges[7]]),
         new Face([edges[7], edges[1], edges[8]]),
-        new Face([edges[18], edges[2], edges[6]]),
+        new Face([edges[8], edges[2], edges[6]]),
 
         new Face([edges[6], edges[3], edges[9]]),
         new Face([edges[7], edges[4], edges[9]]),
@@ -625,9 +701,13 @@ export function make_5cell(radius: number, position: Float32Array, orientation: 
         [0., 0., -1., 0.],
         [0., 1., 0., 0.],
         [0., -1., 0., 0.],
+
         [-1., 0., 0., 0.],
         [1., 0., 0., 0.],
         [0., 0., 0., 1.],
+
+        [0., 0., 0., -1.],
+        [0., 0., 0., -1.],
         [0., 0., 0., -1.],
     ]
 

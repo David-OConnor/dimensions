@@ -74,22 +74,23 @@ pub fn make_box(lens: (f32, f32, f32),
     ];
 
     let faces_vert = vec![  // Vertex indices for each face.
-                            array![0, 1, 2, 3],  // Front
-                            array![4, 5, 6, 7],  // Back
-                            array![3, 2, 6, 7],  // Top
-                            array![0, 1, 5, 4],  // Bottom
-                            array![0, 4, 7, 3],  // Left
-                            array![1, 5, 6, 2],  // Right
+        array![0, 1, 2, 3],  // Front
+        array![4, 5, 6, 7],  // Back
+        array![3, 2, 6, 7],  // Top
+        array![0, 1, 5, 4],  // Bottom
+        array![0, 4, 7, 3],  // Left
+        array![1, 5, 6, 2],  // Right
     ];
 
-    // Normals correspond to faces.
+    //  Normals correspond to faces.
     let normals = vec![
-        Normal::new(0., 0., 1., 0.),
         Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
-        Normal::new(1., 0., 0., 0.)
+        Normal::new(1., 0., 0., 0.),
+
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -152,15 +153,14 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
                             array![3, 0, 4],  // Left
     ];
     
-        // Normals correspond to faces.
-    // todo this is wrong! Placeholder while you work out the math.
-    let sqrt2_2 = (2. as f32).sqrt() / 2.;
+    // Normals correspond to faces.
+    // Note that these don't need to be normalized here; the shader will do it.
     let normals = vec![
         Normal::new(0., -1., 0., 0.),
-        Normal::new(-sqrt2_2, sqrt2_2, -1., 0.),
-        Normal::new(sqrt2_2, sqrt2_2, 0., 0.),
-        Normal::new(0., sqrt2_2, -sqrt2_2, 0.),
-        Normal::new(-1., sqrt2_2, sqrt2_2, 0.),
+        Normal::new(0., lens.2, lens.1, 0.),
+        Normal::new(lens.2, lens.1, 0., 0.),
+        Normal::new(0., lens.2, -lens.1, 0.),
+        Normal::new(-lens.2, lens.1, 0., 0.),
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -204,10 +204,21 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
      for face in &roof.faces {
          base.faces.push(face.clone());
      }
+
+//    for face in &roof.faces_vert {
+//        let updated_fv = Vec::new();
+//        for vertex in face {
+//            updated_fv.push(vertex + id_addition);
+//        }
+//        base.faces_vert.push(Array1::from_vec(updated_fv));
+//    }
+     // todo
+
+      for normal in &roof.normals {
+         base.normals.push(normal.clone());
+     }
+
      base
-
-     // todo do normals...
-
  }
 
 pub fn make_cube(side_len: f32,
@@ -283,7 +294,7 @@ pub fn make_5cell(radius: f32,
                    position: Array1<f32>, orientation: Array1<f32>,
                    rotation_speed: Array1<f32>) -> Shape {
     let coords = [
-        [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
+        [-(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
         [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // right base
         [0., -1./3., (8./9. as f32).sqrt(), 0.],  // Back base
         [0., 1., 0., 0.],  // Top
@@ -324,7 +335,7 @@ pub fn make_5cell(radius: f32,
 
         Face {edges: vec![edges[6].clone(), edges[0].clone(), edges[7].clone()]},
         Face {edges: vec![edges[7].clone(), edges[1].clone(), edges[8].clone()]},
-        Face {edges: vec![edges[18].clone(), edges[2].clone(), edges[6].clone()]},
+        Face {edges: vec![edges[8].clone(), edges[2].clone(), edges[6].clone()]},
 
         Face {edges: vec![edges[6].clone(), edges[3].clone(), edges[9].clone()]},
         Face {edges: vec![edges[7].clone(), edges[4].clone(), edges[9].clone()]},
@@ -519,6 +530,88 @@ pub fn make_hypercube(side_len: f32,
     // Convenience function.
     make_hyperrect((side_len, side_len, side_len, side_len),
                    position, orientation, rotation_speed)
+}
+
+
+pub fn make_terrain(dims: (f32, f32), res: u32,
+                    heightMap: Array2<f32>, spissitudeMap: Array2<f32>,
+                    position: Array1<f32>) -> Shape {
+    // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
+    // We could make a 4d terrain too... id a volume of u-mappings... or have
+    // u and y mappings for each x/z point...
+    // dims refers to the size of the terrain. res is the number of cells
+    // dividing our terrain in each direction. Perhaps replace this argument with
+    // something more along the traditional def of resolution?
+
+    // Note: When visually setting up a heighmap array, the z position
+    // appears backwards from what you might expect.
+
+    // todo: Add this to rust.
+
+    let mut vertices = HashMap::new();
+    let mut id = 0;
+    // Instantiate x and like this so the center of the mesh is at the
+    // position argument.
+    let mut x = -dims.0 / 2.;
+    for i in 0..res {  // x
+        let mut z = -dims.1 / 2.;
+        for j in 0..res {  // z
+            let height = heightMap[[i as usize, j as usize]];
+            let spissitude = spissitudeMap[[i as usize, j as usize]];
+            // todo handle missing values?
+            // You could change which planes this is over by rearranging
+            // these node points.
+            vertices.insert(id, Vertex::new(
+                x,
+                height,
+                z,
+                spissitude,
+            ));
+            z += dims.1 / res as f32;
+            id += 1;
+        }
+        x += dims.0 / res as f32;
+    }
+
+    let mut edges = Vec::new();
+    let mut faces = Vec::new();  // todo later
+
+    let mut row_adder = 0;
+    // Faces for this terrain are triangles. Don't try to make square faces;
+    // they'd really have creases down a diagonal.
+    let mut faces_vert = Vec::new();
+    // todo need front and right edges of overall terrain.
+    for i in 0..res {
+        for j in 0..res {
+            edges.push(Edge {node0: row_adder + j, node1: row_adder + j + 1 });  // edges across constant x
+            edges.push(Edge {node0: row_adder + j, node1: row_adder + j + res });  // edges across constant z
+
+            // two face triangles per grid square. There are two ways to split
+            // up the squares into triangles; picking one arbitrarily.
+            faces_vert.push(
+                array![  // shows front right
+                    row_adder + j,  // back left
+                    row_adder + j + 1,  // back right
+                    row_adder + j + res + 1  // front left
+                ]
+            );
+            faces_vert.push(
+                array![  // shows front left  not j + res, not j
+                    row_adder + j,
+                    row_adder + j + res,  // front right
+                    row_adder + j + res + 1  // front left
+                ]
+            );
+        }
+        row_adder += res;
+    }
+
+    let normals = vec![  // wrong!
+        Normal::new(0., 0., 1., 0.),
+    ];
+
+    return Shape::new(vertices, edges, faces, faces_vert, normals, position,
+        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.])
 }
 
 #[cfg(test)]

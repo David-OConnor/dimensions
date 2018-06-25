@@ -30,8 +30,9 @@ pub struct VertAndExtras {
     // todo: Shape and cam don't need to be recalced for each vertex...
     pub position: (f32, f32, f32, f32),
     pub shape_posit: (f32, f32, f32, f32),
+    pub normal: (f32, f32, f32, f32),
 }
-impl_vertex!(VertAndExtras, position, shape_posit);
+impl_vertex!(VertAndExtras, position, shape_posit, normal);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Normal {
@@ -106,14 +107,14 @@ impl Shape {
     }
 
 
-//    pub fn get_tris(&mut self) -> &Array1<u32> {
+//    pub fn getTris(&mut self) -> &Array1<u32> {
 //        // get cached triangles if avail; if not, create and cache.
 //        if !self.tris.len() > 0 {
-//            self.make_tris()
+//            self.makeTris()
 //        }
 //        &self.tris
 //    }
-//    pub fn get_tris(&self) -> &Array1<u32> {
+//    pub fn getTris(&self) -> &Array1<u32> {
 //        // get cached triangles if avail; if not, create and cache.
 //        &self.tris
 //    }
@@ -203,7 +204,8 @@ pub struct Scene {
     pub cam_start: Camera,
     pub cam_type: CameraType,
     pub ambient_light_color: [f32; 4],
-    pub ambient_light_direction: [f32; 4],
+    pub diffuse_light_color: [f32; 4],
+    pub diffuse_light_direction: [f32; 4],
     pub color_max: f32, // distance thresh for max 4d-color indicator.
 }
 

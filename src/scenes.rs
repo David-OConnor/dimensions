@@ -9,7 +9,6 @@ use types::{Camera, Scene, Shape, CameraType};
 
 const τ: f32 = 2. * PI;
 
-
 fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
     let mut shapes = HashMap::new();
     shapes.insert(0, shape);
@@ -27,8 +26,10 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
             strange: 1.,
         },
         cam_type: CameraType::Single,
-        ambient_light_color: [1., 1., 1., 1.],
-        ambient_light_direction: [1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.],
+        ambient_light_color: [0.5, 0.5, 1., 0.4],
+        diffuse_light_color: [0., 1., 0., 0.2],
+        // Light direction doens't have to be normalized; shader will do it.
+        diffuse_light_direction: [1., 0., 0., 0.],
         color_max: 0.4
     }
 }
@@ -86,8 +87,9 @@ pub fn world_scene(aspect: f32) -> Scene {
             strange: 1.,
         },
         cam_type: CameraType::Free,
-        ambient_light_color: [1., 1., 1., 1.],
-        ambient_light_direction: [1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.],
+        ambient_light_color: [0.2, 0.2, 0.2, 0.7],
+        diffuse_light_color: [0., 1., 0., 0.5],
+        diffuse_light_direction: [1./(2. as f32).sqrt(), -1./(2. as f32).sqrt(), 0., 0.],
         color_max: 10.
     }
 }

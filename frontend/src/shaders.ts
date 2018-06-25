@@ -2,25 +2,24 @@
 export const vsSource = `
     attribute vec4 a_vertex_position;
     attribute vec4 a_normal;
-    // attribute vec4 aVertexColor;
-    
-    uniform mat4 u_projection_matrix;
-            
+                   
     // We can't pass 5x5 homogenous matrices to the shader, but can pass 4x4,
     // non-homogenous matrices, then translate separately.
     uniform mat4 u_model_matrix;
     uniform mat4 u_view_matrix;
+    uniform mat4 u_projection_matrix;
     
     uniform vec4 u_shape_position;
     uniform vec4 u_cam_position;
-    uniform vec4 u_ambient_color;
     uniform vec4 u_ambient_light_color;
-    uniform vec4 u_ambient_light_direction;
+    uniform vec4 u_diffuse_light_color;
+    uniform vec4 u_diffuse_light_direction;
     
     uniform float u_color_max;
+    uniform float u_ambient_strength;
            
     varying lowp vec4 f_color;
-    varying vec4 v_light_weighting;
+    varying vec4 v_diffuse_light;
 
     void main() {
         // For model transform, position after the transform
@@ -34,8 +33,8 @@ export const vsSource = `
         
         gl_Position = u_projection_matrix * positioned3d;
       
+      
         // Now calculate the color, based on passed u dist from cam.
-        
         float u_dist = u_cam_position[3] - positionedPt[3];
         
         float portion_through = abs(u_dist) / u_color_max;
@@ -53,26 +52,24 @@ export const vsSource = `
             f_color = vec4(color_val, base_gray, base_gray, 0.2);  // Red
         }
         
-        // todo we need a normal transform matrix
-        vec4 transformedNormal = a_normal;
-        float directional_light_weighting = max(dot(transformedNormal, u_ambient_light_direction), 0.);
-        v_light_weighting = u_ambient_color + u_ambient_light_color * directional_light_weighting;
+        f_color = f_color * u_ambient_strength;
+        
+        vec4 transformed_normal = normalize(u_view_matrix * a_normal);
+        
+        vec4 direction = normalize(u_diffuse_light_direction);
+
+        float directional_light_weighting = max(dot(transformed_normal, direction), 0.);
+        v_diffuse_light = u_diffuse_light_color * directional_light_weighting;
     }
 `
 
 // Fragment shader program
 export const fsSource = `
     varying lowp vec4 f_color;
-    varying highp vec4 v_light_weighting;
+    varying highp vec4 v_diffuse_light;
 
     void main() {
-        // gl_FragColor = f_color;
-             
-        // highp float brightness = dot(normalize(v_normal), normalize(LIGHT));
-        // highp vec4 dark_color = vec4(0.2, 0.2, 0.2, 1.0);
-        // highp vec4 regular_color = vec4(0.5, 0.5, 0.5, 1.0);
-        
-        gl_FragColor = vec4(f_color * v_light_weighting);
+        gl_FragColor = f_color + v_diffuse_light;
     }
 `
 

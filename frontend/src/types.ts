@@ -41,7 +41,7 @@ export class Shape {
     rotation_speed: number[]
     // PerFaceVertices and tris are similar; in the indexed order. One is straight
     // from the faces, the other is divided into tris.
-    perFaceVertices: Float32Array
+    // perFaceVertices: Float32Array
     tris: number[]
 
     constructor(nodes: Map<number, Node2>, edges: Edge[], faces: Face[],
@@ -57,7 +57,7 @@ export class Shape {
         this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
-        this.perFaceVertices = this.makePerFaceVertices()
+        // this.perFaceVertices = this.makePerFaceVertices()
         this.tris = []
     }
     //
@@ -69,28 +69,15 @@ export class Shape {
     //     return this.perFaceVertices
     // }
 
-    makePerFaceVertices(): Float32Array {
-        let result = [], vertex
-        for (let face of this.faces_vert) {
-            for (let vertex_i of face) {
-                vertex = (this.nodes.get(vertex_i) as any).a
-                for (let i=0; i < 4; i++) {  // Iterate through each coord.
-                    result.push(vertex[i])
-                }
-            }
-        }
-        return new Float32Array(result)
-    }
-
-    get_tris(): number[] {
+    getTris(): number[] {
         // get cached triangles if avail; if not, create and cache.
         if (!this.tris.length) {
-            this.make_tris()
+            this.makeTris()
         }
         return this.tris
     }
 
-    make_tris() {
+    makeTris() {
         // Divide faces into triangles of indices. These indices aren't of node
         // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
         // Result is a 1d array; Float32array-style.
@@ -159,7 +146,8 @@ export interface Scene {
     camStart: Camera,
     camType: string,  // 'single', 'fps', or 'ffree'
     ambientLightColor: Float32Array,
-    ambientLightDirection: Float32Array,
+    diffuseLightColor: Float32Array,
+    diffuseLightDirection: Float32Array,
     colorMax: number, // distance thresh for max 4d-color indicator.
 }
 

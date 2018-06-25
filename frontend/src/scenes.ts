@@ -10,49 +10,87 @@ const EMPTY = new Float32Array([0, 0, 0, 0])
 
 const ASPECT = 4 / 3;  // this must match gl canvas width and height.
 
-const mapFlat = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-]
+function make2dGridEmpty(size: number): number[][] {
+    // todo we have make3d grids in scenes.
+    let outer = [], inner
+    for (let i=0; i < size; i++) {
+        inner = []
+        for (let j=0; j < size; j++) {
+            inner.push(0)
+        }
+        outer.push(inner)
+    }
+    return outer
+}
 
-const heightMap = [
-    [1.3, 1.3, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
-    [1.3, 1.2, 0, 0, 0, 0, 0, 1.1, 1.2, 1.2],
-    [0, 1.2, 1.2, 0, 0, 0, 0, 1.1, 1.2, 0],
-    [0, 1.1, 0, 0, 0, 0, 0, 0, 1.1, 1.2],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1.2],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1.2],
-    [0, 0, 0, 1.1, 0, 0, 0, 0, 1.1, 1.2],
-    [0, 1.1, 0, 0, 0, 0, 0, 0, 1.2, 1.2],
-    [0, 1.1, 1.1, 1.1, 1.1, 0, 1.3, 1.3, 2.4, 2.2],
-    [0, 1.1, 1.1, 1.1, 1.2, 1.3, 1.3, 1.4, 2.4, 2.8]
-]
+function make3dGridEmpty(size: number): number[][][] {
+    let outer = [], middle, inner
+    for (let i=0; i < size; i++) {
+        middle = []
+        for (let j=0; j < size; j++) {
+            inner = []
+            for (let k=0; k < size; k++) {
+                inner.push(0)
+            }
+            middle.push(inner)
+        }
+        outer.push(middle)
+    }
+    return outer
+}
 
-const spissMap = [
-    [5, 4, 2, 1.2, 0, 0, 1, 1, 2, 2.5],
-    [5, 3, 2.5, 1.2, 0, 0, 0, 0, 2, 2.5],
-    [5, 4, 2, 1, 2, 0, 0, 0, 2, 2.5],
-    [4, 3, 2, 1, 0, 0, 0, 0, 2, 2.5],
-    [4, 4, 3, 1, 0, 1, 0, 0, 2, 2.5],
-    [6, 4, 3, 3.5, 1, 0, 0, 0, 2, 2.5],
-    [6, 5.5, 5, 3.5, 2, 0, 1.5, 0, 2, 2.5],
-    [6, 5.5, 5.5, 4, 2, 0, 0, 1, 2, 2.5],
-    [6, 6, 6, 3.5, 2, 0, 0, 0, 2, 1.5],
-    [7, 7, 7, 3.5, 2, 0, 0, 0, 2, 2.5],
-]
+function make4dGridEmpty(size: number): number[][][][] {
+    let outer = [], middle, inner, superInner
+    for (let i=0; i < size; i++) {
+        middle = []
+        for (let j=0; j < size; j++) {
+            inner = []
+            for (let k=0; k < size; k++) {
+                superInner = []
+                for (let l=0; l < size; l++) {
+                    superInner.push(0)
+                }
+                inner.push(superInner)
+            }
+            middle.push(inner)
+        }
+        outer.push(middle)
+    }
+    return outer
+}
 
-const mapFlat3d = [
-    [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
-    [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat], [...mapFlat],
-]
+function genFractalHeightmap(size: number, map: number[][],
+                              roughness: number, depth: number): number[][] {
+    // Experimenting with fractals to create pseudo-natural terrain.
+
+    // Alter the middle third of a random square segment.
+    // todo: Doesn't need to be square.
+    let lowerBoundX, upperBoundX, lowerBoundY, upperBoundY, workingSize
+    for (let d=0; d < depth; d++) {
+        workingSize = size * Math.random()
+
+        lowerBoundX = workingSize * Math.random()
+        upperBoundX = lowerBoundX + (workingSize - lowerBoundX)
+
+        lowerBoundY = workingSize * Math.random()
+        upperBoundY = lowerBoundY + (workingSize - lowerBoundX)
+
+            for (let i=0; i < size; i++) {
+                for (let j=0; j < size; j++) {
+                    if (i >= lowerBoundX && i <= upperBoundX &&
+                        j >= lowerBoundY && j <= upperBoundY ) {
+                        // Offset height in range -1 to +1 * roughness
+                        map[i][j] += (Math.random() * 2. - 1.) * roughness
+                    }
+                }
+            }
+    }
+    return map
+
+}
+
+let testMap = genFractalHeightmap(10, make2dGridEmpty(10), .1, 300)
+console.log(testMap, "TEST")
 
 let hypercubeScene: Scene
 {
@@ -73,19 +111,33 @@ let hypercubeScene: Scene
             1.0,
         ),
         camType: 'single',
-        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
-        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.2, 0.5]),
+        diffuseLightColor: new Float32Array([0., 1., 0., 0.5]),
+        // diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        diffuseLightDirection: new Float32Array([0., -1., 0., 0.]),
         colorMax: 0.4
     }
 }
 
 // Such a janky way of cloning...
 let fivecellScene = JSON.parse(JSON.stringify(hypercubeScene))
+
+// JSON converts F32Arrays to objects.
+fivecellScene.ambientLightColor = new Float32Array([0.2, 0.2, 0.2, 0.5])
+fivecellScene.diffuseLightColor = new Float32Array([0., 1., 0., 0.5])
+fivecellScene.diffuseLightDirection = new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.])
+
 fivecellScene.shapes = new Map()
-fivecellScene.shapes.set(0, shapeMaker.make_5cell(2, EMPTY,
+fivecellScene.shapes.set(0, shapeMaker.make5Cell(2, EMPTY,
     [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
 
 let cubeScene = JSON.parse(JSON.stringify(hypercubeScene))
+
+// JSON converts F32Arrays to objects.
+cubeScene.ambientLightColor = new Float32Array([0.2, 0.2, 0.2, 0.5])
+cubeScene.diffuseLightColor = new Float32Array([0., 1., 0., 0.5])
+cubeScene.diffuseLightDirection = new Float32Array([1., 0., 0., 0.])
+
 cubeScene.shapes = new Map()
 cubeScene.shapes.set(0, shapeMaker.makeCube(1, EMPTY,
     [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
@@ -93,7 +145,10 @@ cubeScene.shapes.set(0, shapeMaker.makeCube(1, EMPTY,
 let worldScene: Scene
 {
     let shapeList = [
-        shapeMaker.make_terrain([20., 20.], 10, heightMap, spissMap, EMPTY),
+        shapeMaker.makeTerrain([200., 200.], 10,
+            genFractalHeightmap(10, make2dGridEmpty(300), 4, 30),
+            genFractalHeightmap(10, make2dGridEmpty(300), 4, 30),
+            EMPTY),
 
         shapeMaker.makeBox([1., 2., 1.], new Float32Array([-1., 3., 4., 1.]),
             [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]),
@@ -137,8 +192,9 @@ let worldScene: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
-        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
+        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
+        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 10.
     }
 
@@ -173,7 +229,7 @@ let townScene: Scene
         new Float32Array(posit), [0., 0., 0., 0., 0., 0.], [0., 0., 0., 0., 0., 0.]))
 
     let shapeTownList = [
-        shapeMaker.make_terrain([1000., 1000.], 10, mapFlat, mapFlat,
+        shapeMaker.makeTerrain([1000., 1000.], 10, make2dGridEmpty(10), make2dGridEmpty(10),
             EMPTY),
         ...houses
     ]
@@ -197,26 +253,11 @@ let townScene: Scene
             1.0,
         ),
         camType: 'fps',
-        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
-        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
+        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
+        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 10.
     }
-}
-
-function make3dGridEmpty(size: number): number[][][] {
-    let outer = [], middle, inner
-    for (let i=0; i < size; i++) {
-        middle = []
-        for (let j=0; j < size; j++) {
-            inner = []
-            for (let k=0; k < size; k++) {
-                inner.push(0)
-            }
-            middle.push(inner)
-        }
-        outer.push(middle)
-    }
-    return outer
 }
 
 let gridScene: Scene
@@ -238,8 +279,9 @@ let gridScene: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
-        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
+        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
+        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 30,
     }
 }
@@ -290,8 +332,38 @@ let gridSceneWarped: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([1., 1., 1., 1.]),
-        ambientLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
+        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
+        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+        colorMax: 30,
+    }
+}
+
+let gridScene4d: Scene
+{
+    const gridSize = 10
+    const shapes = shapeMaker.make_cube_hypergrid_4d([200, 200, 200, 200], gridSize, make4dGridEmpty(gridSize), EMPTY)
+
+    gridScene4d = {
+        id: 3,
+        shapes: shapes,
+        camStart: new Camera(
+            new Float32Array([0., 0., 0., 0.]),
+            [0., 0., 0., 0., 0., 0.],
+            τ / 4.,
+            ASPECT,
+            1.,
+            1000.,
+            0.1,
+            1.0,
+        ),
+        camType: 'free',
+
+        // todo combine these lighting settings into an interface.
+        ambientLightColor: new Float32Array([0.2, 0.2, 0.2, 1.]),
+        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
+        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
+
         colorMax: 30,
     }
 }
@@ -305,6 +377,7 @@ sceneMap.set([1, 0].join(','), worldScene)
 sceneMap.set([2, 0].join(','), townScene)
 sceneMap.set([3, 0].join(','), gridScene)
 sceneMap.set([3, 1].join(','), gridSceneWarped)
+sceneMap.set([3, 2].join(','), gridScene4d)
 
 export function setScene(sceneId: [number, number]) {
     // Map doesn't support tuples; use string instead.
@@ -314,5 +387,5 @@ export function setScene(sceneId: [number, number]) {
     state.setCamType(scene.camType)
     state.setShapes(scene.shapes)
     state.setColorMax(scene.colorMax)
-    state.setLighting(scene.ambientLightColor, scene.ambientLightDirection)
+    state.setLighting(scene.ambientLightColor, scene.diffuseLightColor, scene.diffuseLightDirection)
 }

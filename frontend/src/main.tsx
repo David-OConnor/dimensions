@@ -39,6 +39,7 @@ class Controls extends React.Component<any, any> {
             <ButtonGroup style={{marginTop: 20}}>
                 <Button bsStyle="primary" onClick={() => this.props.setSubscene(0)}>Uniform</Button>
                 <Button bsStyle="primary" onClick={() => this.props.setSubscene(1)}>Warped</Button>
+                <Button bsStyle="primary" onClick={() => this.props.setSubscene(2)}>Hyper</Button>
             </ButtonGroup>
         )
 
@@ -142,7 +143,7 @@ class Main extends React.Component<any, any> {
     setScene(scene: number) {
         state.emptyStaticBuffers()
         this.setState({scene: scene})
-        scenes.setScene([scene, this.state.subScene])
+        scenes.setScene([scene, 0])  // When setting a new scene, default to subscene 0.
     }
 
     setSubscene(subScene: number) {

@@ -6,7 +6,7 @@ const τ = 2 * Math.PI
 
 export let currentlyPressedKeys: number[] = []
 export const moveSensitivity = 1.  // units per millisecond
-export const rotateSensitivity = 1.  // radians per millisecond.
+export const rotateSensitivity = 0.7  // radians per millisecond.
 
 export let staticBuffers = {}
 
@@ -27,11 +27,10 @@ export let camType = 'single'
 export let shapes = new Map()
 export let colorMax = 15.  // At this z distance, our blue/red shift fully saturated.
 
-// todo make ambient color scene-specific
-export let ambientColor = new Float32Array([0.5, 0.5, 1.0, 1.0])
-
+export let ambientStrength = 0.5
 export let ambientLightColor = new Float32Array([1., 1., 1., 1.])
-export let ambientLightDirection = new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.])
+export let diffuseLightColor = new Float32Array([0., 1., 0., 0.])
+export let diffuseLightDirection = new Float32Array([1., 0., 0., 0.])
 
 export let skybox = shapeMaker.make_skybox(100, cam.position)
 
@@ -46,9 +45,10 @@ export function setShapes(shapes_: Map<number, Shape>) {
     shapes = shapes_
 }
 
-export function setLighting(color: Float32Array, direction: Float32Array) {
-    ambientLightColor = color
-    ambientLightDirection = direction
+export function setLighting(ambientColor: Float32Array, diffuseColor: Float32Array, direction: Float32Array) {
+    ambientLightColor = ambientColor
+    diffuseLightColor = diffuseColor
+    diffuseLightDirection = direction
 }
 
 export function setCam(cam_: Camera) {

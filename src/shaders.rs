@@ -7,24 +7,26 @@ pub mod vs {
     layout(location = 0) in vec4 position;
 
     layout(location = 1) in vec4 shape_posit;
-//    layout(location = 1) in vec4 cam_posit;
     layout(location = 2) in vec4 normal;
 
-    layout(location = 0) out vec4 fragColor;
-    layout(location = 1) out vec4 v_normal;
+    layout(location = 0) out vec4 fourd_color;
+    layout(location = 1) out vec4 diffuse;
+    layout(location = 2) out vec4 specular;
 
     layout(set = 0, binding = 0) uniform Data {
         mat4 model;
         mat4 view;
         mat4 proj;
         vec4 cam_position;
+
+        vec4 ambient_light_color;
+        vec4 diffuse_light_color;
+        vec4 diffuse_light_direction;
+
+        float ambient_intensity;
+        float specular_intensity;
         float color_max;
-
     } uniforms;
-
-    //out gl_PerVertex {
-    //    vec4 gl_Position;
-    //};
 
     void main() {
         // For model transform, position after the transform
@@ -51,15 +53,30 @@ pub mod vs {
         float base_gray = 0.0;
         float color_val = base_gray + portion_through * 1. - base_gray;
 
-        vec4 calced_color;
         if (u_dist > 0.) {
-            calced_color = vec4(base_gray, base_gray, color_val, 0.2);  // Blue
+            fourd_color = vec4(base_gray, base_gray, color_val, 0.2);  // Blue
         } else {
-            calced_color = vec4(color_val, base_gray, base_gray, 0.2);  // Red
+            fourd_color = vec4(color_val, base_gray, base_gray, 0.2);  // Red
         }
+        fourd_color = fourd_color * uniforms.ambient_intensity;
 
-        v_normal = normal; // todo temp
-        fragColor = calced_color;
+        // Process diffuse lighting from a single-directional source.
+        // We can use the model matrix directly on the normal, since it
+        // only scales uniformly, and isn't homogenous (doesn't translate).
+        vec4 norm = normalize(uniforms.model * normal);
+        vec4 dir = normalize(uniforms.diffuse_light_direction);
+        float directional_light_weighting = max(dot(norm, dir), 0.);
+
+        diffuse = uniforms.diffuse_light_color * directional_light_weighting;
+
+        // Now calculate specular lighting.
+        // todo deal with view trasnforms.
+        vec4 view_dir = normalize(uniforms.cam_position - position);
+//        vec4 view_dir = normalize(uniforms.view * (uniforms.cam_position - position));
+        vec4 reflect_dir = reflect(-dir, norm);
+//        vec4 reflect_dir = uniforms.view * reflect(-dir, norm);
+        float spec = pow(max(dot(view_dir, reflect_dir), 0.), 32);
+        vec4 specular = uniforms.specular_intensity * spec * uniforms.diffuse_light_color;
     }
     "]
         struct Dummy;
@@ -70,13 +87,15 @@ pub mod fs {
     #[ty = "fragment"]
     #[src = "
     #version 450
-    layout(location = 0) in vec4 fragColor;
-    layout(location = 1) in vec4 v_normal;
+    layout(location = 0) in vec4 fourd_color;
+    layout(location = 1) in vec4 diffuse;
+    layout(location = 2) in vec4 specular;
 
     layout(location = 0) out vec4 f_color;
 
     void main() {
-        f_color = fragColor;
+//        f_color = fourd_color + diffuse + specular;
+        f_color = mix(fourd_color, diffuse, specular);
     }
     "]
         struct Dummy;
