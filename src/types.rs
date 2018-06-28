@@ -102,22 +102,11 @@ impl Shape {
             shape_vertices
         };
 
-        Shape{ vertices: nodes, edges, faces, faces_vert, normals, position, scale: 1., orientation,
-               rotation_speed, per_face_vertices, tris: array![]}
+        let mut result = Shape{ vertices: nodes, edges, faces, faces_vert, normals, position, scale: 1., orientation,
+               rotation_speed, per_face_vertices, tris: array![]};
+        result.make_tris();
+        result
     }
-
-
-//    pub fn getTris(&mut self) -> &Array1<u32> {
-//        // get cached triangles if avail; if not, create and cache.
-//        if !self.tris.len() > 0 {
-//            self.makeTris()
-//        }
-//        &self.tris
-//    }
-//    pub fn getTris(&self) -> &Array1<u32> {
-//        // get cached triangles if avail; if not, create and cache.
-//        &self.tris
-//    }
 
     pub fn make_tris(&mut self) {
         // Divide faces into triangles of indices. These indices aren't of node
@@ -203,10 +192,19 @@ pub struct Scene {
     pub shapes: HashMap<u32, Shape>,
     pub cam_start: Camera,
     pub cam_type: CameraType,
-    pub ambient_light_color: [f32; 4],
-    pub diffuse_light_color: [f32; 4],
-    pub diffuse_light_direction: [f32; 4],
+    pub lighting: Lighting,
     pub color_max: f32, // distance thresh for max 4d-color indicator.
+}
+
+#[derive(Clone, Debug)]
+pub struct Lighting {
+    pub ambient_intensity: f32,
+    pub diffuse_intensity: f32,
+    pub specular_intensity: f32,
+    pub ambient_color: [f32; 4],
+    pub diffuse_color: [f32; 4],
+    // Direction doesn't have to be normalized; we do that in the shader.
+    pub diffuse_direction: [f32; 4],
 }
 
 pub struct _Quaternion {

@@ -24,6 +24,7 @@ pub mod vs {
         vec4 diffuse_light_direction;
 
         float ambient_intensity;
+        float diffuse_intensity;
         float specular_intensity;
         float color_max;
     } uniforms;
@@ -65,9 +66,10 @@ pub mod vs {
         // only scales uniformly, and isn't homogenous (doesn't translate).
         vec4 norm = normalize(uniforms.model * normal);
         vec4 dir = normalize(uniforms.diffuse_light_direction);
-        float directional_light_weighting = max(dot(norm, dir), 0.);
+        float directional_light_weight = max(dot(norm, dir), 0.);
 
-        diffuse = uniforms.diffuse_light_color * directional_light_weighting;
+        diffuse = uniforms.diffuse_light_color * directional_light_weight *
+            uniforms.diffuse_intensity;
 
         // Now calculate specular lighting.
         // todo deal with view trasnforms.
@@ -94,8 +96,9 @@ pub mod fs {
     layout(location = 0) out vec4 f_color;
 
     void main() {
-//        f_color = fourd_color + diffuse + specular;
-        f_color = mix(fourd_color, diffuse, specular);
+        // todo mix is giving me errors about no matching overloaded func.
+//        f_color = mix(fourd_color, diffuse, specular);
+        f_color = diffuse + fourd_color;
     }
     "]
         struct Dummy;

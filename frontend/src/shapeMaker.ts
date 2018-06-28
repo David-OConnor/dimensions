@@ -161,10 +161,10 @@ export function makeRectangularPyramid(lens: [number, number, number],
     // Note that these don't need to be normalized here; the shader will do it.
     const normals = [
         [0., -1., 0., 0.],
-        [0., lens[2], lens[1], 0.],
-        [lens[2], lens[1], 0., 0.],
         [0., lens[2], -lens[1], 0.],
         [-lens[2], lens[1], 0., 0.],
+        [0., lens[2], lens[1], 0.],
+        [lens[2], lens[1], 0., 0.],
     ]
 
     return new Shape(nodes, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -563,10 +563,10 @@ export function makeTerrain(dims: [number, number], res: number,
         [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0])
 }
 
-export function make_cube_hypergrid(dims: [number, number, number],
-                                    res: number,
-                                    spissitudeMap: number[][][],
-                                    position: Float32Array): Map<number, Shape> {
+export function makeHypergrid(dims: [number, number, number],
+                              res: number,
+                              spissitudeMap: number[][][],
+                              position: Float32Array): Map<number, Shape> {
     // Position is the center.
     // todo incorporate position.
     let result = new Map()
@@ -592,10 +592,10 @@ export function make_cube_hypergrid(dims: [number, number, number],
     return result
 }
 
-export function make_cube_hypergrid_4d(dims: [number, number, number, number],
-                                       res: number,
-                                       spissitudeMap: number[][][][],
-                                       position: Float32Array): Map<number, Shape> {
+export function makeCubeHypergrid4d(dims: [number, number, number, number],
+                                    res: number,
+                                    spissitudeMap: number[][][][],
+                                    position: Float32Array): Map<number, Shape> {
     // Position is the center.
     // todo incorporate position.
     let result = new Map()

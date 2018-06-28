@@ -157,10 +157,10 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
     // Note that these don't need to be normalized here; the shader will do it.
     let normals = vec![
         Normal::new(0., -1., 0., 0.),
-        Normal::new(0., lens.2, lens.1, 0.),
-        Normal::new(lens.2, lens.1, 0., 0.),
         Normal::new(0., lens.2, -lens.1, 0.),
         Normal::new(-lens.2, lens.1, 0., 0.),
+        Normal::new(0., lens.2, lens.1, 0.),
+        Normal::new(lens.2, lens.1, 0., 0.),
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
@@ -221,9 +221,8 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
      base
  }
 
-pub fn make_cube(side_len: f32,
-                 position: Array1<f32>, orientation: Array1<f32>,
-                 rotation_speed: Array1<f32>) -> Shape {
+pub fn make_cube(side_len: f32,  position: Array1<f32>, orientation: Array1<f32>,
+                  rotation_speed: Array1<f32>) -> Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
     make_box((side_len, side_len, side_len), position, orientation, rotation_speed)
@@ -534,7 +533,7 @@ pub fn make_hypercube(side_len: f32,
 
 
 pub fn make_terrain(dims: (f32, f32), res: u32,
-                    heightMap: Array2<f32>, spissitudeMap: Array2<f32>,
+                    height_map: Array2<f32>, spissitude_map: Array2<f32>,
                     position: Array1<f32>) -> Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
@@ -542,11 +541,6 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     // dims refers to the size of the terrain. res is the number of cells
     // dividing our terrain in each direction. Perhaps replace this argument with
     // something more along the traditional def of resolution?
-
-    // Note: When visually setting up a heighmap array, the z position
-    // appears backwards from what you might expect.
-
-    // todo: Add this to rust.
 
     let mut vertices = HashMap::new();
     let mut id = 0;
@@ -556,8 +550,8 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     for i in 0..res {  // x
         let mut z = -dims.1 / 2.;
         for j in 0..res {  // z
-            let height = heightMap[[i as usize, j as usize]];
-            let spissitude = spissitudeMap[[i as usize, j as usize]];
+            let height = height_map[[i as usize, j as usize]];
+            let spissitude = spissitude_map[[i as usize, j as usize]];
             // todo handle missing values?
             // You could change which planes this is over by rearranging
             // these node points.
@@ -575,6 +569,7 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
 
     let mut edges = Vec::new();
     let mut faces = Vec::new();  // todo later
+    let mut normals = Vec::new();
 
     let mut row_adder = 0;
     // Faces for this terrain are triangles. Don't try to make square faces;
@@ -606,12 +601,35 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
         row_adder += res;
     }
 
-    let normals = vec![  // wrong!
-        Normal::new(0., 0., 1., 0.),
-    ];
-
     return Shape::new(vertices, edges, faces, faces_vert, normals, position,
         array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.])
+}
+
+pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
+                                    spissitude_map: Array3<f32>,
+                                    position: Array1<f32>) -> HashMap<u32, Shape> {
+    // Position is the center.
+    // todo incorporate position.
+    let mut result = HashMap::new();
+
+    let mut x = -dims.0 / 2.;
+    for i in 0..res {  // x
+        let mut y = -dims.1 / 2.;
+        for j in 0..res {  // y
+            let mut z = -dims.2 / 2.;
+            for k in 0..res {  // z
+                result.insert(
+                    res.pow(2) * i + res * j + k,
+                    make_cube(0.5, array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
+                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.])
+                );
+                z += dims.2 / res as f32
+            }
+            y += dims.1 / res as f32
+        }
+        x += dims.0 / res as f32
+    }
+    return result
 }
 
 #[cfg(test)]

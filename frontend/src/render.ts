@@ -153,23 +153,24 @@ function drawScene(
                 viewMatrix
             )
             gl.uniform1f(programInfo.uniformLocations.colorMax, state.colorMax)
-            gl.uniform1f(programInfo.uniformLocations.ambientStrength, state.ambientStrength)
+            gl.uniform1f(programInfo.uniformLocations.ambientIntensity, state.lighting.ambientIntensity)
+            gl.uniform1f(programInfo.uniformLocations.specularIntensity, state.lighting.specularIntensity)
 
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
                 new Float32Array(state.cam.position))
             gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
-                state.ambientLightColor)
+                state.lighting.ambientColor)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightColor,
-                state.diffuseLightColor)
+                state.lighting.diffuseColor)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightDirection,
-                state.diffuseLightDirection)
+                state.lighting.diffuseDirection)
 
             {
                 const type = gl.UNSIGNED_SHORT
                 const offset = 0
-                const vertexCount = shape.getTris().length
+                const vertexCount = shape.tris.length
 
                 gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
             }
@@ -233,7 +234,7 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
             // position.
             indices = []
             indexModifier = 0
-            tri_indices = shape.getTris().map(ind => ind + indexModifier)
+            tri_indices = shape.tris.map(ind => ind + indexModifier)
             indices.push(...tri_indices)
             indexModifier += shape.numFaceVerts()
 
@@ -360,22 +361,21 @@ export function main() {
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
 
-    // Overall settings here.
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
-
-    // These settings affect transparency.
     gl.clearDepth(1.0)                 // Clear everything
-    // gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
-    // Depth testing should be off for our shapes to be transparent.
-    gl.disable(gl.DEPTH_TEST)
-    // gl.disable(gl.CULL_FACE)  // transparency TS
 
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    // gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-    // gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.CULL_FACE)
+    gl.enable(gl.DEPTH_TEST)
+    gl.disable(gl.DITHER)
+    gl.disable(gl.POLYGON_OFFSET_FILL)
+    gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE)
+    gl.disable(gl.SAMPLE_COVERAGE)
+    gl.disable(gl.SCISSOR_TEST)
+    gl.disable(gl.STENCIL_TEST)
 
-    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.depthFunc(gl.LEQUAL)            // Near things obscure far things
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
@@ -396,14 +396,14 @@ export function main() {
         program: shaderProgram,
         skyboxProgram: shaderSkybox,
         attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'a_vertex_position'),
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'a_position'),
             normal: gl.getAttribLocation(shaderProgram, 'a_normal'),
             // skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
-            projectionMatrix: gl.getUniformLocation(shaderProgram, 'u_projection_matrix'),
-            modelMatrix: gl.getUniformLocation(shaderProgram, 'u_model_matrix'),
-            viewMatrix: gl.getUniformLocation(shaderProgram, 'u_view_matrix'),
+            projectionMatrix: gl.getUniformLocation(shaderProgram, 'u_proj'),
+            modelMatrix: gl.getUniformLocation(shaderProgram, 'u_model'),
+            viewMatrix: gl.getUniformLocation(shaderProgram, 'u_view'),
 
             shapePosition: gl.getUniformLocation(shaderProgram, 'u_shape_position'),
             camPosition: gl.getUniformLocation(shaderProgram, 'u_cam_position'),
@@ -411,8 +411,9 @@ export function main() {
             diffuseLightColor: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_color'),
             diffuseLightDirection: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_direction'),
 
+            ambientIntensity: gl.getUniformLocation(shaderProgram, 'u_ambient_intensity'),
+            specularIntensity: gl.getUniformLocation(shaderProgram, 'u_specular_intensity'),
             colorMax: gl.getUniformLocation(shaderProgram, 'u_color_max'),
-            ambientStrength: gl.getUniformLocation(shaderProgram, 'u_ambient_strength'),
         },
     }
 

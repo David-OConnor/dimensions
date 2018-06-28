@@ -59,22 +59,8 @@ export class Shape {
         this.rotation_speed = rotation_speed
         // this.perFaceVertices = this.makePerFaceVertices()
         this.tris = []
-    }
-    //
-    // getPerFaceVertices(): Float32Array {
-    //     // get cached triangles if avail; if not, create and cache.
-    //     if (!this.perFaceVertices.length) {
-    //         this.makePerFaceVertices()
-    //     }
-    //     return this.perFaceVertices
-    // }
 
-    getTris(): number[] {
-        // get cached triangles if avail; if not, create and cache.
-        if (!this.tris.length) {
-            this.makeTris()
-        }
-        return this.tris
+        this.makeTris()
     }
 
     makeTris() {
@@ -140,15 +126,23 @@ export class Camera {
     }
 }
 
+export interface Lighting {
+    ambientIntensity: number,
+    diffuseIntensity: number,
+    specularIntensity: number,
+    ambientColor: number[],
+    diffuseColor: number[],
+    // Direction doesn't have to be normalized; we do that in the shader.
+    diffuseDirection: number[],
+}
+
 export interface Scene {
     id: number,
     shapes: Map<number, Shape>,
     camStart: Camera,
     camType: string,  // 'single', 'fps', or 'ffree'
-    ambientLightColor: Float32Array,
-    diffuseLightColor: Float32Array,
-    diffuseLightDirection: Float32Array,
     colorMax: number, // distance thresh for max 4d-color indicator.
+    lighting: Lighting,
 }
 
 export interface MainState {

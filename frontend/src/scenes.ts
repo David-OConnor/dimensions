@@ -3,12 +3,21 @@
 
 import * as shapeMaker from './shapeMaker';
 import * as state from './state';
-import {Camera, Scene} from './types'
+import {Camera, Lighting, Scene} from './types'
 
 const τ = 2 * Math.PI
 const EMPTY = new Float32Array([0, 0, 0, 0])
 
 const ASPECT = 4 / 3;  // this must match gl canvas width and height.
+
+const baseLighting: Lighting = {
+            ambientIntensity: 0.4,
+            diffuseIntensity: 0.3,
+            specularIntensity: 0.3,
+            ambientColor: [1.0, 1.0, 1.0, 0.4],
+            diffuseColor: [0., 1., 0., 0.2],
+            diffuseDirection: [1., 0., 0., 0.],
+}
 
 function make2dGridEmpty(size: number): number[][] {
     // todo we have make3d grids in scenes.
@@ -111,11 +120,8 @@ let hypercubeScene: Scene
             1.0,
         ),
         camType: 'single',
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.2, 0.5]),
-        diffuseLightColor: new Float32Array([0., 1., 0., 0.5]),
-        // diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
-        diffuseLightDirection: new Float32Array([0., -1., 0., 0.]),
-        colorMax: 0.4
+        colorMax: 0.4,
+        lighting: baseLighting
     }
 }
 
@@ -192,10 +198,8 @@ let worldScene: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
-        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
-        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
-        colorMax: 10.
+        colorMax: 10.,
+        lighting: baseLighting
     }
 
 }
@@ -253,17 +257,15 @@ let townScene: Scene
             1.0,
         ),
         camType: 'fps',
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
-        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
-        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
-        colorMax: 10.
+        colorMax: 10.,
+        lighting: baseLighting
     }
 }
 
 let gridScene: Scene
 {
     const gridSize = 14
-    const shapes = shapeMaker.make_cube_hypergrid([200, 200, 200], gridSize, make3dGridEmpty(gridSize), EMPTY)
+    const shapes = shapeMaker.makeHypergrid([200, 200, 200], gridSize, make3dGridEmpty(gridSize), EMPTY)
 
     gridScene = {
         id: 3,
@@ -279,10 +281,8 @@ let gridScene: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
-        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
-        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 30,
+        lighting: baseLighting
     }
 }
 
@@ -316,7 +316,7 @@ let gridSceneWarped: Scene
     ]
 
     const gridSize = 8
-    const shapes = shapeMaker.make_cube_hypergrid([20, 20, 20], gridSize, mapTest3dWarped, EMPTY)
+    const shapes = shapeMaker.makeHypergrid([20, 20, 20], gridSize, mapTest3dWarped, EMPTY)
 
     gridSceneWarped = {
         id: 3,
@@ -332,17 +332,15 @@ let gridSceneWarped: Scene
             1.0,
         ),
         camType: 'free',
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.4, 1.]),
-        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
-        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
         colorMax: 30,
+        lighting: baseLighting
     }
 }
 
 let gridScene4d: Scene
 {
     const gridSize = 10
-    const shapes = shapeMaker.make_cube_hypergrid_4d([200, 200, 200, 200], gridSize, make4dGridEmpty(gridSize), EMPTY)
+    const shapes = shapeMaker.makeCubeHypergrid4d([200, 200, 200, 200], gridSize, make4dGridEmpty(gridSize), EMPTY)
 
     gridScene4d = {
         id: 3,
@@ -358,13 +356,8 @@ let gridScene4d: Scene
             1.0,
         ),
         camType: 'free',
-
-        // todo combine these lighting settings into an interface.
-        ambientLightColor: new Float32Array([0.2, 0.2, 0.2, 1.]),
-        diffuseLightColor: new Float32Array([1., 1., 1., 1.]),
-        diffuseLightDirection: new Float32Array([1./Math.sqrt(2.), -1./Math.sqrt(2.), 0., 0.]),
-
         colorMax: 30,
+        lighting: baseLighting
     }
 }
 
@@ -387,5 +380,5 @@ export function setScene(sceneId: [number, number]) {
     state.setCamType(scene.camType)
     state.setShapes(scene.shapes)
     state.setColorMax(scene.colorMax)
-    state.setLighting(scene.ambientLightColor, scene.diffuseLightColor, scene.diffuseLightDirection)
+    state.setLighting(scene.lighting)
 }

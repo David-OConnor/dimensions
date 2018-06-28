@@ -99,42 +99,17 @@ fn print_type_of<T>(_: &T) {
 }
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
-(Arc<CpuAccessibleBuffer<[u32]>>, Arc<CpuAccessibleBuffer<[VertAndExtras]>>) {
+        (Arc<CpuAccessibleBuffer<[u32]>>, Arc<CpuAccessibleBuffer<[VertAndExtras]>>) {
     // TODO you should probably move vertex buffer to staticbuffers like in javascript.
-    let index_buffer = {
-        let mut indices = Vec::new();
-        let mut indexModifier = 0;
+    let mut indices = Vec::new();
+    let mut vertex_info = Vec::new();
+    let mut index_modifier = 0;
 
-        for (s_id, shape) in shapes {
-            let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + indexModifier).collect();
-            indices.append(&mut tri_indices);
-            indexModifier += shape.num_face_verts();
-
-        }
-        println!("Indices: {:?}", &indices.len());
-        CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                           indices.iter().cloned())
-            .expect("Failed to create index buffer")
-    };
-
-//    let mut vertices = Vec::new();
-//    let mut normals = Vec::new();
-//    for (s_id, shape) in shapes {
-//        for (i, face) in shape.faces_vert.iter().enumerate() {
-//            for vert_id in face {
-//                vertices.push(shape.vertices[vert_id]);
-//                // The normals is the same for all vertices on the face.
-//                normals.push(shape.normals[i].clone());
-//            }
-//            normals.push(shape.normals[i].clone());
-//            normals.push(shape.normals[i].clone());
-//        }
-//    }
-
-    // todo you could combine this loop with index buffer creation loop
-
-    let mut mixed_info = Vec::new();
     for (s_id, shape) in shapes {
+        let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + index_modifier).collect();
+        indices.append(&mut tri_indices);
+        index_modifier += shape.num_face_verts();
+
         for (i, face) in shape.faces_vert.iter().enumerate() {
             for vert_id in face {
                 let v = shape.vertices[vert_id].position;
@@ -142,57 +117,26 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
                 let info = VertAndExtras {
                     position: (v.0, v.1, v.2, v.3),
                     shape_posit: (shape.position[0], shape.position[1],
-                                   shape.position[2], shape.position[3]),
+                                  shape.position[2], shape.position[3]),
                     normal: (shape.normals[i].normal.0, shape.normals[i].normal.1,
-                              shape.normals[i].normal.2, shape.normals[i].normal.3)
+                             shape.normals[i].normal.2, shape.normals[i].normal.3)
                 };
-                mixed_info.push(info);
+                vertex_info.push(info);
             }
         }
+
     }
+    let index_buffer = CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                     indices.iter().cloned())
+        .expect("Failed to create index buffer");
 
      // todo .cloned ?
     let vertex_buffer = CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), mixed_info.iter().cloned())
+        device.clone(), buffer::BufferUsage::all(), vertex_info.iter().cloned())
         .expect("failed to create vertex buffer");
-//
-//    let normals_buffer = CpuAccessibleBuffer::from_iter(
-//        device, buffer::BufferUsage::all(), normals.iter().cloned())
-//        .expect("failed to create buffer");
 
     (index_buffer, vertex_buffer)
-//    (index_buffer, vertex_buffer, normals_buffer)
 }
-
-//pub fn make_per_frame_buffers(shapes: &HashMap<u32, Shape>, cam: &Camera, device: Arc<device::Device>) ->
-//        Arc<CpuAccessibleBuffer<[VertAndExtras]>>
-//    {
-//    let mut shape_vertices = Vec::new();
-//    for (s_id, shape) in shapes {
-//        for (i, face) in shape.faces_vert.iter().enumerate() {
-//            for vert_id in face {
-//                let v = shape.vertices[vert_id].position;
-//                // todo Vertice position can be done in static buffers!
-//                let info = VertAndExtras {
-//                    position: (v.0, v.1, v.2, v.3),
-//                    shape_posit: (shape.position[0], shape.position[1],
-//                                   shape.position[2], shape.position[3]),
-//                    normal2: (shape.normals[i].normal.0, shape.normals[i].normal.1,
-//                               shape.normals[i].normal.2, shape.normals[i].normal.3)
-//                };
-//                shape_vertices.push(info);
-//            }
-//        }
-//    }
-//
-//     // todo .cloned ?
-//    let extras_buffer = CpuAccessibleBuffer::from_iter(
-//        device.clone(), buffer::BufferUsage::all(), shape_vertices.iter().cloned())
-//        .expect("failed to create vertex buffer");
-//
-//    extras_buffer
-//}
-
 
 pub fn render() {
     // todo for now, we'll keep state in this func.
@@ -201,26 +145,17 @@ pub fn render() {
     let aspect = WIDTH as f32 / HEIGHT as f32;
 
     // todo take the scene as an arg to this func?
-    let scene = scenes::hypercube_scene(aspect);
+//    let scene = scenes::hypercube_scene(aspect);
 //    let scene = scenes::fivecell_scene(aspect);
 //    let scene = scenes::cube_scene(aspect);
 //    let mut scene = scenes::world_scene(aspect);
+    let mut scene = scenes::grid_scene(aspect);
 
     let mut shapes = scene.shapes.clone();
     let mut cam = scene.cam_start.clone();
     let mut cam_type = scene.cam_type.clone();
     let color_max = scene.color_max;
-
-    let ambient_intensity = 0.5;
-    let specular_intensity = 0.3; // todo this should be shape or face-specific.
-
-    let ambient_light_color = scene.ambient_light_color;
-    let diffuse_light_color = scene.diffuse_light_color;
-    let diffuse_light_direction = scene.diffuse_light_direction;
-
-    for (id, shape) in &mut shapes {
-        shape.make_tris();
-    }
+    let lighting = scene.lighting;
 
     let mut currently_pressed: Vec<u32> = Vec::new();
 
@@ -425,23 +360,25 @@ pub fn render() {
     // Before we draw we have to create what is called a pipeline. This is similar to an OpenGL
     // program, but much more specific.
     // Info on what we can configure here: https://docs.rs/vulkano/0.7.2/vulkano/pipeline/struct.GraphicsPipelineBuilder.html
+    // Leaving default options explicit here to make it easier to configure.
     let pipeline_ = Arc::new(pipeline::GraphicsPipeline::start()
-        // We need to indicate the layout of the vertices.
-        // The type `SingleBufferDefinition` actually contains a template parameter corresponding
-        // to the type of each vertex. But in this code it is automatically inferred.
         .vertex_input_single_buffer() // todo
-//        .vertex_input(pipeline::vertex::TwoBuffersDefinition::new())  // todo rexamein
         // A Vulkan shader can in theory contain multiple entry points, so we have to specify
         // which one. The `main` word of `main_entry_point` actually corresponds to the name of
         // the entry point.
         .vertex_shader(vs.main_entry_point(), ())
         // The content of the vertex buffer describes a list of triangles.
         .triangle_list()
-        .blend_alpha_blending()
         // Use a resizable viewport set to draw over the entire window
         .viewports_dynamic_scissors_irrelevant(1)
         // See `vertex_shader`.
+        .cull_mode_disabled()
+        .polygon_mode_fill()
+        .sample_shading_disabled()
+//        .alpha_to_one_disabled()
+        .blend_alpha_blending()
         .fragment_shader(fs.main_entry_point(), ())
+        .depth_stencil_disabled()
 //        .depth_stencil_simple_depth()  // Don't use depth_stencil for transparent shapes.
         // We have to indicate which subpass of which render pass this pipeline is going to be used
         // in. The pipeline will only be usable from this particular subpass.
@@ -550,12 +487,13 @@ pub fn render() {
                 proj: proj_mat,
                 cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
 
-                ambient_light_color,
-                diffuse_light_color,
-                diffuse_light_direction,
+                ambient_light_color: lighting.ambient_color,
+                diffuse_light_color: lighting.diffuse_color,
+                diffuse_light_direction: lighting.diffuse_direction,
 
-                ambient_intensity,
-                specular_intensity,
+                ambient_intensity: lighting.ambient_intensity,
+                diffuse_intensity: lighting.diffuse_intensity,
+                specular_intensity: lighting.specular_intensity,
                 color_max,
 
             };

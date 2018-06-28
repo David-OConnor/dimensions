@@ -1,5 +1,5 @@
 import * as shapeMaker from "./shapeMaker";
-import {Camera, Shape} from "./types";
+import {Camera, Lighting, Shape} from "./types";
 
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
@@ -27,10 +27,14 @@ export let camType = 'single'
 export let shapes = new Map()
 export let colorMax = 15.  // At this z distance, our blue/red shift fully saturated.
 
-export let ambientStrength = 0.5
-export let ambientLightColor = new Float32Array([1., 1., 1., 1.])
-export let diffuseLightColor = new Float32Array([0., 1., 0., 0.])
-export let diffuseLightDirection = new Float32Array([1., 0., 0., 0.])
+export let lighting: Lighting = {
+            ambientIntensity: 0.4,
+            diffuseIntensity: 0.4,
+            specularIntensity: 0.3,
+            ambientColor: [1.0, 1.0, 1.0, 0.4],
+            diffuseColor: [0., 1., 0., 0.2],
+            diffuseDirection: [1., 0., 0., 0.],
+}
 
 export let skybox = shapeMaker.make_skybox(100, cam.position)
 
@@ -45,10 +49,8 @@ export function setShapes(shapes_: Map<number, Shape>) {
     shapes = shapes_
 }
 
-export function setLighting(ambientColor: Float32Array, diffuseColor: Float32Array, direction: Float32Array) {
-    ambientLightColor = ambientColor
-    diffuseLightColor = diffuseColor
-    diffuseLightDirection = direction
+export function setLighting(lighting_: Lighting) {
+    lighting = lighting_
 }
 
 export function setCam(cam_: Camera) {
