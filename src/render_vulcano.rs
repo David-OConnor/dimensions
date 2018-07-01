@@ -48,7 +48,7 @@ const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
 const MOVE_SENSITIVITY: f32 = 1.0;  // units per second
-const ROTATE_SENSITIVITY: f32 = 0.8;  // radians per second
+const ROTATE_SENSITIVITY: f32 = 0.6;  // radians per second
 
 const τ: f32 = 2. * PI;
 //
@@ -99,7 +99,7 @@ fn print_type_of<T>(_: &T) {
 }
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
-(HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
+        (HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
     // TODO you should probably move vertex buffer to staticbuffers like in javascript.
     let mut indices = Vec::new();
     let mut vertex_info = Vec::new();
@@ -126,11 +126,11 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
                 vertex_info.push(info);
             }
         }
+
         let index_buffer = CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                          indices.iter().cloned())
+                                                           indices.iter().cloned())
             .expect("Failed to create index buffer");
 
-        // todo .cloned ?
         let vertex_buffer = CpuAccessibleBuffer::from_iter(
             device.clone(), buffer::BufferUsage::all(), vertex_info.iter().cloned())
             .expect("failed to create vertex buffer");
@@ -149,11 +149,11 @@ pub fn render() {
     let aspect = WIDTH as f32 / HEIGHT as f32;
 
     // todo take the scene as an arg to this func?
-    let scene = scenes::hypercube_scene(aspect);
+//    let scene = scenes::hypercube_scene(aspect);
 //    let scene = scenes::fivecell_scene(aspect);
 //    let scene = scenes::cube_scene(aspect);
 //    let scene = scenes::pyramid_scene(aspect);
-//    let mut scene = scenes::world_scene(aspect);
+    let scene = scenes::world_scene(aspect);
 //    let scene = scenes::grid_scene(aspect);
 
     let mut shapes = scene.shapes.clone();
@@ -313,9 +313,6 @@ pub fn render() {
     // An overview of what the `VulkanoShader` derive macro generates can be found in the
     // `vulkano-shader-derive` crate docs. You can view them at
     // https://docs.rs/vulkano-shader-derive/*/vulkano_shader_derive/
-    //
-    // TODO: explain this in details
-
     let vs = shaders::vs::Shader::load(device_.clone()).expect("failed to create shader module");
     let fs = shaders::fs::Shader::load(device_.clone()).expect("failed to create shader module");
 
@@ -420,6 +417,24 @@ pub fn render() {
     let mut previous_frame = Box::new(sync::now(device_.clone())) as Box<sync::GpuFuture>;
 
     let mut prev_frame_start = time::Instant::now();
+
+    let static_uniforms = shaders::vs::ty::Data {
+        // view matrix will change per frame; model will change per shape.
+        model: transforms::I4(),
+        view: transforms::I4(),
+        proj: proj_mat2.into(),
+        cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
+
+        ambient_light_color: lighting.ambient_color,
+        diffuse_light_color: lighting.diffuse_color,
+        diffuse_light_direction: lighting.diffuse_direction,
+
+        ambient_intensity: lighting.ambient_intensity,
+        diffuse_intensity: lighting.diffuse_intensity,
+        specular_intensity: lighting.specular_intensity,
+        color_max,
+    };
+
     loop {
         // delta_time is inverse frame rate. Used for making movements and
         // rotations dependent on time rather than frame rate.
@@ -471,25 +486,6 @@ pub fn render() {
             std::mem::replace(&mut framebuffers, new_framebuffers);
         }
 
-        // Update the view matrix once per frame.
-        let view_mat = transforms::make_view_mat4(&cam);
-
-//        let mut model_mats = HashMap::new();
-//        for (id, shape) in &shapes {
-//            model_mats.insert(*id as u32, transforms::make_model_mat4(shape));
-//        }
-        // Updadate per-frame buffers
-        // todo currently duping vertex pos and normals in both index and static buffs.
-//        let vertex_buffer = make_per_frame_buffers(&shapes, &cam, device_.clone());
-
-//        let model_mat = transforms::make_model_mat4(&shapes[&0]);
-
-        // Rotate shapes.
-//        for (id, shape) in &mut shapes {
-//            shape.orientation += &(&shape.rotation_speed * delta_time);
-//        }
-
-
         // Before we can draw on the output, we have to *acquire* an image from the swapchain. If
         // no image is available (which happens if you submit draw commands too quickly), then the
         // function will block.
@@ -497,8 +493,7 @@ pub fn render() {
         //
         // This function can block if no image is available. The parameter is an optional timeout
         // after which the function call will return an error.
-        let (image_num, acquire_future) = match swapchain::acquire_next_image(swapchain_.clone(),
-                                                                              None) {
+        let (image_num, acquire_future) = match swapchain::acquire_next_image(swapchain_.clone(), None) {
             Ok(r) => r,
             Err(swapchain::AcquireError::OutOfDate) => {
                 recreate_swapchain = true;
@@ -507,9 +502,8 @@ pub fn render() {
             Err(err) => panic!("{:?}", err)
         };
 
-        let command_buffer_ = command_buffer::AutoCommandBufferBuilder::primary_one_time_submit(
-            device_.clone(), queue.family())
-            .unwrap()
+        let mut command_buffer_ = command_buffer::AutoCommandBufferBuilder::primary_one_time_submit(
+            device_.clone(), queue.family()).unwrap()
             // Before we can draw, we have to *enter a render pass*. There are two methods to do
             // this: `draw_inline` and `draw_secondary`. The latter is a bit more advanced and is
             // not covered here.
@@ -522,27 +516,19 @@ pub fn render() {
                 vec![
                     [1.0, 1.0, 1.0, 1.0].into(),
                     1f32.into()
-                ]).unwrap();
+                ]
+            ).unwrap();
 
-
+        // Update the view matrix once per frame.
+        let view_mat = transforms::make_view_mat4(&cam);
         for (shape_id, shape) in &shapes {
-            let model_mat = transforms::make_model_mat4(shape);
-
+            println!("SHAPE");
             let uniform_buffer_subbuffer = {
                 let uniform_data = shaders::vs::ty::Data {
-                    model: model_mat,
+                    model: transforms::make_model_mat4(shape),
                     view: view_mat,
-                    proj: proj_mat,
                     cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
-
-                    ambient_light_color: lighting.ambient_color,
-                    diffuse_light_color: lighting.diffuse_color,
-                    diffuse_light_direction: lighting.diffuse_direction,
-
-                    ambient_intensity: lighting.ambient_intensity,
-                    diffuse_intensity: lighting.diffuse_intensity,
-                    specular_intensity: lighting.specular_intensity,
-                    color_max,
+                    ..static_uniforms
                 };
 
                 uniform_buffer.next(uniform_data).unwrap()
@@ -553,14 +539,12 @@ pub fn render() {
                 .build().unwrap()
             );
 
-
-
             // We are now inside the first subpass of the render pass. We add a draw command.
             //
             // The last two parameters contain the list of resources to pass to the shaders.
             // Since we used an `EmptyPipeline` object, the objects have to be `()`.
 
-            command_buffer_.draw_indexed(
+            command_buffer_ = command_buffer_.draw_indexed(
                 pipeline_.clone(),
                 command_buffer::DynamicState {
                     line_width: None,
@@ -571,19 +555,18 @@ pub fn render() {
                     }]),
                     scissors: None,
                 },
-                //                (vertex_buffer.clone(), normals_buffer.clone()),
                 vertex_buffers[shape_id].clone(),
-                index_buffers[shape_id].clone(), set.clone(), ()).unwrap()
-
-                // We leave the render pass by calling `draw_end`. Note that if we had multiple
-                // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
-                // next subpass.
-                .end_render_pass().unwrap()
-                // Finish building the command buffer by calling `build`.
-                .build().unwrap();
-
-            shape.orientation += &(&shape.rotation_speed * delta_time);
+                index_buffers[shape_id].clone(), set, ()
+            ).unwrap();
         }
+
+        let final_cb = command_buffer_.end_render_pass().unwrap()
+
+        // We leave the render pass by calling `draw_end`. Note that if we had multiple
+        // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
+        // next subpass.
+        // Finish building the command buffer by calling `build`.
+        .build().unwrap();
 
         // In order to draw, we have to build a *command buffer*. The command buffer object holds
         // the list of commands that are going to be executed.
@@ -596,7 +579,7 @@ pub fn render() {
         // buffer will only be executable on that given queue family.
 
         let future = previous_frame.join(acquire_future)
-            .then_execute(queue.clone(), command_buffer_).unwrap()
+            .then_execute(queue.clone(), final_cb).unwrap()
 
             // The color output is now expected to contain our triangle. But in order to show it on
             // the screen, we have to *present* the image by calling `present`.
@@ -621,6 +604,11 @@ pub fn render() {
             }
         }
 
+        // Rotate shapes.
+        for (id, shape) in &mut shapes {
+            shape.orientation += &(&shape.rotation_speed * delta_time);
+        }
+
         // Note that in more complex programs it is likely that one of `acquire_next_image`,
         // `command_buffer::submit`, or `present` will block for some time. This happens when the
         // GPU's queue is full and the driver has to wait until the GPU finished some work.
@@ -631,7 +619,6 @@ pub fn render() {
 
         // Handling the window events in order to close the program when the user wants to close
         // it.
-        // todo take framerate into account
         let mut done = false;
 
         events_loop.poll_events(|ev| {

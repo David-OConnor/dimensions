@@ -62,26 +62,28 @@ pub fn pyramid_scene(aspect: f32) -> Scene {
 }
 
 pub fn world_scene(aspect: f32) -> Scene {
-    let terrain_res = 600;
-    let terain_size = 200;
-    let noise_type = simdnoise::NoiseType::FBM {
+    let terrain_res = 100;
+    let terrain_size = 200.;
+    let noise_type = simdnoise::NoiseType::Fbm {
         freq: 0.04,
         lacunarity: 0.5,
         gain: 2.0,
         octaves: 3,
     };
-
+//
     let height_map = simdnoise::get_2d_scaled_noise(
-        0., terrain_res, 0., terrain_res, noise_type, -10., 10.
+        0., terrain_res, 0., terrain_res, noise_type.clone(), -15., 15.
     );
     let spiss_map = simdnoise::get_2d_scaled_noise(
         0., terrain_res, 0., terrain_res, noise_type, -10., 10.
     );
-    println!("HM: {}", &height_map);
+
+    let height_map_2d = Array::from_shape_vec((terrain_res, terrain_res), height_map).unwrap();
+    let spiss_map_2d = Array::from_shape_vec((terrain_res, terrain_res), spiss_map).unwrap();
 
     let shape_list = vec![
-        shape_maker.make_terrain((terrain_size, terrain_size), terrain_res as u32,
-                                 height_map, spiss_map, Array::zeros(6)),
+        shape_maker::make_terrain((terrain_size, terrain_size), terrain_res as u32,
+                                  height_map_2d, spiss_map_2d, array![0., -3., 0., 0.]),
 
         shape_maker::make_box((1., 2., 1.), array![-1., 3., 4., 1.],
                               Array::zeros(6), array![0.1, 0.07, 0., 0., 0., 0.]),

@@ -227,6 +227,15 @@ fn make_scaler(scale: f32) -> Array2<f32> {
     ]
 }
 
+pub fn I4() -> [[f32; 4]; 4] {
+    [
+        [1., 0., 0., 0.],
+        [0., 1., 0., 0.],
+        [0., 0., 1., 0.],
+        [0., 0., 0., 1.]
+    ]
+}
+
 fn make_scaler4(scale: f32) -> [[f32; 4]; 4] {
     // Return a scale matrix; the pt must have 1 appended to its end.
     [

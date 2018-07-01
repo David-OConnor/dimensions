@@ -552,14 +552,13 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
         for j in 0..res {  // z
             let height = height_map[[i as usize, j as usize]];
             let spissitude = spissitude_map[[i as usize, j as usize]];
-            // todo handle missing values?
             // You could change which planes this is over by rearranging
             // these node points.
             vertices.insert(id, Vertex::new(
-                x,
-                height,
-                z,
-                spissitude,
+                x + position[0],
+                height + position[1],
+                z + position[2],
+                spissitude + position[3],
             ));
             z += dims.1 / res as f32;
             id += 1;
@@ -576,8 +575,8 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     // they'd really have creases down a diagonal.
     let mut faces_vert = Vec::new();
     // todo need front and right edges of overall terrain.
-    for i in 0..res {
-        for j in 0..res {
+    for i in 0..res - 1 {
+        for j in 0..res - 1 {
             edges.push(Edge {node0: row_adder + j, node1: row_adder + j + 1 });  // edges across constant x
             edges.push(Edge {node0: row_adder + j, node1: row_adder + j + res });  // edges across constant z
 
@@ -590,12 +589,13 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
                     row_adder + j + res + 1  // front left
                 ]
             );
-            let line1 = &vertices[row_adder + j + 1].subtract(&vertices[row_adder + j]);
-            let line2 = &vertices[row_adder + j + res + 1].subtract(&vertices[row_adder + j]);
+
+            let line1 = vertices[&(row_adder + j + 1)].subtract(&vertices[&(row_adder + j)]);
+            let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
 
             // Note: This isn't normalized; we handle that in the shader, for now.
             // todo is this facing the right direction, or reversed?
-            normals.push(&line1.cross(&line2));
+            normals.push(line1.cross(&line2));
 
             faces_vert.push(
                 array![  // shows front left  not j + res, not j
@@ -604,9 +604,9 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
                     row_adder + j + res + 1  // front left
                 ]
             );
-            let line1 = &vertices[row_adder + j + res].subtract(&vertices[row_adder + j]);
-            let line2 = &vertices[row_adder + j + res + 1].subtract(&vertices[row_adder + j]);
-            normals.push(&line1.cross(&line2));
+            let line1 = vertices[&(row_adder + j + res)].subtract(&vertices[&(row_adder + j)]);
+            let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
+            normals.push(line1.cross(&line2));
         }
         row_adder += res;
     }

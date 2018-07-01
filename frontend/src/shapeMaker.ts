@@ -504,9 +504,9 @@ export function makeTerrain(dims: [number, number], res: number,
     let z
     let height, spissitude
     let x = -dims[0] / 2.
-    for (let i=0; i < res; i++) {  // x
+    for (let i=0; i < res - 1; i++) {  // x
         z = -dims[1] / 2.
-        for (let j=0; j < res; j++) {  // z
+        for (let j=0; j < res - 1; j++) {  // z
             height = heightMap[i][j]
             spissitude = spissitudeMap[i][j]
             if (isNaN(height) || isNaN(spissitude)) {
@@ -515,10 +515,10 @@ export function makeTerrain(dims: [number, number], res: number,
             // You could change which planes this is over by rearranging
             // these node points.
             nodes.set(id, new Node2(new Float32Array([
-                x,
-                height,
-                z,
-                spissitude,
+                x + position[0],
+                height + position[1],
+                z + position[2],
+                spissitude + position[3],
             ])))
             z += dims[1] / res
             id += 1

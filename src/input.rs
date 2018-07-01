@@ -44,58 +44,58 @@ pub fn handle_pressed(pressed: &[u32], delta_time: f32,
     for code in pressed {
         match *code {
             17 => {  // W
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Forward, &cam.θ, move_amount)
                 }
             },
             31 => {  // S
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Back, &cam.θ, move_amount)
                 }
             },
             30 => {  // A
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Left, &cam.θ, move_amount)
                 }
             },
             32 => {  // D
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Right, &cam.θ, move_amount)
                 }
             },
             46 => {  // C
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     CameraType::FPS => (),
                     _ => cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount)
                 }
             },
             29 => {  // Lctrl
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     CameraType::FPS => (),
                     _ => cam.position += &move_camera(MoveDirection::Down, &cam.θ, move_amount)
                 }
             },
             57 => {  // Space
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     CameraType::FPS => (),
                     _ => cam.position += &move_camera(MoveDirection::Up, &cam.θ, move_amount)
                 }
             },
             33 => {  // F
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Kata, &cam.θ, move_amount)
                 }
             },
             19 => {  // R
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => (),
                     _ => cam.position += &move_camera(MoveDirection::Ana, &cam.θ, move_amount)
                 }
@@ -104,38 +104,38 @@ pub fn handle_pressed(pressed: &[u32], delta_time: f32,
             // Rotations around Y and Z range from 0 to τ. (clockwise rotation).
             // X rotations range from -τ/4 to τ/4 (Looking straight down to up)
             75 => {  // Left
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[2] -= rotate_amount,
                     _ => cam.θ[2] -= rotate_amount
                 }
             },
             77 => {  // Right
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[2] += rotate_amount,
                     _ => cam.θ[2] += rotate_amount
                 }
             },
             // Don't allow us to look greater than τ/4 up or down.
             80 => {  // Down
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[1] -= rotate_amount,
                     _ => cam.θ[1] -= rotate_amount
                 }
             },
             72 => {  // Up
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[1] += rotate_amount,
                     _ => cam.θ[1] += rotate_amount
                 }
             },
             16 => {  // Q
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[0] -= rotate_amount,
                     _ => cam.θ[0] -= rotate_amount
                 }
             },
             18 => {  // E
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[0] += rotate_amount,
                     _ => cam.θ[0] += rotate_amount
                 }
@@ -143,37 +143,37 @@ pub fn handle_pressed(pressed: &[u32], delta_time: f32,
 
             // 4d rotations
             82 => {  // Ins
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[3] += rotate_amount,
                     _ => cam.θ[3] += rotate_amount
                 }
             },
             83 => {  // Del
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[3] -= rotate_amount,
                     _ => cam.θ[3] -= rotate_amount
                 }
             },
             71 => {  // Home
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[4] += rotate_amount,
                     _ => cam.θ[4] += rotate_amount
                 }
             },
             79 => {  // End
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[4] -= rotate_amount,
                     _ => cam.θ[4] -= rotate_amount
                 }
             },
             73 => {  // Pgup
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[5] += rotate_amount,
                     _ => cam.θ[5] += rotate_amount
                 }
             },
             81 => {  // Pgdn
-                match cam_type {
+                match *cam_type {
                     CameraType::Single => shape.orientation[5] -= rotate_amount,
                     _ => cam.θ[5] -= rotate_amount
                 }
