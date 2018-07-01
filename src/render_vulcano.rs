@@ -99,11 +99,13 @@ fn print_type_of<T>(_: &T) {
 }
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
-        (Arc<CpuAccessibleBuffer<[u32]>>, Arc<CpuAccessibleBuffer<[VertAndExtras]>>) {
+(HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
     // TODO you should probably move vertex buffer to staticbuffers like in javascript.
     let mut indices = Vec::new();
     let mut vertex_info = Vec::new();
     let mut index_modifier = 0;
+    let mut index_buffers = HashMap::new();
+    let mut vertex_buffers = HashMap::new();
 
     for (s_id, shape) in shapes {
         let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + index_modifier).collect();
@@ -124,18 +126,20 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
                 vertex_info.push(info);
             }
         }
+        let index_buffer = CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
+                                                          indices.iter().cloned())
+            .expect("Failed to create index buffer");
 
+        // todo .cloned ?
+        let vertex_buffer = CpuAccessibleBuffer::from_iter(
+            device.clone(), buffer::BufferUsage::all(), vertex_info.iter().cloned())
+            .expect("failed to create vertex buffer");
+
+        index_buffers.insert(*s_id, index_buffer);
+        vertex_buffers.insert(*s_id, vertex_buffer);
     }
-    let index_buffer = CpuAccessibleBuffer::from_iter(device.clone(), buffer::BufferUsage::all(),
-                                                     indices.iter().cloned())
-        .expect("Failed to create index buffer");
 
-     // todo .cloned ?
-    let vertex_buffer = CpuAccessibleBuffer::from_iter(
-        device.clone(), buffer::BufferUsage::all(), vertex_info.iter().cloned())
-        .expect("failed to create vertex buffer");
-
-    (index_buffer, vertex_buffer)
+    (index_buffers, vertex_buffers)
 }
 
 pub fn render() {
@@ -145,15 +149,16 @@ pub fn render() {
     let aspect = WIDTH as f32 / HEIGHT as f32;
 
     // todo take the scene as an arg to this func?
-//    let scene = scenes::hypercube_scene(aspect);
+    let scene = scenes::hypercube_scene(aspect);
 //    let scene = scenes::fivecell_scene(aspect);
 //    let scene = scenes::cube_scene(aspect);
+//    let scene = scenes::pyramid_scene(aspect);
 //    let mut scene = scenes::world_scene(aspect);
-    let mut scene = scenes::grid_scene(aspect);
+//    let scene = scenes::grid_scene(aspect);
 
     let mut shapes = scene.shapes.clone();
     let mut cam = scene.cam_start.clone();
-    let mut cam_type = scene.cam_type.clone();
+    let cam_type = scene.cam_type.clone();
     let color_max = scene.color_max;
     let lighting = scene.lighting;
 
@@ -246,7 +251,7 @@ pub fn render() {
         };
 
         device::Device::new(physical, physical.supported_features(), &device_ext,
-                                     [(queue, 0.5)].iter().cloned()).expect("failed to create device")
+                            [(queue, 0.5)].iter().cloned()).expect("failed to create device")
     };
 
     // Since we can request multiple queues, the `queues` variable is in fact an iterator. In this
@@ -291,8 +296,7 @@ pub fn render() {
     let depth_buffer = image::attachment::AttachmentImage::transient(
         device_.clone(), dimensions, format::D16Unorm).unwrap();
 
-//    let (index_buffer, vertex_buffer, normals_buffer) = make_static_buffers(&shapes, device_.clone());
-    let (index_buffer, vertex_buffer) = make_static_buffers(&shapes, device_.clone());
+    let (index_buffers, vertex_buffers) = make_static_buffers(&shapes, device_.clone());
 
     // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
@@ -300,7 +304,7 @@ pub fn render() {
     let proj_mat2 = cgmath::perspective(cgmath::Rad(cam.fov), cam.aspect, cam.near, cam.far);
 
     let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<shaders::vs::ty::Data>
-                         ::new(device_.clone(), buffer::BufferUsage::all());
+    ::new(device_.clone(), buffer::BufferUsage::all());
 
     // The next step is to create the shaders.
     //
@@ -470,46 +474,21 @@ pub fn render() {
         // Update the view matrix once per frame.
         let view_mat = transforms::make_view_mat4(&cam);
 
-        let mut model_mats = HashMap::new();
-        for (id, shape) in &shapes {
-            model_mats.insert(*id as u32, transforms::make_model_mat4(shape));
-        }
+//        let mut model_mats = HashMap::new();
+//        for (id, shape) in &shapes {
+//            model_mats.insert(*id as u32, transforms::make_model_mat4(shape));
+//        }
         // Updadate per-frame buffers
         // todo currently duping vertex pos and normals in both index and static buffs.
 //        let vertex_buffer = make_per_frame_buffers(&shapes, &cam, device_.clone());
 
-        let model_mat = transforms::make_model_mat4(&shapes[&0]);
-
-        let uniform_buffer_subbuffer = {
-            let uniform_data = shaders::vs::ty::Data {
-                model: model_mat,
-                view: view_mat,
-                proj: proj_mat,
-                cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
-
-                ambient_light_color: lighting.ambient_color,
-                diffuse_light_color: lighting.diffuse_color,
-                diffuse_light_direction: lighting.diffuse_direction,
-
-                ambient_intensity: lighting.ambient_intensity,
-                diffuse_intensity: lighting.diffuse_intensity,
-                specular_intensity: lighting.specular_intensity,
-                color_max,
-
-            };
-
-            uniform_buffer.next(uniform_data).unwrap()
-        };
+//        let model_mat = transforms::make_model_mat4(&shapes[&0]);
 
         // Rotate shapes.
-        for (id, shape) in &mut shapes {
-            shape.orientation += &(&shape.rotation_speed * delta_time);
-        }
+//        for (id, shape) in &mut shapes {
+//            shape.orientation += &(&shape.rotation_speed * delta_time);
+//        }
 
-        let set = Arc::new(descriptor::descriptor_set::PersistentDescriptorSet::start(pipeline_.clone(), 0)
-            .add_buffer(uniform_buffer_subbuffer).unwrap()
-            .build().unwrap()
-        );
 
         // Before we can draw on the output, we have to *acquire* an image from the swapchain. If
         // no image is available (which happens if you submit draw commands too quickly), then the
@@ -528,15 +507,6 @@ pub fn render() {
             Err(err) => panic!("{:?}", err)
         };
 
-        // In order to draw, we have to build a *command buffer*. The command buffer object holds
-        // the list of commands that are going to be executed.
-        //
-        // Building a command buffer is an expensive operation (usually a few hundred
-        // microseconds), but it is known to be a hot path in the driver and is expected to be
-        // optimized.
-        //
-        // Note that we have to pass a queue family when we create the command buffer. The command
-        // buffer will only be executable on that given queue family.
         let command_buffer_ = command_buffer::AutoCommandBufferBuilder::primary_one_time_submit(
             device_.clone(), queue.family())
             .unwrap()
@@ -551,15 +521,46 @@ pub fn render() {
                 framebuffers.as_ref().unwrap()[image_num].clone(), false,
                 vec![
                     [1.0, 1.0, 1.0, 1.0].into(),
-                1f32.into()
-                ]).unwrap()
+                    1f32.into()
+                ]).unwrap();
+
+
+        for (shape_id, shape) in &shapes {
+            let model_mat = transforms::make_model_mat4(shape);
+
+            let uniform_buffer_subbuffer = {
+                let uniform_data = shaders::vs::ty::Data {
+                    model: model_mat,
+                    view: view_mat,
+                    proj: proj_mat,
+                    cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
+
+                    ambient_light_color: lighting.ambient_color,
+                    diffuse_light_color: lighting.diffuse_color,
+                    diffuse_light_direction: lighting.diffuse_direction,
+
+                    ambient_intensity: lighting.ambient_intensity,
+                    diffuse_intensity: lighting.diffuse_intensity,
+                    specular_intensity: lighting.specular_intensity,
+                    color_max,
+                };
+
+                uniform_buffer.next(uniform_data).unwrap()
+            };
+
+            let set = Arc::new(descriptor::descriptor_set::PersistentDescriptorSet::start(pipeline_.clone(), 0)
+                .add_buffer(uniform_buffer_subbuffer).unwrap()
+                .build().unwrap()
+            );
+
+
 
             // We are now inside the first subpass of the render pass. We add a draw command.
             //
             // The last two parameters contain the list of resources to pass to the shaders.
             // Since we used an `EmptyPipeline` object, the objects have to be `()`.
 
-            .draw_indexed(
+            command_buffer_.draw_indexed(
                 pipeline_.clone(),
                 command_buffer::DynamicState {
                     line_width: None,
@@ -570,16 +571,29 @@ pub fn render() {
                     }]),
                     scissors: None,
                 },
-//                (vertex_buffer.clone(), normals_buffer.clone()),
-                vertex_buffer.clone(),
-                index_buffer.clone(), set.clone(), ()).unwrap()
+                //                (vertex_buffer.clone(), normals_buffer.clone()),
+                vertex_buffers[shape_id].clone(),
+                index_buffers[shape_id].clone(), set.clone(), ()).unwrap()
 
-            // We leave the render pass by calling `draw_end`. Note that if we had multiple
-            // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
-            // next subpass.
-            .end_render_pass().unwrap()
-            // Finish building the command buffer by calling `build`.
-            .build().unwrap();
+                // We leave the render pass by calling `draw_end`. Note that if we had multiple
+                // subpasses we could have called `next_inline` (or `next_secondary`) to jump to the
+                // next subpass.
+                .end_render_pass().unwrap()
+                // Finish building the command buffer by calling `build`.
+                .build().unwrap();
+
+            shape.orientation += &(&shape.rotation_speed * delta_time);
+        }
+
+        // In order to draw, we have to build a *command buffer*. The command buffer object holds
+        // the list of commands that are going to be executed.
+        //
+        // Building a command buffer is an expensive operation (usually a few hundred
+        // microseconds), but it is known to be a hot path in the driver and is expected to be
+        // optimized.
+        //
+        // Note that we have to pass a queue family when we create the command buffer. The command
+        // buffer will only be executable on that given queue family.
 
         let future = previous_frame.join(acquire_future)
             .then_execute(queue.clone(), command_buffer_).unwrap()

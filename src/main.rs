@@ -13,18 +13,18 @@
 // todo temp:
 #![feature(core_intrinsics)]
 
+extern crate cgmath;
+extern crate simdnoise;
 #[macro_use]
 extern crate ndarray;
 
 // Vulkano
-extern crate cgmath;
-extern crate image;
 #[macro_use]
 extern crate vulkano;
 #[macro_use]
 extern crate vulkano_shader_derive;
-extern crate winit;
 extern crate vulkano_win;
+extern crate winit;
 
 use std::collections::HashMap;
 

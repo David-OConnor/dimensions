@@ -46,7 +46,7 @@ export const vsSource = `
         }
         
         float base_gray = 0.0;
-        float color_val = base_gray + portion_through * 1. - base_gray;
+        float color_val = base_gray + portion_through;
         
         vec4 f_color;
         if (u_dist > 0.) {

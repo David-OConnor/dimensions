@@ -8,10 +8,12 @@
     "@types/react-bootstrap": "^0.32.9",
     "gl-matrix": "^2.6.1",
     "history": "^4.7.2",
+    "mime": "^2.3.1",
     "react": "^16.3.2",
     "react-bootstrap": "^0.32.1",
     "react-dom": "^16.3.2",
     "react-redux": "^5.0.7",
+    "react-scripts": "1.1.4",
     "react-scripts-ts": "2.15.1",
     "react-spinkit": "^3.0.0",
     "react-three": "^0.9.7",
@@ -22,7 +24,6 @@
     "build": "react-scripts-ts build",
     "test": "react-scripts-ts test --env=jsdom",
     "eject": "react-scripts-ts eject",
-
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },

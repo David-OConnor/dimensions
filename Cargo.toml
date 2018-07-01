@@ -6,38 +6,25 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/David-OConnor/dimensions"
 homepage = "https://github.com/David-OConnor/dimensions"
 readme = "README.md"
-build = "build.rs"
+#build = "build.rs"
 
-#[lib]
-#path = "src/lib.rs"
-#crate-type = ["cdylib"]
+[lib]
+name="webgl"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
 
 # cargo build --target wasm32-unknown-unknown --lib
+
 # wasm-bindgen target/wasm32-unknown-unknown/debug/dimensions.wasm --out-dir .
 
-#[[bin]]
-#name = "dimensions"
-#path = "src/main.rs"
+[[bin]]
+name = "dimensions"
+path = "src/main.rs"
 
 [dependencies]
-ndarray = "^0.11.2"
-
-# WASM
-gl = "^0.10.0"
-stdweb = "^0.4.6"
-stdweb-derive = "^0.4.0"
-serde = "^1.0.59"
-serde_json = "^1.0.17"
-serde_derive = "^1.0.59"
-
-# Vulkano
-vulkano = "^0.9"
-vulkano-shader-derive = "^0.9"
-vulkano-win = "^0.9"
 cgmath = "^0.14.1"
-image = "^0.19.0"
-winit = "^0.11.0"
-time = "^0.1.37"
+ndarray = "^0.11.2"
+simdnoise = "2.3.2"
 
 # WASM
 #[dependencies.wasm-bindgen]
@@ -46,17 +33,19 @@ time = "^0.1.37"
 
 # I want something more like this:
 #[target.cfg(not(wasm32-unknown-unknown)).dependencies]
-# gegz's not compatible with wasm-unknown-unknown.
-#[target.'cfg(windows)'.dependencies]
-#ggez = "^0.4.2"
+# vulkan's not compatible with wasm-unknown-unknown.
+[target.'cfg(windows)'.dependencies]
+# Vulkano
+vulkano = "^0.9"
+vulkano-shader-derive = "^0.9"
+vulkano-win = "^0.9"
+winit = "^0.11.0"
+time = "^0.1.37"
 
-# WebGl.
-
-#[build-dependencies]
-##cc = "1.0"
-#webgl_generator = "^0.1.0"
-#gl = "0.6.0"
-#gl_generator = "0.5.0"
-#wasm-bindgen = "0.2"
-#cgmath = "0.16.1"
-#quaternion = "0.3.0"
+[target.wasm32-unknown-unknown.dependencies]
+#stdweb = "^0.4.7"
+serde = "^1.0.59"
+serde_json = "^1.0.17"
+serde_derive = "^1.0.59"
+wasm-bindgen = "^0.2"
+#proc-macro2 = { version = "^0.4.6", features = ["nightly"] }

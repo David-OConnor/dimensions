@@ -12,8 +12,6 @@ pub struct Pt2D {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
-    // a may be relative or absolute.
-//    pub position: [f32; 4],
     pub position: (f32, f32, f32, f32),
 }
 impl_vertex!(Vertex, position);
@@ -22,12 +20,26 @@ impl Vertex {
     pub fn new(x: f32, y: f32, z: f32, u: f32) -> Vertex {
         Vertex{ position: (x, y, z, u) }
     }
+
+    pub fn subtract(&self, other: &Vertex) -> Vertex {
+        Vertex::new(self.position.0 - other.position.0, self.position.1 - other.position.1,
+                    self.position.2 - other.position.2, self.position.3 - other.position.3,)
+    }
+
+    pub fn cross(&self, other: &Vertex) -> Normal {
+        // Ignores the u component; cross product isn't defined for len-4 vectors.
+        Normal::new(
+            self.position.1 * other.position.2 - self.position.2 * other.position.1,
+            self.position.2 * other.position.0 - self.position.0 * other.position.2,
+            self.position.0 * other.position.1 - self.position.1 * other.position.0,
+            0.
+        )
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct VertAndExtras {
     // Used to pass attributes that go with each vertex.
-    // todo: Shape and cam don't need to be recalced for each vertex...
     pub position: (f32, f32, f32, f32),
     pub shape_posit: (f32, f32, f32, f32),
     pub normal: (f32, f32, f32, f32),
@@ -41,8 +53,8 @@ pub struct Normal {
 impl_vertex!(Normal, normal);
 
 impl Normal {
+    // Only really uses the 3d part of the shape, for now.
     pub fn new(x: f32, y: f32, z: f32, u: f32) -> Normal {
-//        Vertex{ position: [x, y, z, u] }
         Normal{ normal: (x, y, z, u) }
     }
 }
@@ -75,8 +87,8 @@ pub struct Shape {
     pub vertices: HashMap<u32, Vertex>,
     pub edges: Vec<Edge>,  // todo Edges is currently unused.
     pub faces: Vec<Face>,  // todo Faces is currently unused.
-    pub faces_vert: Vec<Array1<u32>>,
-    pub normals: Vec<Normal>,
+    pub faces_vert: Vec<Array1<u32>>,  // Indicies of vertexes.
+    pub normals: Vec<Normal>,  // Normals only use the 3d component; not defined for 4d, yet. ?
     pub position: Array1<f32>,
     pub scale: f32,
     pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.

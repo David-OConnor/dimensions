@@ -11,7 +11,11 @@ pub mod vs {
 
     layout(location = 0) out vec4 fourd_color;
     layout(location = 1) out vec4 diffuse;
-    layout(location = 2) out vec4 specular;
+    layout(location = 2) out vec4 view_posit;
+    layout(location = 3) out vec4 diffuse_light_direction;
+    layout(location = 4) out vec4 diffuse_light_color;
+    layout(location = 5) out float specular_intensity;
+    layout(location = 6) out vec4 norm2;
 
     layout(set = 0, binding = 0) uniform Data {
         mat4 model;
@@ -38,9 +42,9 @@ pub mod vs {
         // Now remove the u coord; replace with 1. We no longer need it,
         // and the projection matrix is set up for 3d homogenous vectors.
         float u = positioned_pt[3];
-        positioned_pt = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
+        vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
 
-        gl_Position = uniforms.proj * positioned_pt;
+        gl_Position = uniforms.proj * positioned_3d;
 
         // Now calculate the color, based on passed u dist from cam.
         float u_dist = uniforms.cam_position[3] - u;
@@ -52,7 +56,7 @@ pub mod vs {
         }
 
         float base_gray = 0.0;
-        float color_val = base_gray + portion_through * 1. - base_gray;
+        float color_val = base_gray + portion_through;
 
         if (u_dist > 0.) {
             fourd_color = vec4(base_gray, base_gray, color_val, 0.2);  // Blue
@@ -66,19 +70,17 @@ pub mod vs {
         // only scales uniformly, and isn't homogenous (doesn't translate).
         vec4 norm = normalize(uniforms.model * normal);
         vec4 dir = normalize(uniforms.diffuse_light_direction);
-        float directional_light_weight = max(dot(norm, dir), 0.);
 
+        float directional_light_weight = max(dot(norm, dir), 0.);
         diffuse = uniforms.diffuse_light_color * directional_light_weight *
             uniforms.diffuse_intensity;
 
-        // Now calculate specular lighting.
-        // todo deal with view trasnforms.
-        vec4 view_dir = normalize(uniforms.cam_position - position);
-//        vec4 view_dir = normalize(uniforms.view * (uniforms.cam_position - position));
-        vec4 reflect_dir = reflect(-dir, norm);
-//        vec4 reflect_dir = uniforms.view * reflect(-dir, norm);
-        float spec = pow(max(dot(view_dir, reflect_dir), 0.), 32);
-        vec4 specular = uniforms.specular_intensity * spec * uniforms.diffuse_light_color;
+        view_posit = positioned_pt;
+        diffuse_light_direction = uniforms.diffuse_light_direction;
+        diffuse_light_color = uniforms.diffuse_light_color;
+        specular_intensity = uniforms.specular_intensity;
+        norm2 = norm;
+
     }
     "]
         struct Dummy;
@@ -91,14 +93,24 @@ pub mod fs {
     #version 450
     layout(location = 0) in vec4 fourd_color;
     layout(location = 1) in vec4 diffuse;
-    layout(location = 2) in vec4 specular;
+    layout(location = 2) in vec4 view_posit;
+    layout(location = 3) in vec4 diffuse_light_direction;
+    layout(location = 4) in vec4 diffuse_light_color;
+    layout(location = 5) in float specular_intensity;
+    layout(location = 6) in vec4 norm2;
+//    layout(location = 6) in FragPos;
 
     layout(location = 0) out vec4 f_color;
 
     void main() {
-        // todo mix is giving me errors about no matching overloaded func.
-//        f_color = mix(fourd_color, diffuse, specular);
-        f_color = diffuse + fourd_color;
+
+        vec4 light_dir = normalize(diffuse_light_direction);
+        vec4 view_norm = normalize(-norm2);
+        vec4 R = normalize(reflect(light_dir, view_norm));
+
+        float specular = specular_intensity * pow(max(dot(R, view_norm), 0.0), 32.);
+
+        f_color = mix(fourd_color, diffuse, 0.5) + specular * diffuse_light_color;
     }
     "]
         struct Dummy;

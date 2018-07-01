@@ -173,6 +173,16 @@ class Main extends React.Component<any, any> {
             throw "Oops!"
         }
 
+        let importObject = {
+            imports: { imported_func: (arg: any) => console.log(arg) },
+            env: {}
+        }
+
+        WebAssembly.instantiateStreaming(fetch('webgl_bg.wasm'))
+            .then((wasmModule: any) => {
+                alert(`This is a triumph. ${wasmModule.instance.exports.test}`);
+            });
+
         return (
             <div>
                 <Controls

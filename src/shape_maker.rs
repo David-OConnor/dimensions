@@ -590,6 +590,13 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
                     row_adder + j + res + 1  // front left
                 ]
             );
+            let line1 = &vertices[row_adder + j + 1].subtract(&vertices[row_adder + j]);
+            let line2 = &vertices[row_adder + j + res + 1].subtract(&vertices[row_adder + j]);
+
+            // Note: This isn't normalized; we handle that in the shader, for now.
+            // todo is this facing the right direction, or reversed?
+            normals.push(&line1.cross(&line2));
+
             faces_vert.push(
                 array![  // shows front left  not j + res, not j
                     row_adder + j,
@@ -597,6 +604,9 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
                     row_adder + j + res + 1  // front left
                 ]
             );
+            let line1 = &vertices[row_adder + j + res].subtract(&vertices[row_adder + j]);
+            let line2 = &vertices[row_adder + j + res + 1].subtract(&vertices[row_adder + j]);
+            normals.push(&line1.cross(&line2));
         }
         row_adder += res;
     }
