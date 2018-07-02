@@ -10,13 +10,10 @@
 #![feature(non_ascii_idents)]
 #![feature(vec_remove_item)]
 
-// todo temp:
-#![feature(core_intrinsics)]
-
-extern crate cgmath;
-extern crate simdnoise;
 #[macro_use]
 extern crate ndarray;
+extern crate rand;
+extern crate simdnoise;
 
 // Vulkano
 #[macro_use]

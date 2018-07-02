@@ -29,9 +29,6 @@ use vulkano::swapchain;
 use vulkano::sync;
 use vulkano::sync::GpuFuture;
 
-use cgmath;
-//use ndarray::prelude::*;
-//use vulkano;
 use vulkano_shader_derive;
 use vulkano_win;
 use vulkano_win::VkSurfaceBuild;
@@ -93,21 +90,17 @@ const τ: f32 = 2. * PI;
 //
 //}
 
-fn print_type_of<T>(_: &T) {
-    // For debugging.
-    println!("{}", unsafe { std::intrinsics::type_name::<T>() });
-}
-
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
         (HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
-    // TODO you should probably move vertex buffer to staticbuffers like in javascript.
-    let mut indices = Vec::new();
-    let mut vertex_info = Vec::new();
-    let mut index_modifier = 0;
+    // Make index and vertex buffers.
     let mut index_buffers = HashMap::new();
     let mut vertex_buffers = HashMap::new();
 
     for (s_id, shape) in shapes {
+        let mut indices = Vec::new();
+        let mut vertex_info = Vec::new();
+        let mut index_modifier = 0;
+
         let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + index_modifier).collect();
         indices.append(&mut tri_indices);
         index_modifier += shape.num_face_verts();
@@ -301,7 +294,6 @@ pub fn render() {
     // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
     let proj_mat = transforms::make_proj_mat4(&cam);
-    let proj_mat2 = cgmath::perspective(cgmath::Rad(cam.fov), cam.aspect, cam.near, cam.far);
 
     let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<shaders::vs::ty::Data>
     ::new(device_.clone(), buffer::BufferUsage::all());
@@ -422,7 +414,7 @@ pub fn render() {
         // view matrix will change per frame; model will change per shape.
         model: transforms::I4(),
         view: transforms::I4(),
-        proj: proj_mat2.into(),
+        proj: proj_mat,
         cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
 
         ambient_light_color: lighting.ambient_color,
@@ -433,6 +425,7 @@ pub fn render() {
         diffuse_intensity: lighting.diffuse_intensity,
         specular_intensity: lighting.specular_intensity,
         color_max,
+        shape_opacity: 0.
     };
 
     loop {
@@ -522,12 +515,13 @@ pub fn render() {
         // Update the view matrix once per frame.
         let view_mat = transforms::make_view_mat4(&cam);
         for (shape_id, shape) in &shapes {
-            println!("SHAPE");
+//            if shape_id != &2 {continue}
             let uniform_buffer_subbuffer = {
                 let uniform_data = shaders::vs::ty::Data {
                     model: transforms::make_model_mat4(shape),
                     view: view_mat,
                     cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
+                    shape_opacity: shape.opacity,
                     ..static_uniforms
                 };
 

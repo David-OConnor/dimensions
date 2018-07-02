@@ -12,7 +12,7 @@ use types::{Vertex, Normal, Edge, Face, Shape};
 
 pub fn make_box(lens: (f32, f32, f32),
                 position: Array1<f32>, orientation: Array1<f32>,
-                rotation_speed: Array1<f32>) -> Shape {
+                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -93,12 +93,13 @@ pub fn make_box(lens: (f32, f32, f32),
 
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
+               rotation_speed, opacity)
 }
 
 pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
                                 position: Array1<f32>, orientation: Array1<f32>,
-                                rotation_speed: Array1<f32>) -> Shape {
+                                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     let coords = [
         // Base  (Center of this shape is the center of the base square)
         [-1., 0., -1., 0.],
@@ -163,23 +164,24 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
         Normal::new(lens.2, lens.1, 0., 0.),
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
+               rotation_speed, opacity)
 }
 
  pub fn make_house(lens: (f32, f32, f32),
                    position: Array1<f32>,
                    orientation: Array1<f32>,
-                   rotation_speed: Array1<f32>) -> Shape {
+                   rotation_speed: Array1<f32>, opacity: f32) -> Shape {
      let empty_array = array![0., 0., 0., 0., 0., 0.];
 
      // We'll modify base in-place, then return it.
-     let mut base = make_box(lens, position, orientation, rotation_speed);
+     let mut base = make_box(lens, position, orientation, rotation_speed, opacity);
 
      let roof = make_rectangular_pyramid(
          // Let the roof overhang the base by a little.
          // Make the roof height a portion of the base height.
          (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
-         empty_array.clone(), empty_array.clone(), empty_array.clone()
+         empty_array.clone(), empty_array.clone(), empty_array.clone(), opacity
      );
 
      // Now that we've made the shapes, recompose them to be one shape.
@@ -222,14 +224,15 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
  }
 
 pub fn make_cube(side_len: f32,  position: Array1<f32>, orientation: Array1<f32>,
-                  rotation_speed: Array1<f32>) -> Shape {
+                  rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
-    make_box((side_len, side_len, side_len), position, orientation, rotation_speed)
+    make_box((side_len, side_len, side_len), position, orientation,
+             rotation_speed, opacity)
 }
 
 pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
-                   rotation_speed: Array1<f32>) -> Shape {
+                   rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     // A 4-dimensional cross, for marking the origin.
     let coords = [
         [-1., 0., 0., 0.],
@@ -263,7 +266,8 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
     let normals = vec![];
 
 
-    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
+               rotation_speed, opacity)
 }
 
 //pub fn make_street(width: f32, position: Array1<f32>, scale: f32, orientation: Array1<f32>,
@@ -291,7 +295,7 @@ pub fn make_origin(len: f32, position: Array1<f32>, orientation: Array1<f32>,
 
 pub fn make_5cell(radius: f32,
                    position: Array1<f32>, orientation: Array1<f32>,
-                   rotation_speed: Array1<f32>) -> Shape {
+                   rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     let coords = [
         [-(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
         [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // right base
@@ -367,12 +371,13 @@ pub fn make_5cell(radius: f32,
         Normal::new(0., 0., 0., -1.),
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
+               rotation_speed, opacity)
 }
 
 pub fn make_hyperrect(lens: (f32, f32, f32, f32),
                       position: Array1<f32>, orientation: Array1<f32>,
-                      rotation_speed: Array1<f32>) -> Shape {
+                      rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     // Make a 4d hypercube.
 
     let coords = [
@@ -520,21 +525,22 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
         Normal::new(0., 0., 0., -1.),
     ];
 
-    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation, rotation_speed)
+    Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
+               rotation_speed, opacity)
 }
 
 pub fn make_hypercube(side_len: f32,
                       position: Array1<f32>, orientation: Array1<f32>,
-                      rotation_speed: Array1<f32>) -> Shape {
+                      rotation_speed: Array1<f32>, opacity: f32) -> Shape {
     // Convenience function.
     make_hyperrect((side_len, side_len, side_len, side_len),
-                   position, orientation, rotation_speed)
+                   position, orientation, rotation_speed, opacity)
 }
 
 
 pub fn make_terrain(dims: (f32, f32), res: u32,
                     height_map: Array2<f32>, spissitude_map: Array2<f32>,
-                    position: Array1<f32>) -> Shape {
+                    position: Array1<f32>, opacity: f32) -> Shape {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // u and y mappings for each x/z point...
@@ -580,6 +586,7 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
             edges.push(Edge {node0: row_adder + j, node1: row_adder + j + 1 });  // edges across constant x
             edges.push(Edge {node0: row_adder + j, node1: row_adder + j + res });  // edges across constant z
 
+            // The order we build these triangles and normals is subject to trial+error.
             // two face triangles per grid square. There are two ways to split
             // up the squares into triangles; picking one arbitrarily.
             faces_vert.push(
@@ -591,10 +598,10 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
             );
 
             let line1 = vertices[&(row_adder + j + 1)].subtract(&vertices[&(row_adder + j)]);
+//            let line1 = vertices[&(row_adder + j)].subtract(&vertices[&(row_adder + j + 1)]);
             let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
 
             // Note: This isn't normalized; we handle that in the shader, for now.
-            // todo is this facing the right direction, or reversed?
             normals.push(line1.cross(&line2));
 
             faces_vert.push(
@@ -604,7 +611,8 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
                     row_adder + j + res + 1  // front left
                 ]
             );
-            let line1 = vertices[&(row_adder + j + res)].subtract(&vertices[&(row_adder + j)]);
+//            let line1 = vertices[&(row_adder + j + res)].subtract(&vertices[&(row_adder + j)]);
+            let line1 = vertices[&(row_adder + j)].subtract(&vertices[&(row_adder + j + res)]);
             let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
             normals.push(line1.cross(&line2));
         }
@@ -612,12 +620,12 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     }
 
     return Shape::new(vertices, edges, faces, faces_vert, normals, position,
-        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.])
+        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], opacity)
 }
 
 pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
                                     spissitude_map: Array3<f32>,
-                                    position: Array1<f32>) -> HashMap<u32, Shape> {
+                                    position: Array1<f32>, opacity: f32) -> HashMap<u32, Shape> {
     // Position is the center.
     // todo incorporate position.
     let mut result = HashMap::new();
@@ -631,7 +639,7 @@ pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
                 result.insert(
                     res.pow(2) * i + res * j + k,
                     make_cube(0.5, array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
-                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.])
+                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], opacity)
                 );
                 z += dims.2 / res as f32
             }

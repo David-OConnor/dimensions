@@ -31,6 +31,7 @@ pub mod vs {
         float diffuse_intensity;
         float specular_intensity;
         float color_max;
+        float shape_opacity;
     } uniforms;
 
     void main() {
@@ -59,9 +60,9 @@ pub mod vs {
         float color_val = base_gray + portion_through;
 
         if (u_dist > 0.) {
-            fourd_color = vec4(base_gray, base_gray, color_val, 0.2);  // Blue
+            fourd_color = vec4(base_gray, base_gray, color_val, uniforms.shape_opacity);  // Blue
         } else {
-            fourd_color = vec4(color_val, base_gray, base_gray, 0.2);  // Red
+            fourd_color = vec4(color_val, base_gray, base_gray, uniforms.shape_opacity);  // Red
         }
         fourd_color = fourd_color * uniforms.ambient_intensity;
 

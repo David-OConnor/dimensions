@@ -95,13 +95,14 @@ pub struct Shape {
     pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
     pub per_face_vertices: Vec<Vertex>,
     pub tris: Array1<u32>,
+    pub opacity: f32,
 }
 
 impl Shape {
     pub fn new(nodes: HashMap<u32, Vertex>, edges: Vec<Edge>, faces: Vec<Face>,
                faces_vert: Vec<Array1<u32>>, normals: Vec<Normal>,
                position: Array1<f32>, orientation: Array1<f32>,
-               rotation_speed: Array1<f32>) -> Shape {
+               rotation_speed: Array1<f32>, opacity: f32) -> Shape {
 
         // todo use this, like in JS.
         let per_face_vertices = {
@@ -114,8 +115,8 @@ impl Shape {
             shape_vertices
         };
 
-        let mut result = Shape{ vertices: nodes, edges, faces, faces_vert, normals, position, scale: 1., orientation,
-               rotation_speed, per_face_vertices, tris: array![]};
+        let mut result = Shape{ vertices: nodes, edges, faces, faces_vert, normals, position,
+            scale: 1., orientation, rotation_speed, per_face_vertices, tris: array![], opacity};
         result.make_tris();
         result
     }
