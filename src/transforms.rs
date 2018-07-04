@@ -44,88 +44,6 @@ pub fn dot_mm4(M0: [[f32; 4]; 4], M1: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     ]
 }
 
-fn make_rotator(θ: &Array1<f32>) -> Array2<f32> {
-    // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
-    // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
-    // http://eusebeia.dyndns.org/4d/vis/10-rot-1
-    assert_eq![θ.len(), 6];
-
-    // We rotation around each of six planes; the combinations of the 4
-    // dimensions. 
-
-    // cache trig computations
-    let cos_xy = θ[0].cos();
-    let sin_xy = θ[0].sin();
-    let cos_yz = θ[1].cos();
-    let sin_yz = θ[1].sin();
-    let cos_xz = θ[2].cos();
-    let sin_xz = θ[2].sin();
-    let cos_xu = θ[3].cos();
-    let sin_xu = θ[3].sin();
-    let cos_yu = θ[4].cos();
-    let sin_yu = θ[4].sin();
-    let cos_zu = θ[5].cos();
-    let sin_zu = θ[5].sin();
-
-    // Potentially there exist 4 hyperrotations as well? ie combinations of 
-    // 3 axes ?  xyz  yzu  zux  uxy
-
-    // Rotations around the xy, yz, and xz planes should appear normal.
-    let R_xy = array![
-        [cos_xy, sin_xy, 0., 0., 0.],
-        [-sin_xy, cos_xy, 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_yz = array![
-        [1., 0., 0., 0., 0.],
-        [0., cos_yz, sin_yz, 0., 0.],
-        [0., -sin_yz, cos_yz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_xz = array![
-        [cos_xz, 0., -sin_xz, 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [sin_xz, 0., cos_xz, 0., 0.],
-        [0., 0., 0., 1., 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    // Rotations involving u, the fourth dimension, should distort 3d objects.
-    let R_xu = array![
-        [cos_xu, 0., 0., sin_xu, 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., 1., 0., 0.],
-        [-sin_xu, 0., 0., cos_xu, 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_yu = array![
-        [1., 0., 0., 0., 0.],
-        [0., cos_yu, 0., -sin_yu, 0.],
-        [0., 0., 1., 0., 0.],
-        [0., sin_yu, 0., cos_yu, 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    let R_zu = array![
-        [1., 0., 0., 0., 0.],
-        [0., 1., 0., 0., 0.],
-        [0., 0., cos_zu, -sin_zu, 0.],
-        [0., 0., sin_zu, cos_zu, 0.],
-        [0., 0., 0., 0., 1.]
-    ];
-
-    // Combine the rotations.
-    let R_1 = R_xy.dot(&(R_yz.dot(&R_xz)));
-    let R_2 = R_xu.dot(&(R_yu.dot(&R_zu)));
-    R_1.dot(&R_2)
-}
-
 fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
@@ -201,32 +119,6 @@ fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     dot_mm4(R_1, R_2)
 }
 
-fn make_translator(position: &Array1<f32>) -> Array2<f32> {
-    // Return a translation matrix; the pt must have 1 appended to its end.
-    // We do this augmentation so we can add a constant term.  Scale and
-    // rotation matrices may have this as well for matrix compatibility.
-    assert_eq![position.len(), 4];
-
-    array![
-        [1., 0., 0., 0., position[0]],
-        [0., 1., 0., 0., position[1]],
-        [0., 0., 1., 0., position[2]],
-        [0., 0., 0., 1., position[3]],
-        [0., 0., 0., 0., 1.],
-    ]
-}
-
-fn make_scaler(scale: f32) -> Array2<f32> {
-    // Return a scale matrix; the pt must have 1 appended to its end.
-    array![
-        [scale, 0., 0., 0., 0.],
-        [0., scale, 0., 0., 0.],
-        [0., 0., scale, 0., 0.],
-        [0., 0., 0., scale, 0.],
-        [0., 0., 0., 0., 1.],
-    ]
-}
-
 pub fn I4() -> [[f32; 4]; 4] {
     [
         [1., 0., 0., 0.],
@@ -251,39 +143,6 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     // by Vulkan.
     // Vulkan uses a right-handed coordinate system with a depth range of [0,1],
 
-    let y_scale = 1. / (cam.fov / 2.).tan();
-    let x_scale = y_scale / cam.aspect;
-    let u_scale = y_scale / cam.aspect_4;  // depth for 4d
-
-    // We are defining z as the axis that determines how x and y points are
-    // scaled, for both 4d and 3d projections. U points don't play a factor
-    // in our final result; their data is only included during rotations;
-    // This function transforms them, but that ultimately is not projected to
-    // 2d screens.
-
-    // Insight: z (or u, depending on which convention we settle on) is used
-    // for two things: Determining how we should scale x and y (The vars that
-
-
-    // I've derived these matrices myself; none of the ones described in the
-    // above links seem to produce a unit cube for easy clipping.
-    // They map the frustum to a "unit" [hyper]cube; actually ranging from -1 to +1,
-    // along each axis.
-    // Note: Unlike x, y, (and u?) z (doesn't map in a linear way; it goes
-    // as a decaying exponential from -1 to +1.
-
-//    [
-//        [x_scale, 0., 0., 0.],
-//        [0., y_scale, 0., 0.],
-//        [0., 0., (cam.far + cam.near) / (cam.far - cam.near),
-//            (-2. * cam.far * cam.near) / (cam.far - cam.near)],
-//        // u_scale is, ultimately, not really used.
-//        // This row allows us to divide by z after taking the dot product,
-//        // as part of our scaling operation.
-//        [0., 0., 1., 1.],
-//    ]
-
-
     // Using this GL matrix, multiplied by a vulkan-corrector.
     // http://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-
     // matrix/opengl-perspective-projection-matrix
@@ -295,8 +154,26 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     let n = cam.near;
     let f = cam.far;
 
+    // Row one multiplies x by (2 * cam.near) / far frustum horizontal dist
+    // Row two multiplies y by (2 * cam.near) / far frustum vertical dist
 
-    // todo QC that this is correct.
+    // Not really sure what row 3's doing, but it's setting up z for vulkano
+    // to be used later.
+
+    // Row 4 is used silently by Vulkan, to scale x and y to the frustum based on
+    // their z distance. If the last entry isn't 0, by u as well for 4d visual
+    // scaling cues. (Subjective). The values here are
+    // negative, due to Vulkan's RHS coordinate system. z is divided by two here
+    // and in other places due to Zulkan using a z dist of 0 to 1 in clipspace,
+    // vice -1 to 1.
+
+    // todo: It appears that Vulkan will cause incorrect clipping  against
+    // todo the near plane if the u scaler is too high.
+
+    // The terms in the third and fourth column turn out to be 0, unless the view is skewed, eg
+    // more is shown to the right of center than left.  We don't do that, but leave
+    // those terms in, for now.
+
     [
         [2.*n / (r - l), 0., (r+l) / (r-l) / 2., 0.],
         [0., -2.*n / (t-b), (t+b) / (t-b) / 2., (b+t) / (t-b) / 2.],
@@ -304,7 +181,7 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
         // u_scale is, ultimately, not really used.
         // This row allows us to divide by z after taking the dot product,
         // as part of our scaling operation.
-        [0., 0., -0.5, -0.5],
+        [0., 0., -0.5, -1.],
     ]
 }
 
@@ -320,60 +197,6 @@ pub fn make_view_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
     make_rotator4(&negθ)
 }
-
-fn project(pt: &Array1<f32>, T: &Array2<f32>, R: &Array2<f32>,
-             P: &Array2<f32>) -> Array1<f32> {
-    // Helper function to reduce repetition in project_shapes.
-    // Clip our edge, which has been projected into "clipspace", eg a
-    // cube ranging from -1 to +1 on each axes.
-    // augmented points let us add constant values with matrix math.
-
-    // Homogenous points simplify calculations by allowing us to add constant values.
-    let homogeneous = array![pt[0], pt[1], pt[2], pt[3], 1.];
-    // Project into clipspace.
-    let f = P.dot(&(R.dot(&(T.dot(&homogeneous)))));
-    // We divide by z (or u in 4d), since this is part of our calculation for
-    // projecting into the "unit" cube clipspace.
-
-    // todo: I'm not sure exactly why we must reverse y.
-    array![f[0] / f[4], -f[1] / f[4], f[2] / f[4], f[3] / f[4]]
-}
-
-//pub fn project_shapes(shapes: &HashMap<u32, Shape>, cam: &Camera)
-//        -> HashMap<(u32, u32), Array1<f32>> {
-//    // Position and rotate shapes relative to the camera; project into a
-//    // clipspace [hyper]frustum.
-//    // The HashMap key is (shape_index, node_index), so we can tie back to the
-//    // original shapes later.
-//    // We negate R and T, since we're shifting and rotating relative to the
-//    // [fixed] camera.
-//    let T = make_translator(&-&(cam.position));
-//    let R = make_rotator(&-&(cam.θ));
-//    let P = make_projector(&cam);
-//
-//    let mut result = HashMap::new();
-//
-//    for (shape_id, shape) in shapes {
-//        let positioned_pts = position_shape(shape);
-//
-//        // Iterate over edges so we can clip lines.
-//        for edge in &shape.edges {
-//            let pt_0 = &positioned_pts[&edge.node0];
-//            let pt_1 = &positioned_pts[&edge.node1];
-//            let pt_0_clipspace = project(pt_0, &T, &R, &P);
-//            let pt_1_clipspace = project(pt_1, &T, &R, &P);
-//
-//            let clipped = clipping::clip_3d((&pt_0_clipspace, &pt_1_clipspace));
-//            if let Some((pt_0_clipped, pt_1_clipped)) = clipped {
-//                // We return the full (non-homogenous) projected point, even
-//                // though we only need x and y to display.
-//                result.insert((*shape_id, edge.node0), pt_0_clipped);
-//                result.insert((*shape_id, edge.node1), pt_1_clipped);
-//            }
-//        }
-//    }
-//    result
-//}
 
 
 #[cfg(test)]

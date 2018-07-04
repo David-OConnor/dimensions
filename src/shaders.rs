@@ -26,12 +26,16 @@ pub mod vs {
         vec4 ambient_light_color;
         vec4 diffuse_light_color;
         vec4 diffuse_light_direction;
+        vec4 pt_light_position;
 
         float ambient_intensity;
         float diffuse_intensity;
+
         float specular_intensity;
         float color_max;
         float shape_opacity;
+
+        float pt_light_brightness;
     } uniforms;
 
     void main() {
@@ -40,15 +44,13 @@ pub mod vs {
         // for view transform, position first.
         positioned_pt = uniforms.view * (positioned_pt - uniforms.cam_position);
 
-        // Now remove the u coord; replace with 1. We no longer need it,
-        // and the projection matrix is set up for 3d homogenous vectors.
-        float u = positioned_pt[3];
-        vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
+        // This operation scales the 4d components based on the light
+        // distance creating their projection.
 
-        gl_Position = uniforms.proj * positioned_3d;
+        gl_Position = uniforms.proj * positioned_pt;  // todo 3d
 
         // Now calculate the color, based on passed u dist from cam.
-        float u_dist = uniforms.cam_position[3] - u;
+        float u_dist = uniforms.cam_position[3] - positioned_pt[3];
 
         float portion_through = abs(u_dist) / uniforms.color_max;
 
@@ -82,6 +84,18 @@ pub mod vs {
         specular_intensity = uniforms.specular_intensity;
         norm2 = norm;
 
+
+        // todo test point light source.
+        float dist_from_light = sqrt(
+            pow(positioned_pt[0] - uniforms.pt_light_position[0], 2.) +
+            pow(positioned_pt[1] - uniforms.pt_light_position[1], 2.) +
+            pow(positioned_pt[2] - uniforms.pt_light_position[2], 2.) +
+            pow(positioned_pt[3] - uniforms.pt_light_position[3], 2.)
+        );
+        float diffuse_brightness = uniforms.pt_light_brightness / pow(dist_from_light, 3.);
+
+        // todo may not need this direc. Is direc from light to point.
+        vec4 diffuse_direction = positioned_pt - uniforms.pt_light_position;
     }
     "]
         struct Dummy;

@@ -44,51 +44,7 @@ use types::{Camera, Shape, Vertex, VertAndExtras, Normal};
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
-const MOVE_SENSITIVITY: f32 = 1.0;  // units per second
-const ROTATE_SENSITIVITY: f32 = 0.6;  // radians per second
-
 const τ: f32 = 2. * PI;
-//
-//mod state {
-//    use std::cell;
-//    use std::collections::HashMap;
-//    use std::f32::consts::PI;
-//    use std::sync::{Arc, Mutex, RwLock};
-//
-//    use ndarray::prelude::*;
-//
-//    use types::{Camera, Shape};
-//
-//    const τ: f32 = 2. * PI;
-//
-//    fn default_camera() -> Camera {
-//        // Effectively a global constant.
-//        Camera {
-//            // If 3d, the 4th items for position isn't used.
-//            position: array![0., 1., -6., -2.],
-//            θ: array![0., 0., 0., 0., 0., 0.],
-//            fov: τ / 5.,
-//            aspect: 1.,
-//            aspect_4: 1.,
-//            far: 50.,
-//            near: 0.1,
-//            strange: 1.0,
-//        }
-//    }
-//
-//    struct State_ {
-//        cam: Camera,
-//        shapes: HashMap<u32, Shape>,
-//    }
-//
-////    let state1 = State_ {
-////        cam: default_camera(),
-////        shapes: HashMap::new(),
-////    };
-//
-////    let data = Arc::new(Mutex::new(0));
-//
-//}
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
         (HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
@@ -141,19 +97,19 @@ pub fn render() {
 
     let aspect = WIDTH as f32 / HEIGHT as f32;
 
-    // todo take the scene as an arg to this func?
-//    let scene = scenes::hypercube_scene(aspect);
-//    let scene = scenes::fivecell_scene(aspect);
-//    let scene = scenes::cube_scene(aspect);
-//    let scene = scenes::pyramid_scene(aspect);
-    let scene = scenes::world_scene(aspect);
-//    let scene = scenes::grid_scene(aspect);
+    let mut scene_lib = HashMap::new();
+    scene_lib.insert(0, scenes::hypercube_scene(aspect));
+    scene_lib.insert(1, scenes::fivecell_scene(aspect));
+    scene_lib.insert(2, scenes::cube_scene(aspect));
+    scene_lib.insert(3, scenes::pyramid_scene(aspect));
+    scene_lib.insert(4, scenes::world_scene(aspect));
+    scene_lib.insert(5, scenes::grid_scene(aspect));
 
-    let mut shapes = scene.shapes.clone();
-    let mut cam = scene.cam_start.clone();
-    let cam_type = scene.cam_type.clone();
-    let color_max = scene.color_max;
-    let lighting = scene.lighting;
+    let mut scene = scene_lib[&0].clone();
+
+    // todo temp experiments; integrate into Lighting and Scene when complete.
+    let pt_light_position = [0., 0., 0., 0.];
+    let pt_light_brightness = 1.;
 
     let mut currently_pressed: Vec<u32> = Vec::new();
 
@@ -289,11 +245,22 @@ pub fn render() {
     let depth_buffer = image::attachment::AttachmentImage::transient(
         device_.clone(), dimensions, format::D16Unorm).unwrap();
 
-    let (index_buffers, vertex_buffers) = make_static_buffers(&shapes, device_.clone());
+    let (index_buffers, vertex_buffers) = make_static_buffers(&scene.shapes, device_.clone());
 
     // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
-    let proj_mat = transforms::make_proj_mat4(&cam);
+    let proj = transforms::make_proj_mat4(&scene.cam);
+
+//    let l_w = 4.;
+//    let w = 0.4;
+//    let proj_alterer = [
+//        [1. / (l_w - w), 0., 0., 0.],
+//        [0., 1. / (l_w - w), 0., 0.],
+//        [0., 0., 1. / (l_w - w), 0.],
+//        [0., 0., 0., 1. / (l_w - w)],
+//    ];
+//
+//    let proj_mat2 = transforms::dot_mm4(proj_alterer, proj_mat);
 
     let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<shaders::vs::ty::Data>
     ::new(device_.clone(), buffer::BufferUsage::all());
@@ -372,7 +339,7 @@ pub fn render() {
         .blend_alpha_blending()
         .fragment_shader(fs.main_entry_point(), ())
         .depth_stencil_disabled()
-//        .depth_stencil_simple_depth()  // Don't use depth_stencil for transparent shapes.
+//        .depth_stencil_simple_depth()  // Don't use depth_stencil for transparent scene.shapes.
         // We have to indicate which subpass of which render pass this pipeline is going to be used
         // in. The pipeline will only be usable from this particular subpass.
         .render_pass(framebuffer::Subpass::from(render_pass.clone(), 0).unwrap())
@@ -414,18 +381,23 @@ pub fn render() {
         // view matrix will change per frame; model will change per shape.
         model: transforms::I4(),
         view: transforms::I4(),
-        proj: proj_mat,
-        cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
+        proj,
+        cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
 
-        ambient_light_color: lighting.ambient_color,
-        diffuse_light_color: lighting.diffuse_color,
-        diffuse_light_direction: lighting.diffuse_direction,
+        ambient_light_color: scene.lighting.ambient_color,
+        diffuse_light_color: scene.lighting.diffuse_color,
+        diffuse_light_direction: scene.lighting.diffuse_direction,
 
-        ambient_intensity: lighting.ambient_intensity,
-        diffuse_intensity: lighting.diffuse_intensity,
-        specular_intensity: lighting.specular_intensity,
-        color_max,
-        shape_opacity: 0.
+        pt_light_position,
+
+        ambient_intensity: scene.lighting.ambient_intensity,
+        diffuse_intensity: scene.lighting.diffuse_intensity,
+        specular_intensity: scene.lighting.specular_intensity,
+        color_max: scene.color_max,
+        shape_opacity: 0.,
+
+        // todo temp
+        pt_light_brightness,
     };
 
     loop {
@@ -513,14 +485,14 @@ pub fn render() {
             ).unwrap();
 
         // Update the view matrix once per frame.
-        let view_mat = transforms::make_view_mat4(&cam);
-        for (shape_id, shape) in &shapes {
+        let view_mat = transforms::make_view_mat4(&scene.cam);
+        for (shape_id, shape) in &scene.shapes {
 //            if shape_id != &2 {continue}
             let uniform_buffer_subbuffer = {
                 let uniform_data = shaders::vs::ty::Data {
                     model: transforms::make_model_mat4(shape),
                     view: view_mat,
-                    cam_position: [cam.position[0], cam.position[1], cam.position[2], cam.position[3]],
+                    cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
                     shape_opacity: shape.opacity,
                     ..static_uniforms
                 };
@@ -598,8 +570,8 @@ pub fn render() {
             }
         }
 
-        // Rotate shapes.
-        for (id, shape) in &mut shapes {
+        // Rotate scene.shapes.
+        for (id, shape) in &mut scene.shapes {
             shape.orientation += &(&shape.rotation_speed * delta_time);
         }
 
@@ -644,8 +616,6 @@ pub fn render() {
         });
         if done { return; }
 
-        input::handle_pressed(&currently_pressed, delta_time, MOVE_SENSITIVITY,
-                              ROTATE_SENSITIVITY, &mut cam, &cam_type,
-                              &mut shapes.get_mut(&0).unwrap());
+        input::handle_pressed(&currently_pressed, delta_time, &mut scene, &scene_lib);
     }
 }

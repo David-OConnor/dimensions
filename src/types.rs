@@ -176,7 +176,7 @@ pub struct Camera {
     // experimental extension into the 4th dimension.
     pub near: f32,
     pub far: f32,
-    pub strange: f32
+    pub fourd_proj_dist: f32,
 }
 
 impl Camera {
@@ -199,14 +199,14 @@ pub enum CameraType {
     Free, // No restriction on movement
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Scene {
-    pub id: u32,
     pub shapes: HashMap<u32, Shape>,
-    pub cam_start: Camera,
+    pub cam: Camera,
     pub cam_type: CameraType,
     pub lighting: Lighting,
     pub color_max: f32, // distance thresh for max 4d-color indicator.
+    pub sensitivities: (f32, f32),
 }
 
 #[derive(Clone, Debug)]

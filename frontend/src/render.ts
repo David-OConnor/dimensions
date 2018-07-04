@@ -381,6 +381,7 @@ export function main() {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
+
     document.onkeyup = e => input.handleKeyUp(e)
     document.onkeydown = e => input.handleKeyDown(e)
 

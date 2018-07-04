@@ -13,33 +13,44 @@ const τ: f32 = 2. * PI;
 const SHAPE_OP: f32 = 0.3;
 
 const base_lighting: Lighting = Lighting {
-            ambient_intensity: 0.6,
-            diffuse_intensity: 0.9,
-            specular_intensity: 0.2,
-            ambient_color: [1.0, 1.0, 1.0, 0.4],
-            diffuse_color: [0., 1., 0., 0.2],
-            diffuse_direction: [0., 0., -1., 0.],
+        ambient_intensity: 0.6,
+        diffuse_intensity: 0.9,
+        specular_intensity: 0.2,
+        ambient_color: [1.0, 1.0, 1.0, 0.4],
+        diffuse_color: [0., 1., 0., 0.2],
+        diffuse_direction: [0., 0., -1., 0.],
 };
+
+fn base_camera() -> Camera {
+    // function instead of a const, due to the ndarrays.
+    Camera {
+        position: Array::zeros(4),
+        θ: Array::zeros(6),
+        fov: τ / 5.,
+        aspect: 1.,
+        aspect_4: 1.,
+        near: 0.1,
+        far: 600.,
+        fourd_proj_dist: 2.5,
+    }
+}
 
 fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
     let mut shapes = HashMap::new();
     shapes.insert(0, shape);
     Scene {
-        id: 0,
         shapes,
-        cam_start: Camera {
+        cam: Camera {
             position: array![0., 0., -3., 0.],
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             fov: τ / 5.5,
             aspect,
-            aspect_4: 1.,
-            near: 0.1,
-            far: 600.,
-            strange: 1.,
+            ..base_camera()
         },
         cam_type: CameraType::Single,
         color_max: 0.4,
-        lighting: base_lighting.clone(),
+        lighting: base_lighting,
+        sensitivities: (0., 0.5),
     }
 }
 
@@ -64,12 +75,13 @@ pub fn pyramid_scene(aspect: f32) -> Scene {
 }
 
 pub fn world_scene(aspect: f32) -> Scene {
-    let terrain_res = 200;
-    let terrain_size = 300.;
+    let terrain_res = 250;
+    let terrain_size = 400.;
     let max_alt = 10.;
-    let n_shapes = 50;
+    let max_spiss = 40.;
+    let n_shapes = 160;
     let max_size = 10.;
-    let max_rot_speed = 0.3;
+    let max_rot_speed = 0.2;
 
     // https://docs.rs/simdnoise/2.3.1/simdnoise/enum.NoiseType.html
     let noise_type1 = simdnoise::NoiseType::Fbm {
@@ -106,7 +118,7 @@ pub fn world_scene(aspect: f32) -> Scene {
             (rand::random::<f32>() - 0.5) * terrain_size,
             (rand::random::<f32>() - 0.5) * max_alt * 2.,
             (rand::random::<f32>() - 0.5) * terrain_size,
-            (rand::random::<f32>() - 0.5) * max_alt * 2.
+            (rand::random::<f32>() - 0.5) * max_spiss * 2.
         ];
 
         let rotation = array![
@@ -144,8 +156,8 @@ pub fn world_scene(aspect: f32) -> Scene {
             shape_list.push(shape_maker::make_hyperrect(lens, position,
                                         Array::zeros(6), rotation, SHAPE_OP))
         } else {
-//            shape_list.push(shape_maker::make_5cell(rand::random::<f32>() * max_size, position,
-//                                    Array::zeros(6), rotation, SHAPE_OP))
+            shape_list.push(shape_maker::make_5cell(rand::random::<f32>() * max_size, position,
+                                    Array::zeros(6), rotation, SHAPE_OP))
         }
     }
 
@@ -155,21 +167,17 @@ pub fn world_scene(aspect: f32) -> Scene {
     }
 
     Scene {
-        id: 1,
         shapes,
-        cam_start: Camera {
-            position: array![0., 2., -3., 0.],
-            θ: array![0., 0., τ / 2., 0., 0., 0.],
-            fov: τ / 5.,
+        cam: Camera {
+            position: array![0., 0., 0., 0.],
+            θ: array![0., 0., 0., 0., 0., 0.],
             aspect,
-            aspect_4: 1.,
-            near: 0.1,
-            far: 200.,
-            strange: 1.,
+            ..base_camera()
         },
         cam_type: CameraType::Free,
         color_max: 10.,
-        lighting: base_lighting.clone(),
+        lighting: base_lighting,
+        sensitivities: (5., 0.2),
     }
 }
 
@@ -195,27 +203,45 @@ pub fn world_scene(aspect: f32) -> Scene {
 
 pub fn grid_scene(aspect: f32) -> Scene {
 
-    let grid_size: usize = 16;
+    let grid_size: usize = 10;
     let grid = Array3::zeros((grid_size, grid_size, grid_size));
     let shapes = shape_maker::make_hypergrid((200., 200., 200.), grid_size as u32,
                                               grid, Array::zeros(6), SHAPE_OP);
 
     Scene {
-        id: 3,
         shapes,
-        cam_start: Camera {
+        cam: Camera {
             position: array![0., 0., -1., 0.],
-            θ: array![0., 0., 0., 0., 0., 0.],
-            fov: τ / 5.,
             aspect,
-            aspect_4: 1.,
-            near: 0.1,
-            far: 2000.,
-            strange: 1.,
+            ..base_camera()
         },
         cam_type: CameraType::Free,
         color_max: 100.,
-        lighting: base_lighting.clone(),
+        lighting: base_lighting,
+        sensitivities: (5., 0.5),
     }
+}
 
+pub fn plot_scene(aspect: f32) -> Scene {
+    // Plot a 4d function, with 2 inputs and 2 outputs.
+    // Test func: f(x) = x^2 + 1, in complex plane.
+    // X: input real
+    // Y: input imag
+    // Z: output real
+    // U: output imag
+
+    let shapes = HashMap::new();
+
+    Scene {
+        shapes,
+        cam: Camera {
+            position: array![0., 0., -1., 0.],
+            aspect,
+            ..base_camera()
+        },
+        cam_type: CameraType::Free,
+        color_max: 100.,
+        lighting: base_lighting,
+        sensitivities: (5., 0.5),
+    }
 }

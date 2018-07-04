@@ -369,6 +369,8 @@ pub fn make_5cell(radius: f32,
         Normal::new(1., 0., 0., 0.),
         Normal::new(0., 0., 0., 1.),
         Normal::new(0., 0., 0., -1.),
+        Normal::new(0., 0., 0., -1.),
+        Normal::new(0., 0., 0., -1.),
     ];
 
     Shape::new(vertices, edges, faces, faces_vert, normals, position, orientation,
