@@ -44,7 +44,7 @@ pub fn dot_mm4(M0: [[f32; 4]; 4], M1: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
     ]
 }
 
-fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
+pub fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     // Rotation matrix information: https://en.wikipedia.org/wiki/Rotation_matrix
     // 4d rotation example: http://kennycason.com/posts/2009-01-08-graph4d-rotation4d-project-to-2d.html
     // http://eusebeia.dyndns.org/4d/vis/10-rot-1

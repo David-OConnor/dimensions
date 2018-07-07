@@ -65,8 +65,14 @@ pub fn fivecell_scene(aspect: f32) -> Scene {
 }
 
 pub fn spherinder_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_sphereinder((3., 0.5), 64,
-        Array::zeros(4), Array::zeros(4),
+    make_single_scene(aspect, shape_maker::make_arrow((3., 0.5), 64,
+        Array::zeros(4),
+        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+}
+
+pub fn origin_scene(aspect: f32) -> Scene {
+    make_single_scene(aspect, shape_maker::make_origin((1., 0.1), 64,
+        Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
@@ -136,7 +142,7 @@ pub fn world_scene(aspect: f32) -> Scene {
             (rand::random::<f32>() - 0.5) * max_rot_speed * 2.,
         ];
 
-        if shape_type < 0.25 {
+        if shape_type < 0.2 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
@@ -144,7 +150,7 @@ pub fn world_scene(aspect: f32) -> Scene {
             );
             shape_list.push(shape_maker::make_box(lens, position,
                                   Array::zeros(6), rotation, SHAPE_OP))
-        } else if shape_type < 0.5 {
+        } else if shape_type < 0.4 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
@@ -152,7 +158,7 @@ pub fn world_scene(aspect: f32) -> Scene {
             );
             shape_list.push(shape_maker::make_rectangular_pyramid(lens, position,
                                                   rotation, Array::zeros(6), SHAPE_OP))
-        } else if shape_type < 0.75 {
+        } else if shape_type < 0.6 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
@@ -161,6 +167,16 @@ pub fn world_scene(aspect: f32) -> Scene {
             );
             shape_list.push(shape_maker::make_hyperrect(lens, position,
                                         Array::zeros(6), rotation, SHAPE_OP))
+        } else if shape_type < 0.8 {
+            let lens = (
+                rand::random::<f32>() * max_size,
+                rand::random::<f32>() * max_size,
+            );
+            shape_list.push(shape_maker::make_sphereinder(
+                lens, 20,
+                position,
+                Array::zeros(6), rotation, SHAPE_OP)
+            )
         } else {
             shape_list.push(shape_maker::make_5cell(rand::random::<f32>() * max_size, position,
                                     Array::zeros(6), rotation, SHAPE_OP))

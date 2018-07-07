@@ -98,10 +98,12 @@ impl Shape {
         result
     }
 
-    fn make_tris(&mut self) {
+    pub fn make_tris(&mut self) {
         // Divide faces into triangles of indices. These indices aren't of node
         // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
         // Result is a 1d array.
+        // Important: Faces must be defined in an order of consecutive edges.
+        // If we modify/add faces, we must re-run this.
         let mut result = Vec::new();
         let mut current_i = 0;
 

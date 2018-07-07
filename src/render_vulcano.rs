@@ -106,8 +106,9 @@ pub fn render() {
     scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
     scene_lib.insert(7, scenes::plot_scene(aspect));
+    scene_lib.insert(8, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&2].clone();
+    let mut scene = scene_lib[&8].clone();
 
     // todo temp experiments; integrate into Lighting and Scene when complete.
     let pt_light_position = [0., 0., 0., 0.];
