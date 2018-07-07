@@ -55,12 +55,18 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
 }
 
 pub fn hypercube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_hypercube(1., array![0., 0., 0., 0.],
+    make_single_scene(aspect, shape_maker::make_hypercube(1., Array::zeros(6),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn fivecell_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_5cell(2., array![0., 0., 0., 0.],
+    make_single_scene(aspect, shape_maker::make_5cell(2., Array::zeros(4),
+        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+}
+
+pub fn spherinder_scene(aspect: f32) -> Scene {
+    make_single_scene(aspect, shape_maker::make_sphereinder((3., 0.5), 64,
+        Array::zeros(4), Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 

@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "./build/dist",
+    "module": "esnext",
+    "target": "es6",
+    "sourceMap": true,
+    "jsx": "react",
+    "moduleResolution": "node",
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "noUnusedLocals": false,
+    "allowSyntheticDefaultImports": false,
+    "declaration": true
+  },
+  "include": [
+    "src/**/*"
+    ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist"
+  ]
+}

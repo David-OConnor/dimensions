@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 
 use ndarray::prelude::*;
 
-use types::{Vertex, Normal, Edge, Face, Shape};
+use types::{Vertex, Normal, Shape};
 
 const τ: f32 = 2. * PI;
 
@@ -336,8 +336,19 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     // dividing our terrain in each direction. Perhaps replace this argument with
     // something more along the traditional def of resolution?
 
+    // todo include some of your code streamlining from make_spherinder;
+    // todo better yet: Combine these two with a helper func.
+
     let mut vertices = HashMap::new();
+    let mut normals = Vec::new();
+
     let mut id = 0;
+
+    let mut active_ind = 0;
+    // Faces for this terrain are triangles. Don't try to make square faces;
+    // they'd really have creases down a diagonal.
+    let mut faces_vert = Vec::new();
+
     // Instantiate x and like this so the center of the mesh is at the
     // position argument.
     let mut x = -dims.0 / 2.;
@@ -360,12 +371,6 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
         x += dims.0 / res as f32;
     }
 
-    let mut normals = Vec::new();
-
-    let mut row_adder = 0;
-    // Faces for this terrain are triangles. Don't try to make square faces;
-    // they'd really have creases down a diagonal.
-    let mut faces_vert = Vec::new();
     for i in 0..res - 1 {
         for j in 0..res - 1 {
             // The order we build these triangles and normals is subject to trial+error.
@@ -373,32 +378,30 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
             // up the squares into triangles; picking one arbitrarily.
             faces_vert.push(
                 array![  // shows front right
-                    row_adder + j,  // back left
-                    row_adder + j + 1,  // back right
-                    row_adder + j + res + 1  // front left
+                    active_ind + j,  // back left
+                    active_ind + j + 1,  // back right
+                    active_ind + j + res + 1  // front left
                 ]
             );
 
-            let line1 = vertices[&(row_adder + j + 1)].subtract(&vertices[&(row_adder + j)]);
-//            let line1 = vertices[&(row_adder + j)].subtract(&vertices[&(row_adder + j + 1)]);
-            let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
+            let line1 = vertices[&(active_ind + j + 1)].subtract(&vertices[&(active_ind + j)]);
+            let line2 = vertices[&(active_ind + j + res + 1)].subtract(&vertices[&(active_ind + j)]);
 
             // Note: This isn't normalized; we handle that in the shader, for now.
             normals.push(line1.cross(&line2));
 
             faces_vert.push(
                 array![  // shows front left  not j + res, not j
-                    row_adder + j,
-                    row_adder + j + res,  // front right
-                    row_adder + j + res + 1  // front left
+                    active_ind + j,
+                    active_ind + j + res,  // front right
+                    active_ind + j + res + 1  // front left
                 ]
             );
-//            let line1 = vertices[&(row_adder + j + res)].subtract(&vertices[&(row_adder + j)]);
-            let line1 = vertices[&(row_adder + j)].subtract(&vertices[&(row_adder + j + res)]);
-            let line2 = vertices[&(row_adder + j + res + 1)].subtract(&vertices[&(row_adder + j)]);
+            let line1 = vertices[&(active_ind + j)].subtract(&vertices[&(active_ind + j + res)]);
+            let line2 = vertices[&(active_ind + j + res + 1)].subtract(&vertices[&(active_ind + j)]);
             normals.push(line1.cross(&line2));
         }
-        row_adder += res;
+        active_ind += res;
     }
 
     return Shape::new(vertices, faces_vert, normals, position,
@@ -445,76 +448,82 @@ pub fn make_sphereinder(lens: (f32, f32), res: u32, direction: Array1<f32>,
     // This is a 4d cylinder analog that extends spheres along a line in the direction
     // not used by the spheres.
 
+    // We iterate over longitude twice as much as latitude, so the former must
+    // divide by 2.
     assert_eq!(res % 2, 0);
 
-    // res is (length res, angle res); same for lens.
-    let mut result = Vec::new();
-
     // uses a crude 'UV' sphere, with uneven face sizes.  Simple algorithm, but
-    // not as smooth as other methods.
-    let mut sphere_coords = Vec::new();
-    let mut sphere_norms = Vec::new();
-    let mut faces_vert = Vec::new();
-    let mut row_adder = 0;
+    // not as smooth as other methods.  The code is similar to that used in
+    // the terrain mesh.
+//    let mut sphere_coords = Vec::new();
+//    let mut sphere_norms = Vec::new();  // todo add this back
+
+    let sphere_vert_count = (res + 1) * (res / 2) + 1; // num vertices per sphere.
+
     // todo tops and bottoms only need one vertex each, not a full set.
+    let mut vertices = HashMap::new();
+    let mut id = 0;
+
+    // We build vertices and vaces for both spheres in one pass.
     for i in 0..res {
         // ISO standard definitions of θ and φ. The reverse is common too.
-        let φ = τ * i / res;  // longitude, 0 to τ
+        let φ = τ * (i as f32 / res as f32);  // longitude, 0 to τ
         for j in 0..res / 2 {
-            let θ = τ * j / (res * 2.);  // latitude, 0 to τ/2
+            let θ = τ * (j as f32 / res as f32);  // latitude, 0 to τ/2
             // These could correlate to diff combos of x/y/z/w.
             let a = lens.1 * θ.sin() * φ.cos();
             let b = lens.1 * θ.sin() * φ.sin();
             let c = lens.1 * θ.cos();
-            sphere_coords.push((a, b, c));
-            // We're ignoring u for normals here.
 
-            // The final edges don't get their own faces.
-            if i == res / 2 - 1 || j == res / 2 - 1 {
-                continue
-            }
-            // Here we add the (rectangular) faces contained on the individual spheres.
-            faces_vert.push(
+            vertices.insert(id, Vertex::new(a, b, c, 0.));
+            vertices.insert(sphere_vert_count + id, Vertex::new(a, b, c, lens.0));
+
+            id += 1;
+        }
+    }
+
+    let mut faces_vert = Vec::new();
+    let mut active_ind = 0;
+    let mut normals = Vec::new();
+
+    // These are four-sided faces; let Shape.make_tris divide them.
+    for i in 0..res - 1 {
+        for j in 0..res/2 - 1 {
+            faces_vert.push(  // origin sphere
                 array![
-                    row_adder + j,
-                    row_adder + j + 1,
-                    row_adder + j + res,  // front right
-                    row_adder + j + res + 1  // front left
+                    active_ind + j,
+                    active_ind + j + 1,
+                    active_ind + j + res/2 + 1,
+                    active_ind + j + res/2,
+
                 ]
             );
+            faces_vert.push(  // end sphere
+                array![
+                    sphere_vert_count + j,
+                    sphere_vert_count + active_ind + j + 1,
+                    sphere_vert_count + active_ind + j + res/2 + 1,
+                    sphere_vert_count + active_ind + j + res/2,
+                ]
+            );
+
+
+            // We're ignoring w for normals, for now.
+            let line1 = vertices[&(active_ind + j)].subtract(&vertices[&(active_ind + j + res/2)]);
+            let line2 = vertices[&(active_ind + j + res/2 + 1)].subtract(&vertices[&(active_ind + j)]);
+            normals.push(line1.cross(&line2));
+
+            let line3 = vertices[&(sphere_vert_count + active_ind + j)].subtract(
+                &vertices[&(sphere_vert_count + active_ind + j + res/2)]);
+            let line4 = vertices[&(sphere_vert_count + active_ind + j + res/2 + 1)].subtract(
+                &vertices[&(sphere_vert_count + active_ind + j)]);
+            normals.push(line3.cross(&line4));
+
         }
-        row_adder += res;
+        active_ind += res / 2;
     }
 
-    // Now that we have our sphere, continue the sphere along the missing dimension.
-    // Start by making it point along the w axis; we can later rotate.
-    let mut coords = vec![
-        [sphere_coords.0, sphere_coords.1, sphere_coords.2, 0.],
-        [sphere_coords.0, sphere_coords.1, sphere_coords.2, lens.0],
-    ];
-
-
-    let mut vertices = HashMap::new();
-    for (id, (a, b, c)) in sphere_coords.iter().enumerate() {
-        vertices.insert(id as u32, Vertex::new(a, b, c, 0.));
-        vertices.insert(id + sphere_coords.len() as u32, Vertex::new(a, b, c, lens.0));
-    }
-
-    // Combine vertices for the two spheres. One at the origin, one at the end
-    // of the length.  Note that rotations will be around one end; not the middle.
-
-    for (id, coord) in coords.iter().enumerate() {
-        vertices.insert(id as u32, Vertex::new(coord[0], coord[1], coord[2], coord[3]));
-    }
-
-
-
-    let faces_vert = vec![  // Vertex indices for each face.
-        array![0, 1, 2, 3],  // Front inner
-        array![4, 5, 6, 7],  // Back inner
-        array![3, 2, 6, 7],  // Top inner
-        array![0, 1, 5, 4],  // Bottom inner
-    ];
+    // Add the faces spanning the space between the two spheres.
 
     Shape::new(vertices, faces_vert, normals, position, orientation, rotation_speed, opacity)
 }

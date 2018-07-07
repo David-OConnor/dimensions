@@ -60,12 +60,6 @@ impl Normal {
 }
 
 #[derive(Clone, Debug)]
-pub struct Face {
-    // Edges should lie in a plane, and be in an order that links them together.
-    pub edges: Vec<Edge>
-}
-
-#[derive(Clone, Debug)]
 pub struct Shape {
     // todo macro constructor that lets you ommit position, rotation, scale.
     // Shape nodes and rotation are relative to an origin of 0.
@@ -107,7 +101,7 @@ impl Shape {
     fn make_tris(&mut self) {
         // Divide faces into triangles of indices. These indices aren't of node
         // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
-        // Result is a 1d array; Float32array-style.
+        // Result is a 1d array.
         let mut result = Vec::new();
         let mut current_i = 0;
 

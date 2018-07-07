@@ -15,8 +15,24 @@
 // Can't use procedural macros with #[macro_use].
 //use stdweb::js_export;
 
+#[macro_use]
+extern crate ndarray;
+extern crate rand;
+//extern crate simdnoise;
+
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
+
+
+#[wasm_bindgen]
+extern {
+    fn alert(s: &str);
+}
+
+#[wasm_bindgen]
+pub fn greet(name: &str) {
+    alert(&format!("Hello, {}!", name));
+}
 
 //#[js_export]
 #[wasm_bindgen]

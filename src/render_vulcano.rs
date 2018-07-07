@@ -100,7 +100,7 @@ pub fn render() {
     let mut scene_lib = HashMap::new();
     scene_lib.insert(0, scenes::hypercube_scene(aspect));
     scene_lib.insert(1, scenes::fivecell_scene(aspect));
-    scene_lib.insert(2, scenes::plot_spherinder(aspect));
+    scene_lib.insert(2, scenes::spherinder_scene(aspect));
     scene_lib.insert(3, scenes::cube_scene(aspect));
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
     scene_lib.insert(5, scenes::world_scene(aspect));
