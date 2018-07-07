@@ -230,17 +230,47 @@ pub fn plot_scene(aspect: f32) -> Scene {
     // Z: output real
     // U: output imag
 
-    let shapes = HashMap::new();
+    fn f(r: f32, im: f32) -> (f32, f32) {
+        let out_r = r.powi(2) - im.powi(2) + 1.;
+        let out_im = 2. * r * im;
+        (out_r, out_im)
+    }
+
+    let size= 20;
+
+    let (mut height_grid, mut spiss_grid) = (
+        Array2::zeros((size, size)),
+        Array2::zeros((size, size))
+    );
+
+    let scaler = 0.07;
+
+    for i in 0..size {
+        for j in 0..size {
+            let result = f(
+                i as f32 - size as f32 / 2.,
+                j as f32 - size as f32 / 2.
+            );
+            height_grid[[i, j]] = result.0 * scaler;
+            spiss_grid[[i, j]] = result.1 * scaler;
+        }
+    }
+
+    let mut shapes = HashMap::new();
+    shapes.insert(0, shape_maker::make_terrain((10., 10.), size as u32,
+                                               height_grid, spiss_grid,
+                                               Array::zeros(4), 1.));
 
     Scene {
         shapes,
         cam: Camera {
-            position: array![0., 0., -1., 0.],
             aspect,
+            position: array![0., 0., -25., 0.],
+            θ: array![0., 0., τ / 2., 0., 0., 0.],
             ..base_camera()
         },
-        cam_type: CameraType::Free,
-        color_max: 100.,
+        cam_type: CameraType::Single,
+        color_max: 10.,
         lighting: base_lighting,
         sensitivities: (5., 0.5),
     }

@@ -100,12 +100,14 @@ pub fn render() {
     let mut scene_lib = HashMap::new();
     scene_lib.insert(0, scenes::hypercube_scene(aspect));
     scene_lib.insert(1, scenes::fivecell_scene(aspect));
-    scene_lib.insert(2, scenes::cube_scene(aspect));
-    scene_lib.insert(3, scenes::pyramid_scene(aspect));
-    scene_lib.insert(4, scenes::world_scene(aspect));
-    scene_lib.insert(5, scenes::grid_scene(aspect));
+    scene_lib.insert(2, scenes::plot_spherinder(aspect));
+    scene_lib.insert(3, scenes::cube_scene(aspect));
+    scene_lib.insert(4, scenes::pyramid_scene(aspect));
+    scene_lib.insert(5, scenes::world_scene(aspect));
+    scene_lib.insert(6, scenes::grid_scene(aspect));
+    scene_lib.insert(7, scenes::plot_scene(aspect));
 
-    let mut scene = scene_lib[&0].clone();
+    let mut scene = scene_lib[&2].clone();
 
     // todo temp experiments; integrate into Lighting and Scene when complete.
     let pt_light_position = [0., 0., 0., 0.];

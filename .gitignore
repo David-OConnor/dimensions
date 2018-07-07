@@ -9,4 +9,5 @@ workspace.xml
 /gfx_libs/
 */node_modules/
 */build/
+*/dist/
 *.wasm
