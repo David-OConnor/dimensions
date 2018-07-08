@@ -14,7 +14,36 @@ const τ: f32 = 2. * PI;
 // Nodes are set up here so that 0 is at their center; this is used for scaling,
 // rotation, and positioning in the world.
 
-pub fn make_box(lens: (f32, f32, f32)) -> Mesh {
+fn combine_meshes(mut base: Mesh, meshes: Vec<(Mesh, [f32; 4])>) -> Mesh{
+    // The array in the meshes tuple is position offset for that shape.
+    let mut id_addition = base.vertices.len() as u32;
+    for (mesh, offset) in &meshes {
+        for (id, vertex) in &mesh.vertices {
+            // For the roof, modify the ids to be unique.
+            base.vertices.insert(
+                id + id_addition,
+                Vertex::new(vertex.position.0 + offset[0], vertex.position.1 + offset[1],
+                            vertex.position.2 + offset[2], vertex.position.3 + offset[3]
+                )
+            );
+        }
+
+        for face in &mesh.faces_vert {
+            base.faces_vert.push(face + id_addition);
+        }
+
+        for normal in &mesh.normals {  // todo rotate normals!
+            base.normals.push(normal.clone());
+        }
+
+        id_addition += mesh.vertices.len() as u32;
+    }
+
+    base.make_tris();
+    base
+}
+
+pub fn box_(lens: (f32, f32, f32)) -> Mesh {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -62,7 +91,7 @@ pub fn make_box(lens: (f32, f32, f32)) -> Mesh {
     Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_rectangular_pyramid(lens: (f32, f32, f32)) -> Mesh {
+pub fn rect_pyramid(lens: (f32, f32, f32)) -> Mesh {
     let coords = [
         // Base  (Center of this shape is the center of the base square)
         [-1., 0., -1., 0.],
@@ -103,57 +132,26 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32)) -> Mesh {
     Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_house(lens: (f32, f32, f32)) -> Mesh {
-    let empty_array = array![0., 0., 0., 0., 0., 0.];
-
+pub fn house(lens: (f32, f32, f32)) -> Mesh {
     // We'll modify base in-place, then return it.
-    let mut base = make_box(lens);
+    let mut base = box_(lens);
 
-    let roof = make_rectangular_pyramid(
+    let roof = rect_pyramid(
         // Let the roof overhang the base by a little.
         // Make the roof height a portion of the base height.
         (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
     );
 
-    // Now that we've made the shapes, recompose them to be one shape.
-    // todo make this a separate, (reusable) func?1
-    let id_addition = base.vertices.len() as u32;
-
-    for (id, vertex) in &roof.vertices {
-        // For the roof, modify the ids to be unique.
-        base.vertices.insert(
-            id + id_addition,
-            // Raise the roof.
-            Vertex::new(vertex.position.0, vertex.position.1 + lens.1 / 2.,
-                        vertex.position.2, vertex.position.3
-            ));
-    }
-
-//    for face in &roof.faces_vert {
-//        let updated_fv = Vec::new();
-//        for vertex in face {
-//            updated_fv.push(vertex + id_addition);
-//        }
-//        base.faces_vert.push(Array1::from_vec(updated_fv));
-//    }
-    // todo
-
-    for normal in &roof.normals {
-        base.normals.push(normal.clone());
-    }
-
-    base.make_tris();
-
-    base
+    combine_meshes(base, vec![(roof, [0., lens.1 / 2., 0., 0.])])
 }
 
-pub fn make_cube(side_len: f32) -> Mesh {
+pub fn cube(side_len: f32) -> Mesh {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
-    make_box((side_len, side_len, side_len))
+    box_((side_len, side_len, side_len))
 }
 
-pub fn make_5cell(radius: f32) -> Mesh {
+pub fn fivecell(radius: f32) -> Mesh {
     let coords = [
         [-(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
         [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // right base
@@ -202,7 +200,7 @@ pub fn make_5cell(radius: f32) -> Mesh {
     Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_hyperrect(lens: (f32, f32, f32, f32)) -> Mesh {
+pub fn hyperrect(lens: (f32, f32, f32, f32)) -> Mesh {
     // Make a 4d hypercube.
 
     let coords = [
@@ -303,12 +301,12 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32)) -> Mesh {
 
 pub fn make_hypercube(side_len: f32) -> Mesh {
     // Convenience function.
-    make_hyperrect((side_len, side_len, side_len, side_len))
+    hyperrect((side_len, side_len, side_len, side_len))
 }
 
-pub fn make_terrain(dims: (f32, f32), res: u32,
-                    height_map: Array2<f32>, spissitude_map: Array2<f32>,
-                    position: Array1<f32>) -> Mesh {
+pub fn terrain(dims: (f32, f32), res: u32,
+               height_map: Array2<f32>, spissitude_map: Array2<f32>,
+               ) -> Mesh {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // w and y mappings for each x/z point...
@@ -340,10 +338,10 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
             // You could change which planes this is over by rearranging
             // these node points.
             vertices.insert(id, Vertex::new(
-                x + position[0],
-                height + position[1],
-                z + position[2],
-                spissitude + position[3],
+                x,
+                height,
+                z,
+                spissitude,
             ));
             z += dims.1 / res as f32;
             id += 1;
@@ -387,8 +385,8 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
     Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
-                       spissitude_map: Array3<f32>) -> HashMap<u32, Shape> {
+pub fn hypergrid(dims: (f32, f32, f32), res: u32,
+                 spissitude_map: Array3<f32>) -> HashMap<u32, Shape> {
     // Position is the center.
     // todo incorporate position.
     let mut result = HashMap::new();
@@ -401,8 +399,8 @@ pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
             for k in 0..res {  // z
                 result.insert(
                     res.pow(2) * i + res * j + k,
-                    Shape::new(make_cube(0.5), array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
-                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], 1.)
+                    Shape::new(cube(0.5), array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
+                               array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], 1.)
                 );
                 z += dims.2 / res as f32
             }
@@ -413,42 +411,14 @@ pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
     return result
 }
 
-pub fn make_arrow(lens: (f32, f32), res: u32) -> Mesh {
+pub fn arrow(lens: (f32, f32), res: u32) -> Mesh {
+    let mut body = spherinder(lens, res);
+    let point = fivecell(lens.1 * 4.);
 
-    let mut body = make_sphereinder(lens, res);
-    ;
-    let point = make_5cell(lens.1 * 4.);
-    // todo combine code here with make_house; eg in a helper func.
-
-        // Now that we've made the shapes, recompose them to be one shape.
-    // todo make this a separate, (reusable) func?1
-    let id_addition = body.vertices.len() as u32;
-
-    // todo assume long axis is w for now.
-    for (id, vertex) in &point.vertices {
-        // For the roof, modify the ids to be unique.
-        body.vertices.insert(
-            id + id_addition,
-            Vertex::new(vertex.position.0, vertex.position.1,
-                        vertex.position.2, vertex.position.3 + lens.0
-            ));
-    }
-
-    for face in &point.faces_vert {
-        body.faces_vert.push(face + id_addition);
-    }
-
-    for normal in &point.normals {
-        body.normals.push(normal.clone());
-    }
-
-
-    body.make_tris();
-
-    body
+    combine_meshes(body, vec![(point, [0., 0., 0., lens.0])])
 }
 
-pub fn make_sphereinder(lens: (f32, f32), res: u32) -> Mesh {
+pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     // This is a 4d cylinder analog that extends spheres along a line in the direction
     // not used by the spheres.
 
@@ -604,12 +574,17 @@ pub fn make_sphereinder(lens: (f32, f32), res: u32) -> Mesh {
 }
 
 
-pub fn make_origin(lens: (f32, f32), res: u32) -> Mesh {
+pub fn letter_cube(len: f32, letter: &str) {
 
-    let mut w = make_arrow(lens, res);
-    let x = make_arrow(lens, res);
-    let y = make_arrow(lens, res);
-    let z = make_arrow(lens, res);
+}
+
+
+pub fn origin(lens: (f32, f32), res: u32) -> Mesh {
+
+    let mut w = arrow(lens, res);
+    let x = arrow(lens, res);
+    let y = arrow(lens, res);
+    let z = arrow(lens, res);
 
     let mut param_set = vec![
         (w.vertices.len() as u32, array![0., 0., 0., τ/4., 0., 0.], x),
@@ -643,7 +618,6 @@ pub fn make_origin(lens: (f32, f32), res: u32) -> Mesh {
 
     w
 }
-
 
 #[cfg(test)]
 mod tests {

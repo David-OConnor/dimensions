@@ -108,7 +108,7 @@ pub fn render() {
     scene_lib.insert(7, scenes::plot_scene(aspect));
     scene_lib.insert(8, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&5].clone();
+    let mut scene = scene_lib[&7].clone();
 
     // todo temp experiments; integrate into Lighting and Scene when complete.
     let pt_light_position = [0., 0., 0., 0.];
@@ -252,7 +252,7 @@ pub fn render() {
 
     // todo move depth_buffer and unifform buffer to one of the make_buffer funcs.
 
-    let proj = transforms::make_proj_mat4(&scene.cam);
+    let mut proj = transforms::make_proj_mat4(&scene.cam);
 
 //    let l_w = 4.;
 //    let w = 0.4;
@@ -380,7 +380,7 @@ pub fn render() {
 
     let mut prev_frame_start = time::Instant::now();
 
-    let static_uniforms = shaders::vs::ty::Data {
+    let mut static_uniforms = shaders::vs::ty::Data {
         // view matrix will change per frame; model will change per shape.
         model: transforms::I4(),
         view: transforms::I4(),
@@ -404,6 +404,8 @@ pub fn render() {
     };
 
     loop {
+
+        static_uniforms.proj = transforms::make_proj_mat4(&scene.cam); // todo LOOK AT THIS!!!!
         // delta_time is inverse frame rate. Used for making movements and
         // rotations dependent on time rather than frame rate.
         let frame_start = time::Instant::now();

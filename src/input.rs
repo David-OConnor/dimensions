@@ -1,10 +1,14 @@
 // Handles keyboard and mouse input.
 use std::collections::HashMap;
+use std::f32::consts::PI;
 
 use ndarray::prelude::*;
 
 use scenes;
 use types::{Camera, CameraType, Scene, Shape};
+
+const τ: f32 = 2. * PI;
+
 
 #[derive(Copy, Clone, Debug)]
 pub enum MoveDirection{
@@ -42,6 +46,7 @@ pub fn handle_pressed<'a>(pressed: &[u32], delta_time: f32,
     // delta_time is in seconds.
     let move_amount = scene.sensitivities.0 * delta_time;
     let rotate_amount = scene.sensitivities.1 * delta_time;
+    let zoom_amount = scene.sensitivities.2 * delta_time;
 
     // Code shorteners
     let shape = scene.shapes.get_mut(&0).unwrap();
@@ -183,6 +188,16 @@ pub fn handle_pressed<'a>(pressed: &[u32], delta_time: f32,
                     _ => scene.cam.θ[5] -= rotate_amount
                 }
             },
+            // Zoom
+            13 => {  // +
+                scene.cam.fov -= zoom_amount; // todo specify const
+                if scene.cam.fov < 0. { scene.cam.fov = 0. }
+            },
+            12 => {  // -
+                scene.cam.fov += zoom_amount;
+                if scene.cam.fov > τ { scene.cam.fov = τ }
+
+            }
 //            2 =>{ scene = &mut scene_lib[&1].clone()},  // 1
 //            2 =>{ scene = &mut scenes::cube_scene(4./3.)},  // 1
 //            3 => scene = &mut scene_lib[&2].clone(),  // 2

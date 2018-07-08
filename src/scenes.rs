@@ -29,7 +29,7 @@ fn base_camera() -> Camera {
         fov: τ / 5.,
         aspect: 1.,
         aspect_4: 1.,
-        near: 0.1,
+        near: 0.05,
         far: 600.,
         fourd_proj_dist: 2.5,
     }
@@ -50,7 +50,7 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
         cam_type: CameraType::Single,
         color_max: 0.4,
         lighting: base_lighting,
-        sensitivities: (0., 0.5),
+        sensitivities: (0., 0.5, 0.2),
     }
 }
 
@@ -60,30 +60,30 @@ pub fn hypercube_scene(aspect: f32) -> Scene {
 }
 
 pub fn fivecell_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_5cell(2.), Array::zeros(4),
-        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    make_single_scene(aspect, Shape::new(shape_maker::fivecell(2.), Array::zeros(4),
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn spherinder_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_arrow((3., 0.5), 64),
-        Array::zeros(4),
-        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    make_single_scene(aspect, Shape::new(shape_maker::arrow((3., 0.5), 64),
+                                         Array::zeros(4),
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn origin_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_origin((1., 0.1), 64),
-        Array::zeros(4),
-        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    make_single_scene(aspect, Shape::new(shape_maker::origin((1., 0.1), 64),
+                                         Array::zeros(4),
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn cube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_cube(1.), array![0., 0., 0., 0.],
-        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    make_single_scene(aspect, Shape::new(shape_maker::cube(1.), array![0., 0., 0., 0.],
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn pyramid_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_rectangular_pyramid((1., 1., 1.)), array![0., 0., 0., 0.],
-        Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    make_single_scene(aspect, Shape::new(shape_maker::rect_pyramid((1., 1., 1.)), array![0., 0., 0., 0.],
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn world_scene(aspect: f32) -> Scene {
@@ -121,8 +121,8 @@ pub fn world_scene(aspect: f32) -> Scene {
     let spiss_map_2d = Array::from_shape_vec((terrain_res, terrain_res), spiss_map).unwrap();
 
     let mut shape_list = Vec::new();
-    shape_list.push(Shape::new(shape_maker::make_terrain((terrain_size, terrain_size), terrain_res as u32,
-                                              height_map_2d, spiss_map_2d, Array::zeros(4)),
+    shape_list.push(Shape::new(shape_maker::terrain((terrain_size, terrain_size), terrain_res as u32,
+                                                    height_map_2d, spiss_map_2d),
                     array![0., -1., 0., 0.], Array::zeros(6), Array::zeros(6), 1.));
 
     for i in 0..n_shapes {
@@ -149,16 +149,16 @@ pub fn world_scene(aspect: f32) -> Scene {
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size
             );
-            shape_list.push(Shape::new(shape_maker::make_box(lens), position,
-                                  Array::zeros(6), rotation, SHAPE_OP))
+            shape_list.push(Shape::new(shape_maker::box_(lens), position,
+                                       Array::zeros(6), rotation, SHAPE_OP))
         } else if shape_type < 0.4 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
             );
-            shape_list.push(Shape::new(shape_maker::make_rectangular_pyramid(lens), position,
-                                                  rotation, Array::zeros(6), SHAPE_OP))
+            shape_list.push(Shape::new(shape_maker::rect_pyramid(lens), position,
+                                       rotation, Array::zeros(6), SHAPE_OP))
         } else if shape_type < 0.6 {
             let lens = (
                 rand::random::<f32>() * max_size,
@@ -166,21 +166,21 @@ pub fn world_scene(aspect: f32) -> Scene {
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size
             );
-            shape_list.push(Shape::new(shape_maker::make_hyperrect(lens), position,
-                                        Array::zeros(6), rotation, SHAPE_OP))
+            shape_list.push(Shape::new(shape_maker::hyperrect(lens), position,
+                                       Array::zeros(6), rotation, SHAPE_OP))
         } else if shape_type < 0.8 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
             );
-            shape_list.push(Shape::new(shape_maker::make_sphereinder(
+            shape_list.push(Shape::new(shape_maker::spherinder(
                 lens, 20),
                 position,
                 Array::zeros(6), rotation, SHAPE_OP)
             )
         } else {
-            shape_list.push(Shape::new(shape_maker::make_5cell(rand::random::<f32>() * max_size), position,
-                                    Array::zeros(6), rotation, SHAPE_OP))
+            shape_list.push(Shape::new(shape_maker::fivecell(rand::random::<f32>() * max_size), position,
+                                       Array::zeros(6), rotation, SHAPE_OP))
         }
     }
 
@@ -200,7 +200,7 @@ pub fn world_scene(aspect: f32) -> Scene {
         cam_type: CameraType::Free,
         color_max: 10.,
         lighting: base_lighting,
-        sensitivities: (5., 0.2),
+        sensitivities: (5., 0.2, 0.2),
     }
 }
 
@@ -228,8 +228,8 @@ pub fn grid_scene(aspect: f32) -> Scene {
 
     let grid_size: usize = 10;
     let grid = Array3::zeros((grid_size, grid_size, grid_size));
-    let shapes = shape_maker::make_hypergrid((200., 200., 200.), grid_size as u32,
-                                              grid);
+    let shapes = shape_maker::hypergrid((200., 200., 200.), grid_size as u32,
+                                        grid);
 
     Scene {
         shapes,
@@ -241,7 +241,7 @@ pub fn grid_scene(aspect: f32) -> Scene {
         cam_type: CameraType::Free,
         color_max: 100.,
         lighting: base_lighting,
-        sensitivities: (5., 0.5),
+        sensitivities: (5., 0.5, 0.2),
     }
 }
 
@@ -251,7 +251,7 @@ pub fn plot_scene(aspect: f32) -> Scene {
     // X: input real
     // Y: input imag
     // Z: output real
-    // U: output imag
+    // W: output imag
 
     fn f(r: f32, im: f32) -> (f32, f32) {
         let out_r = r.powi(2) - im.powi(2) + 1.;
@@ -280,9 +280,11 @@ pub fn plot_scene(aspect: f32) -> Scene {
     }
 
     let mut shapes = HashMap::new();
-    shapes.insert(0, Shape::new(shape_maker::make_terrain((10., 10.), size as u32,
-                                               height_grid, spiss_grid, Array::zeros(4)),
-                                               Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
+    shapes.insert(0, Shape::new(shape_maker::terrain((10., 10.), size as u32,
+                                                      height_grid, spiss_grid),
+                                Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
+    shapes.insert(1, Shape::new(shape_maker::origin((4., 0.3), 40),
+                                Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
 
     Scene {
         shapes,
@@ -292,9 +294,9 @@ pub fn plot_scene(aspect: f32) -> Scene {
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             ..base_camera()
         },
-        cam_type: CameraType::Single,
+        cam_type: CameraType::Free,
         color_max: 10.,
         lighting: base_lighting,
-        sensitivities: (5., 0.5),
+        sensitivities: (5., 0.5, 0.2),
     }
 }

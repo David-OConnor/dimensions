@@ -17,8 +17,8 @@ pub struct Vertex {
 impl_vertex!(Vertex, position);
 
 impl Vertex {
-    pub fn new(x: f32, y: f32, z: f32, u: f32) -> Vertex {
-        Vertex{ position: (x, y, z, u) }
+    pub fn new(x: f32, y: f32, z: f32, w: f32) -> Vertex {
+        Vertex{ position: (x, y, z, w) }
     }
 
     pub fn subtract(&self, other: &Vertex) -> Vertex {
@@ -39,7 +39,7 @@ impl Vertex {
 
 #[derive(Copy, Clone, Debug)]
 pub struct VertAndExtras {
-    // Used to pass attributes that go with each vertex.
+    // Used to pass attributes that go with each vertex to the shader.
     pub position: (f32, f32, f32, f32),
     pub shape_posit: (f32, f32, f32, f32),
     pub normal: (f32, f32, f32, f32),
@@ -183,7 +183,7 @@ pub struct Scene {
     pub cam_type: CameraType,
     pub lighting: Lighting,
     pub color_max: f32, // distance thresh for max 4d-color indicator.
-    pub sensitivities: (f32, f32),
+    pub sensitivities: (f32, f32, f32),  // move, rotate, zoom
 }
 
 #[derive(Clone, Debug)]
