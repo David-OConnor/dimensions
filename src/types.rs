@@ -60,45 +60,23 @@ impl Normal {
 }
 
 #[derive(Clone, Debug)]
-pub struct Shape {
-    // todo macro constructor that lets you ommit position, rotation, scale.
-    // Shape nodes and rotation are relative to an origin of 0.
+pub struct Mesh {
     pub vertices: HashMap<u32, Vertex>,
     pub faces_vert: Vec<Array1<u32>>,  // Indicies of vertexes.
     pub normals: Vec<Normal>,  // Normals only use the 3d component; not defined for 4d, yet. ?
-    pub position: Array1<f32>,
-    pub scale: f32,
-    pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
-    pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
-    pub per_face_vertices: Vec<Vertex>,
     pub tris: Array1<u32>,
-    pub opacity: f32,
 }
 
-impl Shape {
+impl Mesh {
     pub fn new(vertices: HashMap<u32, Vertex>,
-               faces_vert: Vec<Array1<u32>>, normals: Vec<Normal>,
-               position: Array1<f32>, orientation: Array1<f32>,
-               rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+               faces_vert: Vec<Array1<u32>>, normals: Vec<Normal>) -> Mesh {
 
-        // todo use this, like in JS.
-        let per_face_vertices = {
-            let mut shape_vertices = vec![];
-            for face in &faces_vert {
-                for id in face {
-                    shape_vertices.push(vertices[id]);
-                }
-            }
-            shape_vertices
-        };
-
-        let mut result = Shape{ vertices, faces_vert, normals, position,
-            scale: 1., orientation, rotation_speed, per_face_vertices, tris: array![], opacity};
+        let mut result = Mesh {vertices, faces_vert, normals, tris: array![]};
         result.make_tris();
         result
     }
 
-    pub fn make_tris(&mut self) {
+        pub fn make_tris(&mut self) {
         // Divide faces into triangles of indices. These indices aren't of node
         // ids; rather of cumulative node ids; eg how they'll appear in an index buffer.
         // Result is a 1d array.
@@ -138,6 +116,26 @@ impl Shape {
         // Find the number of vertices used in drawing faces.  Ie for a box,
         // it's 6 faces x 4 vertices/face.
         self.faces_vert.iter().fold(0, |acc, face| acc + face.len() as u32)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Shape {
+    // todo macro constructor that lets you ommit position, rotation, scale.
+    // Shape nodes and rotation are relative to an origin of 0.
+    pub mesh: Mesh,
+    pub position: Array1<f32>,
+    pub scale: f32,
+    pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
+    pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
+    pub opacity: f32,
+}
+
+impl Shape {
+    pub fn new(mesh: Mesh, position: Array1<f32>, orientation: Array1<f32>,
+               rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+
+        Shape{ mesh, position, scale: 1., orientation, rotation_speed, opacity }
     }
 }
 

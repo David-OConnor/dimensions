@@ -55,34 +55,34 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
 }
 
 pub fn hypercube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_hypercube(1., Array::zeros(6),
+    make_single_scene(aspect, Shape::new(shape_maker::make_hypercube(1.), Array::zeros(6),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn fivecell_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_5cell(2., Array::zeros(4),
+    make_single_scene(aspect, Shape::new(shape_maker::make_5cell(2.), Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn spherinder_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_arrow((3., 0.5), 64,
+    make_single_scene(aspect, Shape::new(shape_maker::make_arrow((3., 0.5), 64),
         Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn origin_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_origin((1., 0.1), 64,
+    make_single_scene(aspect, Shape::new(shape_maker::make_origin((1., 0.1), 64),
         Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn cube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_cube(1., array![0., 0., 0., 0.],
+    make_single_scene(aspect, Shape::new(shape_maker::make_cube(1.), array![0., 0., 0., 0.],
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn pyramid_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, shape_maker::make_rectangular_pyramid((1., 1., 1.), array![0., 0., 0., 0.],
+    make_single_scene(aspect, Shape::new(shape_maker::make_rectangular_pyramid((1., 1., 1.)), array![0., 0., 0., 0.],
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
@@ -121,8 +121,9 @@ pub fn world_scene(aspect: f32) -> Scene {
     let spiss_map_2d = Array::from_shape_vec((terrain_res, terrain_res), spiss_map).unwrap();
 
     let mut shape_list = Vec::new();
-    shape_list.push(shape_maker::make_terrain((terrain_size, terrain_size), terrain_res as u32,
-                                              height_map_2d, spiss_map_2d, array![0., -1., 0., 0.], 1.));
+    shape_list.push(Shape::new(shape_maker::make_terrain((terrain_size, terrain_size), terrain_res as u32,
+                                              height_map_2d, spiss_map_2d, Array::zeros(4)),
+                    array![0., -1., 0., 0.], Array::zeros(6), Array::zeros(6), 1.));
 
     for i in 0..n_shapes {
         let shape_type = rand::random::<f32>();
@@ -148,7 +149,7 @@ pub fn world_scene(aspect: f32) -> Scene {
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size
             );
-            shape_list.push(shape_maker::make_box(lens, position,
+            shape_list.push(Shape::new(shape_maker::make_box(lens), position,
                                   Array::zeros(6), rotation, SHAPE_OP))
         } else if shape_type < 0.4 {
             let lens = (
@@ -156,7 +157,7 @@ pub fn world_scene(aspect: f32) -> Scene {
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
             );
-            shape_list.push(shape_maker::make_rectangular_pyramid(lens, position,
+            shape_list.push(Shape::new(shape_maker::make_rectangular_pyramid(lens), position,
                                                   rotation, Array::zeros(6), SHAPE_OP))
         } else if shape_type < 0.6 {
             let lens = (
@@ -165,20 +166,20 @@ pub fn world_scene(aspect: f32) -> Scene {
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size
             );
-            shape_list.push(shape_maker::make_hyperrect(lens, position,
+            shape_list.push(Shape::new(shape_maker::make_hyperrect(lens), position,
                                         Array::zeros(6), rotation, SHAPE_OP))
         } else if shape_type < 0.8 {
             let lens = (
                 rand::random::<f32>() * max_size,
                 rand::random::<f32>() * max_size,
             );
-            shape_list.push(shape_maker::make_sphereinder(
-                lens, 20,
+            shape_list.push(Shape::new(shape_maker::make_sphereinder(
+                lens, 20),
                 position,
                 Array::zeros(6), rotation, SHAPE_OP)
             )
         } else {
-            shape_list.push(shape_maker::make_5cell(rand::random::<f32>() * max_size, position,
+            shape_list.push(Shape::new(shape_maker::make_5cell(rand::random::<f32>() * max_size), position,
                                     Array::zeros(6), rotation, SHAPE_OP))
         }
     }
@@ -228,7 +229,7 @@ pub fn grid_scene(aspect: f32) -> Scene {
     let grid_size: usize = 10;
     let grid = Array3::zeros((grid_size, grid_size, grid_size));
     let shapes = shape_maker::make_hypergrid((200., 200., 200.), grid_size as u32,
-                                              grid, Array::zeros(6), SHAPE_OP);
+                                              grid);
 
     Scene {
         shapes,
@@ -279,9 +280,9 @@ pub fn plot_scene(aspect: f32) -> Scene {
     }
 
     let mut shapes = HashMap::new();
-    shapes.insert(0, shape_maker::make_terrain((10., 10.), size as u32,
-                                               height_grid, spiss_grid,
-                                               Array::zeros(4), 1.));
+    shapes.insert(0, Shape::new(shape_maker::make_terrain((10., 10.), size as u32,
+                                               height_grid, spiss_grid, Array::zeros(4)),
+                                               Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
 
     Scene {
         shapes,

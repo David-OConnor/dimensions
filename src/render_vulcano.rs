@@ -57,20 +57,20 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
         let mut vertex_info = Vec::new();
         let mut index_modifier = 0;
 
-        let mut tri_indices: Vec<u32> = shape.tris.iter().map(|ind| ind + index_modifier).collect();
+        let mut tri_indices: Vec<u32> = shape.mesh.tris.iter().map(|ind| ind + index_modifier).collect();
         indices.append(&mut tri_indices);
-        index_modifier += shape.num_face_verts();
+        index_modifier += shape.mesh.num_face_verts();
 
-        for (i, face) in shape.faces_vert.iter().enumerate() {
+        for (i, face) in shape.mesh.faces_vert.iter().enumerate() {
             for vert_id in face {
-                let v = shape.vertices[vert_id].position;
+                let v = shape.mesh.vertices[vert_id].position;
                 // todo Vertice position can be done in static buffers!
                 let info = VertAndExtras {
                     position: (v.0, v.1, v.2, v.3),
                     shape_posit: (shape.position[0], shape.position[1],
                                   shape.position[2], shape.position[3]),
-                    normal: (shape.normals[i].normal.0, shape.normals[i].normal.1,
-                             shape.normals[i].normal.2, shape.normals[i].normal.3)
+                    normal: (shape.mesh.normals[i].normal.0, shape.mesh.normals[i].normal.1,
+                             shape.mesh.normals[i].normal.2, shape.mesh.normals[i].normal.3)
                 };
                 vertex_info.push(info);
             }
@@ -108,7 +108,7 @@ pub fn render() {
     scene_lib.insert(7, scenes::plot_scene(aspect));
     scene_lib.insert(8, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&8].clone();
+    let mut scene = scene_lib[&5].clone();
 
     // todo temp experiments; integrate into Lighting and Scene when complete.
     let pt_light_position = [0., 0., 0., 0.];

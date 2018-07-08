@@ -4,7 +4,7 @@ use std::f32::consts::PI;
 use ndarray::prelude::*;
 
 use transforms;
-use types::{Vertex, Normal, Shape};
+use types::{Vertex, Mesh, Normal, Shape};
 
 const τ: f32 = 2. * PI;
 
@@ -14,9 +14,7 @@ const τ: f32 = 2. * PI;
 // Nodes are set up here so that 0 is at their center; this is used for scaling,
 // rotation, and positioning in the world.
 
-pub fn make_box(lens: (f32, f32, f32),
-                position: Array1<f32>, orientation: Array1<f32>,
-                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_box(lens: (f32, f32, f32)) -> Mesh {
     // Make a rectangular prism.  Use negative lengths to draw in the opposite
     // direction.
 
@@ -61,12 +59,10 @@ pub fn make_box(lens: (f32, f32, f32),
         Normal::new(1., 0., 0., 0.),
     ];
 
-    Shape::new(vertices, faces_vert, normals, position, orientation, rotation_speed, opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
-                                position: Array1<f32>, orientation: Array1<f32>,
-                                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_rectangular_pyramid(lens: (f32, f32, f32)) -> Mesh {
     let coords = [
         // Base  (Center of this shape is the center of the base square)
         [-1., 0., -1., 0.],
@@ -104,24 +100,19 @@ pub fn make_rectangular_pyramid(lens: (f32, f32, f32),
         Normal::new(lens.2, lens.1, 0., 0.),
     ];
 
-    Shape::new(vertices, faces_vert, normals, position, orientation,
-               rotation_speed, opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_house(lens: (f32, f32, f32),
-                  position: Array1<f32>,
-                  orientation: Array1<f32>,
-                  rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_house(lens: (f32, f32, f32)) -> Mesh {
     let empty_array = array![0., 0., 0., 0., 0., 0.];
 
     // We'll modify base in-place, then return it.
-    let mut base = make_box(lens, position, orientation, rotation_speed, opacity);
+    let mut base = make_box(lens);
 
     let roof = make_rectangular_pyramid(
         // Let the roof overhang the base by a little.
         // Make the roof height a portion of the base height.
         (lens.0 * 1.2, lens.1 / 3., lens.2 * 1.2),
-        empty_array.clone(), empty_array.clone(), empty_array.clone(), opacity
     );
 
     // Now that we've made the shapes, recompose them to be one shape.
@@ -156,17 +147,13 @@ pub fn make_house(lens: (f32, f32, f32),
     base
 }
 
-pub fn make_cube(side_len: f32,  position: Array1<f32>, orientation: Array1<f32>,
-                 rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_cube(side_len: f32) -> Mesh {
     // Convenience function.
     // We'll still treat the center as the center of the base portion.
-    make_box((side_len, side_len, side_len), position, orientation,
-             rotation_speed, opacity)
+    make_box((side_len, side_len, side_len))
 }
 
-pub fn make_5cell(radius: f32,
-                   position: Array1<f32>, orientation: Array1<f32>,
-                   rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_5cell(radius: f32) -> Mesh {
     let coords = [
         [-(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // left base
         [(2./3. as f32).sqrt(), -1./3., -(2./9. as f32).sqrt(), 0.],  // right base
@@ -212,12 +199,10 @@ pub fn make_5cell(radius: f32,
         Normal::new(0., 0., 0., -1.),
     ];
 
-    Shape::new(vertices, faces_vert, normals, position, orientation, rotation_speed, opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_hyperrect(lens: (f32, f32, f32, f32),
-                      position: Array1<f32>, orientation: Array1<f32>,
-                      rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_hyperrect(lens: (f32, f32, f32, f32)) -> Mesh {
     // Make a 4d hypercube.
 
     let coords = [
@@ -253,36 +238,36 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
             coord[2] * lens.2 / 2., coord[3] * lens.3 / 2.
         ));
     }
-    
+
     let faces_vert = vec![  // Vertex indices for each face.
-        array![0, 1, 2, 3],  // Front inner
-        array![4, 5, 6, 7],  // Back inner
-        array![3, 2, 6, 7],  // Top inner
-        array![0, 1, 5, 4],  // Bottom inner
-        array![0, 4, 7, 3],  // Left inner
-        array![1, 5, 6, 2],  // Right inner
+                            array![0, 1, 2, 3],  // Front inner
+                            array![4, 5, 6, 7],  // Back inner
+                            array![3, 2, 6, 7],  // Top inner
+                            array![0, 1, 5, 4],  // Bottom inner
+                            array![0, 4, 7, 3],  // Left inner
+                            array![1, 5, 6, 2],  // Right inner
 
-        array![8, 9, 10, 11],  // Front outer
-        array![12, 13, 14, 15],  // Back outer
-        array![11, 10, 14, 15],  // Top outer
-        array![8, 9, 13, 12],  // Bottom outer
-        array![8, 12, 15, 11],  // Left outer
-        array![9, 13, 14, 10],  // Right outer
+                            array![8, 9, 10, 11],  // Front outer
+                            array![12, 13, 14, 15],  // Back outer
+                            array![11, 10, 14, 15],  // Top outer
+                            array![8, 9, 13, 12],  // Bottom outer
+                            array![8, 12, 15, 11],  // Left outer
+                            array![9, 13, 14, 10],  // Right outer
 
-        array![8, 9, 1, 0],  // Front bottom
-        array![12, 13, 5, 4],  // Back bottom
-        array![12, 8, 0, 4],  // Left bottom
-        array![9, 13, 5, 1],  // Right bottom
+                            array![8, 9, 1, 0],  // Front bottom
+                            array![12, 13, 5, 4],  // Back bottom
+                            array![12, 8, 0, 4],  // Left bottom
+                            array![9, 13, 5, 1],  // Right bottom
 
-        array![11, 10, 2, 3],  // Front top
-        array![15, 14, 6, 7],  // Back top
-        array![15, 11, 3, 7],  // Left top
-        array![14, 10, 2, 6],  // Right top
+                            array![11, 10, 2, 3],  // Front top
+                            array![15, 14, 6, 7],  // Back top
+                            array![15, 11, 3, 7],  // Left top
+                            array![14, 10, 2, 6],  // Right top
 
-        array![11, 8, 0, 3],  // Left forward
-        array![15, 12, 4, 7],  // Left back
-        array![10, 9, 1, 2],  // Right forward
-        array![14, 13, 5, 6],  // Right back
+                            array![11, 8, 0, 3],  // Left forward
+                            array![15, 12, 4, 7],  // Left back
+                            array![10, 9, 1, 2],  // Right forward
+                            array![14, 13, 5, 6],  // Right back
     ];
 
     // todo QC this; it's a guess.  Attempting to ignore w for this.
@@ -293,45 +278,37 @@ pub fn make_hyperrect(lens: (f32, f32, f32, f32),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
-
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
-
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
-
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
-
     ];
 
-    Shape::new(vertices, faces_vert, normals, position, orientation, rotation_speed, opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
-pub fn make_hypercube(side_len: f32,
-                      position: Array1<f32>, orientation: Array1<f32>,
-                      rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_hypercube(side_len: f32) -> Mesh {
     // Convenience function.
-    make_hyperrect((side_len, side_len, side_len, side_len),
-                   position, orientation, rotation_speed, opacity)
+    make_hyperrect((side_len, side_len, side_len, side_len))
 }
-
 
 pub fn make_terrain(dims: (f32, f32), res: u32,
                     height_map: Array2<f32>, spissitude_map: Array2<f32>,
-                    position: Array1<f32>, opacity: f32) -> Shape {
+                    position: Array1<f32>) -> Mesh {
     // Make a triangle-based terrain mesh.  dims is an [x, z] tuple.
     // We could make a 4d terrain too... id a volume of u-mappings... or have
     // w and y mappings for each x/z point...
@@ -407,13 +384,11 @@ pub fn make_terrain(dims: (f32, f32), res: u32,
         active_ind += res;
     }
 
-    return Shape::new(vertices, faces_vert, normals, position,
-        array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
 pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
-                                    spissitude_map: Array3<f32>,
-                                    position: Array1<f32>, opacity: f32) -> HashMap<u32, Shape> {
+                       spissitude_map: Array3<f32>) -> HashMap<u32, Shape> {
     // Position is the center.
     // todo incorporate position.
     let mut result = HashMap::new();
@@ -426,8 +401,8 @@ pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
             for k in 0..res {  // z
                 result.insert(
                     res.pow(2) * i + res * j + k,
-                    make_cube(0.5, array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
-                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], opacity)
+                    Shape::new(make_cube(0.5), array![x, y, z, spissitude_map[[i as usize, j as usize, k as usize]]],
+                              array![0., 0., 0., 0., 0., 0.], array![0., 0., 0., 0., 0., 0.], 1.)
                 );
                 z += dims.2 / res as f32
             }
@@ -438,14 +413,11 @@ pub fn make_hypergrid(dims: (f32, f32, f32), res: u32,
     return result
 }
 
-pub fn make_arrow(lens: (f32, f32), res: u32,
-                  position: Array1<f32>, orientation: Array1<f32>,
-                  rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_arrow(lens: (f32, f32), res: u32) -> Mesh {
 
-    let mut body = make_sphereinder(lens, res, position.clone(),
-                                      orientation.clone(), rotation_speed.clone(), opacity);
-    let point = make_5cell(lens.1 * 4., Array::zeros(4), Array::zeros(6),
-                           Array::zeros(6), 0.);
+    let mut body = make_sphereinder(lens, res);
+    ;
+    let point = make_5cell(lens.1 * 4.);
     // todo combine code here with make_house; eg in a helper func.
 
         // Now that we've made the shapes, recompose them to be one shape.
@@ -476,9 +448,7 @@ pub fn make_arrow(lens: (f32, f32), res: u32,
     body
 }
 
-pub fn make_sphereinder(lens: (f32, f32), res: u32,
-                         position: Array1<f32>,
-                         orientation: Array1<f32>, rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_sphereinder(lens: (f32, f32), res: u32) -> Mesh {
     // This is a 4d cylinder analog that extends spheres along a line in the direction
     // not used by the spheres.
 
@@ -630,17 +600,16 @@ pub fn make_sphereinder(lens: (f32, f32), res: u32,
 
     // Add the faces spanning the space between the two spheres.
 
-    Shape::new(vertices, faces_vert, normals, position, orientation, rotation_speed, opacity)
+    Mesh::new(vertices, faces_vert, normals)
 }
 
 
-pub fn make_origin(lens: (f32, f32), res: u32,  position: Array1<f32>,
-                    orientation: Array1<f32>, rotation_speed: Array1<f32>, opacity: f32) -> Shape {
+pub fn make_origin(lens: (f32, f32), res: u32) -> Mesh {
 
-    let mut w = make_arrow(lens, res, position, orientation, rotation_speed, opacity);
-    let x = make_arrow(lens, res, Array::zeros(4), Array::zeros(6), Array::zeros(6), 0.);
-    let y = make_arrow(lens, res, Array::zeros(4), Array::zeros(6), Array::zeros(6), 0.);
-    let z = make_arrow(lens, res, Array::zeros(4), Array::zeros(6), Array::zeros(6), 0.);
+    let mut w = make_arrow(lens, res);
+    let x = make_arrow(lens, res);
+    let y = make_arrow(lens, res);
+    let z = make_arrow(lens, res);
 
     let mut param_set = vec![
         (w.vertices.len() as u32, array![0., 0., 0., τ/4., 0., 0.], x),
