@@ -14,7 +14,7 @@ const τ: f32 = 2. * PI;
 // Nodes are set up here so that 0 is at their center; this is used for scaling,
 // rotation, and positioning in the world.
 
-fn combine_meshes(mut base: Mesh, meshes: Vec<(Mesh, [f32; 4])>) -> Mesh{
+pub fn combine_meshes(mut base: Mesh, meshes: Vec<(Mesh, [f32; 4])>) -> Mesh{
     // The array in the meshes tuple is position offset for that shape.
     let mut id_addition = base.vertices.len() as u32;
     for (mesh, offset) in &meshes {
@@ -304,6 +304,16 @@ pub fn make_hypercube(side_len: f32) -> Mesh {
     hyperrect((side_len, side_len, side_len, side_len))
 }
 
+fn avg_normals(normals: Vec<Normal>) -> Normal {
+    let x = normals.iter().fold(0., |acc, norm| acc + norm.normal.0);
+    let y = normals.iter().fold(0., |acc, norm| acc + norm.normal.1);
+    let z = normals.iter().fold(0., |acc, norm| acc + norm.normal.2);
+    let w = normals.iter().fold(0., |acc, norm| acc + norm.normal.3);
+
+    let len = normals.len() as f32;
+    Normal::new(x/len , y/len, z/len, w/len)
+}
+
 pub fn terrain(dims: (f32, f32), res: u32,
                height_map: Array2<f32>, spissitude_map: Array2<f32>,
                ) -> Mesh {
@@ -327,12 +337,10 @@ pub fn terrain(dims: (f32, f32), res: u32,
     // they'd really have creases down a diagonal.
     let mut faces_vert = Vec::new();
 
-    // Instantiate x and like this so the center of the mesh is at the
-    // position argument.
-    let mut x = -dims.0 / 2.;
     for i in 0..res {  // x
-        let mut z = -dims.1 / 2.;
+        let x = (dims.0) * (i as f32 / res as f32) - (dims.0 / 2.);
         for j in 0..res {  // z
+            let z = (dims.1) * (j as f32 / res as f32) - (dims.1 / 2.);
             let height = height_map[[i as usize, j as usize]];
             let spissitude = spissitude_map[[i as usize, j as usize]];
             // You could change which planes this is over by rearranging
@@ -343,10 +351,8 @@ pub fn terrain(dims: (f32, f32), res: u32,
                 z,
                 spissitude,
             ));
-            z += dims.1 / res as f32;
             id += 1;
         }
-        x += dims.0 / res as f32;
     }
 
     for i in 0..res - 1 {
@@ -358,26 +364,68 @@ pub fn terrain(dims: (f32, f32), res: u32,
                 array![  // shows front right
                     active_ind + j,  // back left
                     active_ind + j + 1,  // back right
-                    active_ind + j + res + 1  // front left
+                    active_ind + j + res + 1,  // front left
+                    active_ind + j + res
                 ]
             );
 
-            let line1 = vertices[&(active_ind + j + 1)].subtract(&vertices[&(active_ind + j)]);
-            let line2 = vertices[&(active_ind + j + res + 1)].subtract(&vertices[&(active_ind + j)]);
+            let current_ind = active_ind + j;
+            let current_vert = &vertices[&(current_ind)];
+
+            // Compute normal as the avg of the norm of all 4 neighboring faces.
+            // We are ignoring w, for now.
+            let mut edge_pairs = Vec::new();
+            // If logic is to prevent index mistakes on edge cases.
+            // Start at North; go around clockwise.
+            if i != res - 2 && j != res - 2 {  // not at ne corner
+                edge_pairs.push((
+                    vertices[&(current_ind + 1)].subtract(current_vert),  // n
+                    vertices[&(current_ind + res + 1)].subtract(current_vert)  // ne
+                ));
+                edge_pairs.push((
+                    vertices[&(current_ind + res + 1)].subtract(current_vert),  // ne
+                    vertices[&(current_ind + res)].subtract(current_vert)  // e
+                ));
+            }
+            if i != res - 2 && j != 0 {  // not at se corner
+                edge_pairs.push((
+                    vertices[&(current_ind + res)].subtract(current_vert),  // e
+                    vertices[&(current_ind + res - 1)].subtract(current_vert)  // se
+                ));
+                edge_pairs.push((
+                    vertices[&(current_ind + res - 1)].subtract(current_vert),  // se
+                    vertices[&(current_ind - 1)].subtract(current_vert)  // s
+                ));
+            }
+            if i != 0 && j != 0 {  // not at sw corner
+                edge_pairs.push((
+                    vertices[&(current_ind - 1)].subtract(current_vert),  // s
+                    vertices[&(current_ind - res - 1)].subtract(current_vert)  // sw
+                ));
+                edge_pairs.push((
+                    vertices[&(current_ind - res - 1)].subtract(current_vert),  // sw
+                    vertices[&(current_ind - res)].subtract(current_vert)  // w
+                ));
+            }
+             if i != 0 && j != res - 2 {  // not at nw corner
+                edge_pairs.push((
+                    vertices[&(current_ind - res)].subtract(current_vert),  // w
+                    vertices[&(current_ind - res + 1)].subtract(current_vert)  // nw
+                ));
+                edge_pairs.push((  // nw
+                    vertices[&(current_ind - res + 1)].subtract(current_vert),  // nw
+                    vertices[&(current_ind + 1)].subtract(current_vert)  // n
+                ));
+            }
 
             // Note: This isn't normalized; we handle that in the shader, for now.
-            normals.push(line1.cross(&line2));
+            let mut surrounding_norms = Vec::new();
+            for (edge0, edge1) in &edge_pairs {
+                surrounding_norms.push(edge0.cross(edge1));
+            }
 
-            faces_vert.push(
-                array![  // shows front left  not j + res, not j
-                    active_ind + j,
-                    active_ind + j + res,  // front right
-                    active_ind + j + res + 1  // front left
-                ]
-            );
-            let line1 = vertices[&(active_ind + j)].subtract(&vertices[&(active_ind + j + res)]);
-            let line2 = vertices[&(active_ind + j + res + 1)].subtract(&vertices[&(active_ind + j)]);
-            normals.push(line1.cross(&line2));
+            normals.push(avg_normals(surrounding_norms));
+
         }
         active_ind += res;
     }

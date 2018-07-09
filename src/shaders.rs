@@ -10,12 +10,13 @@ pub mod vs {
     layout(location = 2) in vec4 normal;
 
     layout(location = 0) out vec4 fourd_color;
-    layout(location = 1) out vec4 diffuse;
     layout(location = 2) out vec4 view_posit;
-    layout(location = 3) out vec4 diffuse_light_direction;
-    layout(location = 4) out vec4 diffuse_light_color;
+    layout(location = 3) out vec4 diffuse_direction;
+    layout(location = 4) out vec4 diffuse_color;
     layout(location = 5) out float specular_intensity;
-    layout(location = 6) out vec4 norm2;
+    layout(location = 6) out vec4 normal_;
+    layout(location = 7) out vec4 frag_pos;
+
 
     layout(set = 0, binding = 0) uniform Data {
         mat4 model;
@@ -23,9 +24,9 @@ pub mod vs {
         mat4 proj;
         vec4 cam_position;
 
-        vec4 ambient_light_color;
-        vec4 diffuse_light_color;
-        vec4 diffuse_light_direction;
+        vec4 ambient_color;
+        vec4 diffuse_color;
+        vec4 diffuse_direction;
         vec4 pt_light_position;
 
         float ambient_intensity;
@@ -68,34 +69,13 @@ pub mod vs {
         }
         fourd_color = fourd_color * uniforms.ambient_intensity;
 
-        // Process diffuse lighting from a single-directional source.
-        // We can use the model matrix directly on the normal, since it
-        // only scales uniformly, and isn't homogenous (doesn't translate).
-        vec4 norm = normalize(uniforms.model * normal);
-        vec4 dir = normalize(uniforms.diffuse_light_direction);
-
-        float directional_light_weight = max(dot(norm, dir), 0.);
-        diffuse = uniforms.diffuse_light_color * directional_light_weight *
-            uniforms.diffuse_intensity;
-
         view_posit = positioned_pt;
-        diffuse_light_direction = uniforms.diffuse_light_direction;
-        diffuse_light_color = uniforms.diffuse_light_color;
+        diffuse_direction = uniforms.diffuse_direction;
+        diffuse_color = uniforms.diffuse_color;
         specular_intensity = uniforms.specular_intensity;
-        norm2 = norm;
 
-
-        // todo test point light source.
-        float dist_from_light = sqrt(
-            pow(positioned_pt[0] - uniforms.pt_light_position[0], 2.) +
-            pow(positioned_pt[1] - uniforms.pt_light_position[1], 2.) +
-            pow(positioned_pt[2] - uniforms.pt_light_position[2], 2.) +
-            pow(positioned_pt[3] - uniforms.pt_light_position[3], 2.)
-        );
-        float diffuse_brightness = uniforms.pt_light_brightness / pow(dist_from_light, 3.);
-
-        // todo may not need this direc. Is direc from light to point.
-        vec4 diffuse_direction = positioned_pt - uniforms.pt_light_position;
+        normal_ = uniforms.model * normal;
+        frag_pos = positioned_pt;
     }
     "]
         struct Dummy;
@@ -107,25 +87,50 @@ pub mod fs {
     #[src = "
     #version 450
     layout(location = 0) in vec4 fourd_color;
-    layout(location = 1) in vec4 diffuse;
     layout(location = 2) in vec4 view_posit;
-    layout(location = 3) in vec4 diffuse_light_direction;
-    layout(location = 4) in vec4 diffuse_light_color;
+    layout(location = 3) in vec4 diffuse_direction;
+    layout(location = 4) in vec4 diffuse_color;
     layout(location = 5) in float specular_intensity;
-    layout(location = 6) in vec4 norm2;
-//    layout(location = 6) in FragPos;
+
+    layout(location = 6) in vec4 normal_;
+    layout(location = 7) in vec4 frag_pos;
+
+
 
     layout(location = 0) out vec4 f_color;
 
     void main() {
 
-        vec4 light_dir = normalize(diffuse_light_direction);
-        vec4 view_norm = normalize(-norm2);
-        vec4 R = normalize(reflect(light_dir, view_norm));
+//        vec4 light_dir = normalize(diffuse_direction);
+//        vec4 view_norm = normalize(-norm2);
+//        vec4 R = normalize(reflect(light_dir, view_norm));
 
-        float specular = specular_intensity * pow(max(dot(R, view_norm), 0.0), 32.);
+//        float specular = specular_intensity * pow(max(dot(R, view_norm), 0.0), 32.);
 
-        f_color = mix(fourd_color, diffuse, 0.5) + specular * diffuse_light_color;
+//        f_color = mix(fourd_color, diffuse, 0.5) + specular * diffuse_color;
+
+
+
+        // todo test point light source.
+//        float dist_from_light = sqrt(
+//            pow(positioned_pt[0] - uniforms.pt_light_position[0], 2.) +
+//            pow(positioned_pt[1] - uniforms.pt_light_position[1], 2.) +
+//            pow(positioned_pt[2] - uniforms.pt_light_position[2], 2.) +
+//            pow(positioned_pt[3] - uniforms.pt_light_position[3], 2.)
+//        );
+//        float diffuse_brightness = uniforms.pt_light_brightness / pow(dist_from_light, 3.);
+
+        // todo may not need this direc. Is direc from light to point.
+//        vec4 diffuse_direction = positioned_pt - uniforms.pt_light_position;
+
+        // Calculate diffuse lighting.
+        vec4 norm = normalize(normal_);
+        vec4 dir = normalize(diffuse_direction);
+        float diffuse_weight = max(dot(norm, dir), 0.);
+        vec4 diffuse = diffuse_color * diffuse_weight * 1.;
+
+        f_color = diffuse;
+//        f_color = (diffuse + fourd_color) / 2;
     }
     "]
         struct Dummy;

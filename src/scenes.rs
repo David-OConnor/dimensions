@@ -14,10 +14,10 @@ const SHAPE_OP: f32 = 0.3;
 
 const base_lighting: Lighting = Lighting {
         ambient_intensity: 0.6,
-        diffuse_intensity: 0.9,
+        diffuse_intensity: 1.,
         specular_intensity: 0.2,
         ambient_color: [1.0, 1.0, 1.0, 0.4],
-        diffuse_color: [0., 1., 0., 0.2],
+        diffuse_color: [0., 1., 0., 1.0],
         diffuse_direction: [0., 0., -1., 0.],
 };
 
@@ -259,32 +259,35 @@ pub fn plot_scene(aspect: f32) -> Scene {
         (out_r, out_im)
     }
 
-    let size= 20;
+    let res = 20;
 
     let (mut height_grid, mut spiss_grid) = (
-        Array2::zeros((size, size)),
-        Array2::zeros((size, size))
+        Array2::zeros((res, res)),
+        Array2::zeros((res, res))
     );
 
     let scaler = 0.07;
 
-    for i in 0..size {
-        for j in 0..size {
+    for i in 0..res {
+        for j in 0..res {
             let result = f(
-                i as f32 - size as f32 / 2.,
-                j as f32 - size as f32 / 2.
+                i as f32 - res as f32 / 2.,
+                j as f32 - res as f32 / 2.
             );
             height_grid[[i, j]] = result.0 * scaler;
             spiss_grid[[i, j]] = result.1 * scaler;
         }
     }
 
+    let mut plot = shape_maker::terrain((10., 10.), res as u32,
+                                                      height_grid, spiss_grid);
+
+    let origin = shape_maker::origin((4., 0.1), 10);
+    plot = shape_maker::combine_meshes(plot, vec![(origin, [0., 0., 0., 0.])]);
+
     let mut shapes = HashMap::new();
-    shapes.insert(0, Shape::new(shape_maker::terrain((10., 10.), size as u32,
-                                                      height_grid, spiss_grid),
-                                Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
-    shapes.insert(1, Shape::new(shape_maker::origin((4., 0.3), 40),
-                                Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
+        shapes.insert(0, Shape::new(plot, Array::zeros(4), Array::zeros(6), Array::zeros(6), 1.));
+
 
     Scene {
         shapes,
@@ -294,7 +297,7 @@ pub fn plot_scene(aspect: f32) -> Scene {
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             ..base_camera()
         },
-        cam_type: CameraType::Free,
+        cam_type: CameraType::Single,
         color_max: 10.,
         lighting: base_lighting,
         sensitivities: (5., 0.5, 0.2),

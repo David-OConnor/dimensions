@@ -387,9 +387,9 @@ pub fn render() {
         proj,
         cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
 
-        ambient_light_color: scene.lighting.ambient_color,
-        diffuse_light_color: scene.lighting.diffuse_color,
-        diffuse_light_direction: scene.lighting.diffuse_direction,
+        ambient_color: scene.lighting.ambient_color,
+        diffuse_color: scene.lighting.diffuse_color,
+        diffuse_direction: scene.lighting.diffuse_direction,
 
         pt_light_position,
 
@@ -484,7 +484,7 @@ pub fn render() {
             .begin_render_pass(
                 framebuffers.as_ref().unwrap()[image_num].clone(), false,
                 vec![
-                    [1.0, 1.0, 1.0, 1.0].into(),
+                    [0.0, 0.0, 0.0, 0.0].into(),
                     1f32.into()
                 ]
             ).unwrap();
@@ -492,7 +492,6 @@ pub fn render() {
         // Update the view matrix once per frame.
         let view_mat = transforms::make_view_mat4(&scene.cam);
         for (shape_id, shape) in &scene.shapes {
-//            if shape_id != &2 {continue}
             let uniform_buffer_subbuffer = {
                 let uniform_data = shaders::vs::ty::Data {
                     model: transforms::make_model_mat4(shape),
