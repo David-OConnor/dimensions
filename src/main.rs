@@ -33,6 +33,7 @@ mod shape_maker;
 mod types;
 mod transforms;
 mod render_vulcano;
+mod util;
 
 fn main() {
     render_vulcano::render();

@@ -8,6 +8,7 @@ use simdnoise;
 
 use shape_maker;
 use types::{Camera, Lighting, Scene, Shape, CameraType};
+use util;
 
 const τ: f32 = 2. * PI;
 const SHAPE_OP: f32 = 0.3;
@@ -259,7 +260,7 @@ pub fn plot_scene(aspect: f32) -> Scene {
         (out_r, out_im)
     }
 
-    let res = 20;
+    let res = 100;
 
     let (mut height_grid, mut spiss_grid) = (
         Array2::zeros((res, res)),
@@ -268,12 +269,16 @@ pub fn plot_scene(aspect: f32) -> Scene {
 
     let scaler = 0.07;
 
+    // These ranges correspond to function inputs, not spacial dim. as do the
+    // x and y vars in the grid-generating loop below.
+    let x_range = (-4., 4.);
+    let y_range = (-4., 4.);
+
     for i in 0..res {
+        let x = util::value_from_grid(i as u32, res as u32, x_range);
         for j in 0..res {
-            let result = f(
-                i as f32 - res as f32 / 2.,
-                j as f32 - res as f32 / 2.
-            );
+            let y = util::value_from_grid(j as u32, res as u32, y_range);
+            let result = f(x, y);
             height_grid[[i, j]] = result.0 * scaler;
             spiss_grid[[i, j]] = result.1 * scaler;
         }

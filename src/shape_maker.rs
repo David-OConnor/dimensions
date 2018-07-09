@@ -5,6 +5,7 @@ use ndarray::prelude::*;
 
 use transforms;
 use types::{Vertex, Mesh, Normal, Shape};
+use util;
 
 const τ: f32 = 2. * PI;
 
@@ -338,9 +339,9 @@ pub fn terrain(dims: (f32, f32), res: u32,
     let mut faces_vert = Vec::new();
 
     for i in 0..res {  // x
-        let x = (dims.0) * (i as f32 / res as f32) - (dims.0 / 2.);
+        let x = util::value_from_grid(i, res, (0., dims.0));
         for j in 0..res {  // z
-            let z = (dims.1) * (j as f32 / res as f32) - (dims.1 / 2.);
+            let z = util::value_from_grid(j, res, (0., dims.1));
             let height = height_map[[i as usize, j as usize]];
             let spissitude = spissitude_map[[i as usize, j as usize]];
             // You could change which planes this is over by rearranging
@@ -490,9 +491,9 @@ pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     // We build vertices and vaces for both spheres in one pass.
     for i in 0..res {
         // ISO standard definitions of θ and φ. The reverse is common too.
-        let φ = τ * (i as f32 / res as f32);  // longitude, 0 to τ
+        let φ = util::value_from_grid(i, res, (0., τ));  // longitude, 0 to τ
         for j in 0..res / 2 {
-            let θ = τ * (j as f32 / res as f32);  // latitude, 0 to τ/2
+            let θ = util::value_from_grid(j, res, (0., τ));  // latitude, 0 to τ/2
             // These could correlate to diff combos of x/y/z/w.
             let a = lens.1 * θ.sin() * φ.cos();
             let b = lens.1 * θ.sin() * φ.sin();
