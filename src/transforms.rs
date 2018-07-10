@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 
-use clipping;
 use types::{Camera, Shape};
 
 pub fn dot_mv4(M: [[f32; 4]; 4], v: [f32; 4]) -> [f32; 4] {

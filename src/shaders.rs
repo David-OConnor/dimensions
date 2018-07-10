@@ -129,8 +129,8 @@ pub mod fs {
         float diffuse_weight = max(dot(norm, dir), 0.);
         vec4 diffuse = diffuse_color * diffuse_weight * 1.;
 
-        f_color = diffuse;
-//        f_color = (diffuse + fourd_color) / 2;
+//        f_color = diffuse;
+        f_color = (diffuse + fourd_color) / 2;
     }
     "]
         struct Dummy;

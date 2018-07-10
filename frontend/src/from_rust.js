@@ -1,5 +1,5 @@
 /* tslint:disable */
-import * as wasm from './webgl_bg';
+import * as wasm from './from_rust_bg';
 
 const TextDecoder = typeof self === 'object' && self.TextDecoder
     ? self.TextDecoder

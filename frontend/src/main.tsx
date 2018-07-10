@@ -1,8 +1,8 @@
 import * as React from 'react'
 import * as ReactDOM from "react-dom"
 
-const rust = import("./webgl");
-rust.then(m => m.greet("World!"));
+const rust = import("./from_rust");
+rust.then(r => r.greet("World!"));
 
 import {Button, Grid, Row, Col,
     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'

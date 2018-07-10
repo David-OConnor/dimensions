@@ -46,6 +46,11 @@ const HEIGHT: u32 = 768;
 
 const τ: f32 = 2. * PI;
 
+// impl_vertex here, so we don't have to use the vulkano crate in wasm.
+impl_vertex!(Vertex, position);
+impl_vertex!(VertAndExtras, position, shape_posit, normal);
+impl_vertex!(Normal, normal);
+
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
         (HashMap<u32, Arc<CpuAccessibleBuffer<[u32]>>>, HashMap<u32, Arc<CpuAccessibleBuffer<[VertAndExtras]>>>) {
     // Make index and vertex buffers.

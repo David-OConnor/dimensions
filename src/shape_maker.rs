@@ -135,7 +135,7 @@ pub fn rect_pyramid(lens: (f32, f32, f32)) -> Mesh {
 
 pub fn house(lens: (f32, f32, f32)) -> Mesh {
     // We'll modify base in-place, then return it.
-    let mut base = box_(lens);
+    let base = box_(lens);
 
     let roof = rect_pyramid(
         // Let the roof overhang the base by a little.
@@ -461,7 +461,7 @@ pub fn hypergrid(dims: (f32, f32, f32), res: u32,
 }
 
 pub fn arrow(lens: (f32, f32), res: u32) -> Mesh {
-    let mut body = spherinder(lens, res);
+    let body = spherinder(lens, res);
     let point = fivecell(lens.1 * 4.);
 
     combine_meshes(body, vec![(point, [0., 0., 0., lens.0])])
@@ -635,7 +635,7 @@ pub fn origin(lens: (f32, f32), res: u32) -> Mesh {
     let y = arrow(lens, res);
     let z = arrow(lens, res);
 
-    let mut param_set = vec![
+    let param_set = vec![
         (w.vertices.len() as u32, array![0., 0., 0., τ/4., 0., 0.], x),
         (2 * w.vertices.len() as u32, array![0., 0., 0., 0., τ/4., 0.], y),
         (3 * w.vertices.len() as u32, array![0., 0., 0., 0., 0., τ/4.], z),

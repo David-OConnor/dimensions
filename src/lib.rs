@@ -11,10 +11,6 @@
 #![allow(dead_code)]  // todo remove this later
 #![warn(unused_variables)] // todo remove this later
 
-//extern crate stdweb;
-// Can't use procedural macros with #[macro_use].
-//use stdweb::js_export;
-
 #[macro_use]
 extern crate ndarray;
 extern crate rand;
@@ -22,6 +18,15 @@ extern crate rand;
 
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
+
+mod util;
+mod shape_maker;
+mod transforms;
+mod types;
+
+use ndarray::prelude::*;
+
+use types::{Shape, ShapeBg};
 
 
 #[wasm_bindgen]
@@ -34,10 +39,14 @@ pub fn greet(name: &str) {
     alert(&format!("Hello, {}!", name));
 }
 
-//#[js_export]
 #[wasm_bindgen]
-pub extern fn test() -> String {
-    String::from("It's hard to overstate my satisfaction.")
+pub extern fn fivecell() -> ShapeBg {
+    // todo pass whole scenes instead
+
+    let shape = Shape::new(shape_maker::fivecell(2.), Array::zeros(4),
+               Array::zeros(6), Array::zeros(6), 1.);
+
+    ShapeBg::from_shape(shape)
 }
 
 

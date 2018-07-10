@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
     entry: path.join(__dirname, '/src/main.tsx'),
     output: {
-        filename: 'build/dist/main.js',
+        filename: 'dist/main.js',
         path: __dirname
     },
     module: {
@@ -14,15 +14,17 @@ module.exports = {
                 // loaders: ['ts-loader', 'wasm-loader'],
                 exclude: /node_modules/,
             },
-            {
-                test: /\.wasm$/,
-                loader: 'wasm-loader',
-                exclude: /node_modules/,
-            },
+            // {
+            //     test: /\.wasm$/,
+            //     type: "webassembly/experimental",
+            //     loader: 'wasm-loader',
+            //     exclude: /node_modules/,
+            // },
         ],
 
     },
     resolve: {
         extensions: [".tsx", ".ts", ".js", ".wasm"]
     },
+    mode: "development"
 };

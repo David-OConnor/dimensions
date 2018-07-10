@@ -10,6 +10,8 @@
 #![feature(non_ascii_idents)]
 #![feature(vec_remove_item)]
 
+#![feature(proc_macro, wasm_custom_section, wasm_import_module)]
+
 #[macro_use]
 extern crate ndarray;
 extern crate rand;
@@ -21,6 +23,7 @@ extern crate vulkano;
 #[macro_use]
 extern crate vulkano_shader_derive;
 extern crate vulkano_win;
+extern crate wasm_bindgen;
 extern crate winit;
 
 use std::collections::HashMap;
