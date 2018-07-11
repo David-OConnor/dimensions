@@ -86,90 +86,90 @@ export function handlePressed(pressed: number[], deltaT: number,
 
             case 38:  // Up
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[1] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[1] -= rotateAmount
                 } else {
-                    state.cam.θ[1] += rotateAmount
+                    state.scene.cam.θ[1] += rotateAmount
                 }
                 break
             case 40:  // Down
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[1] += rotateAmount
+                    state.scene.shapes.get(0).orientation[1] += rotateAmount
                 } else {
-                    state.cam.θ[1] -= rotateAmount
+                    state.scene.cam.θ[1] -= rotateAmount
                 }
                 break
             case 39:  // Right
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[2] += rotateAmount
+                    state.scene.shapes.get(0).orientation[2] += rotateAmount
                 } else {
-                    state.cam.θ[2] -= rotateAmount
+                    state.scene.cam.θ[2] -= rotateAmount
                 }
                 break
             case 37:  // Left
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[2] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[2] -= rotateAmount
                 } else {
-                    state.cam.θ[2] += rotateAmount
+                    state.scene.cam.θ[2] += rotateAmount
                 }
                 break
             case 69:  // E
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[0] += rotateAmount
+                    state.scene.shapes.get(0).orientation[0] += rotateAmount
                 } else if (camType === 'fps') {
                     console.log()
                 } else {
-                    state.cam.θ[0] += rotateAmount
+                    state.scene.cam.θ[0] += rotateAmount
                 }
                 break
             case 81:  // Q
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[0] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[0] -= rotateAmount
                 } else if (camType === 'fps') {
                     console.log()
                 } else {
-                    state.cam.θ[0] -= rotateAmount
+                    state.scene.cam.θ[0] -= rotateAmount
                 }
                 break
             case 45:  // Ins
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[3] += rotateAmount
+                    state.scene.shapes.get(0).orientation[3] += rotateAmount
                 } else {
-                    state.cam.θ[3] += rotateAmount
+                    state.scene.cam.θ[3] += rotateAmount
                 }
                 break
             case 46:  // Del
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[3] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[3] -= rotateAmount
                 } else {
-                    state.cam.θ[3] -= rotateAmount
+                    state.scene.cam.θ[3] -= rotateAmount
                 }
                 break
             case 36:  // Home
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[4] += rotateAmount
+                    state.scene.shapes.get(0).orientation[4] += rotateAmount
                 } else {
-                    state.cam.θ[4] += rotateAmount
+                    state.scene.cam.θ[4] += rotateAmount
                 }
                 break
             case 35:  // End
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[4] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[4] -= rotateAmount
                 } else {
-                    state.cam.θ[4] -= rotateAmount
+                    state.scene.cam.θ[4] -= rotateAmount
                 }
                 break
             case 33:  // Pgup
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[5] += rotateAmount
+                    state.scene.shapes.get(0).orientation[5] += rotateAmount
                 } else {
-                    state.cam.θ[5] += rotateAmount
+                    state.scene.cam.θ[5] += rotateAmount
                 }
                 break
             case 34:  // Pgdn
                 if (camType === 'single') {
-                    state.shapes.get(0).orientation[5] -= rotateAmount
+                    state.scene.shapes.get(0).orientation[5] -= rotateAmount
                 } else {
-                    state.cam.θ[5] -= rotateAmount
+                    state.scene.cam.θ[5] -= rotateAmount
                 }
                 break
             default:
@@ -196,7 +196,7 @@ function moveCam(unitVec: Float32Array, amount: number, fps: boolean) {
     // Modifies the global camera
     // With first-person-shooter controls, ignore all input except rotation
     // around the y axis.
-    const θ = fps ? [0, 0, state.cam.θ[2], 0, 0, 0] : state.cam.θ
+    const θ = fps ? [0, 0, state.scene.cam.θ[2], 0, 0, 0] : state.scene.cam.θ
     const R = transforms.makeRotator(new Float32Array(16), θ)
 
     let v = new Float32Array(4)
@@ -204,7 +204,7 @@ function moveCam(unitVec: Float32Array, amount: number, fps: boolean) {
 
     mulVConst4(v, v, amount)
 
-    addVecs4(state.cam.position, state.cam.position, v)
+    addVecs4(state.scene.cam.position, state.scene.cam.position, v)
     // The skybox moves with the camera, but doesn't rotate with it.
-    addVecs4(state.skybox.position, state.skybox.position, v)
+    // addVecs4(state.skybox.position, state.skybox.position, v)
 }

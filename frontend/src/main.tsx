@@ -2,7 +2,16 @@ import * as React from 'react'
 import * as ReactDOM from "react-dom"
 
 const rust = import("./from_rust");
-rust.then(r => r.greet("World!"));
+rust.then(
+    r =>
+    {
+        r.greet("World!")
+        let fiveCell = r.fivecell();
+        // console.log(fiveCell)
+        console.log("Rust complete")
+    })
+
+
 
 import {Button, Grid, Row, Col,
     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -11,8 +20,8 @@ import {Button, Grid, Row, Col,
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 import * as render from './render'
-import * as scenes from "./scenes";
-import * as state from "./state";
+import * as state from './state';
+
 
 // Not sure how to get TS to accept WebAssembly.
 // declare const WebAssembly: any
@@ -132,7 +141,7 @@ class Main extends React.Component<any, any> {
     constructor(props: MainProps) {
         super(props)
         this.state = {
-            scene: 0,
+            sceneId: 0,
             subScene: 0  // The shape to display for scene 0.
         }
 
@@ -140,16 +149,16 @@ class Main extends React.Component<any, any> {
         this.setSubscene = this.setSubscene.bind(this)
     }
 
-    setScene(scene: number) {
+    setScene(sceneId: number) {
         state.emptyStaticBuffers()
-        this.setState({scene: scene})
-        scenes.setScene([scene, 0])  // When setting a new scene, default to subscene 0.
+        this.setState({sceneId: sceneId})
+        state.setScene(state.sceneLib.get(sceneId) as any)
     }
 
     setSubscene(subScene: number) {
-        state.emptyStaticBuffers()
-        this.setState({subScene: subScene})
-        scenes.setScene([this.state.scene, subScene])
+        // state.emptyStaticBuffers()
+        // this.setState({subScene: subScene})
+        // state.setScene([this.state.scene, subScene])
     }
 
     // Scene descriptions:
@@ -202,7 +211,7 @@ class Main extends React.Component<any, any> {
     }
 }
 
-scenes.setScene([0, 0])
+state.setScene(state.sceneLib.get(0) as any)
 render.main()
 
 ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)

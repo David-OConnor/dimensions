@@ -55,7 +55,7 @@ function drawScene(
     programInfo: ProgramInfo,
     staticBuffers: any,
     pfBuffers: any,
-    skyboxPositBuffer: any,
+    // skyboxPositBuffer: any,
     viewMatrix: Float32Array,
     projectionMatrix: Float32Array,
     shapes: Map<number, Shape>,
@@ -151,25 +151,25 @@ function drawScene(
                 false,
                 viewMatrix
             )
-            gl.uniform1f(programInfo.uniformLocations.colorMax, state.colorMax)
-            gl.uniform1f(programInfo.uniformLocations.ambientIntensity, state.lighting.ambientIntensity)
-            gl.uniform1f(programInfo.uniformLocations.specularIntensity, state.lighting.specularIntensity)
+            gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.colorMax)
+            gl.uniform1f(programInfo.uniformLocations.ambientIntensity, state.scene.lighting.ambientIntensity)
+            gl.uniform1f(programInfo.uniformLocations.specularIntensity, state.scene.lighting.specularIntensity)
 
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
-                new Float32Array(state.cam.position))
+                new Float32Array(state.scene.cam.position))
             gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
-                state.lighting.ambientColor)
+                state.scene.lighting.ambientColor)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightColor,
-                state.lighting.diffuseColor)
+                state.scene.lighting.diffuseColor)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightDirection,
-                state.lighting.diffuseDirection)
+                state.scene.lighting.diffuseDirection)
 
             {
                 const type = gl.UNSIGNED_SHORT
                 const offset = 0
-                const vertexCount = shape.tris.length
+                const vertexCount = shape.mesh.tris.length
 
                 gl.drawElements(gl.TRIANGLES, vertexCount, type, offset)
             }
@@ -177,7 +177,7 @@ function drawScene(
     )
 }
 
-export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number, Shape>, skybox_: Shape) {
+export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number, Shape>) {
     // Create a buffer for our shapes' positions and color.
     // todo skybox texture wip
     // look up where the vertex data needs to go.
@@ -233,9 +233,9 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
             // position.
             indices = []
             indexModifier = 0
-            tri_indices = shape.tris.map(ind => ind + indexModifier)
+            tri_indices = shape.mesh.tris.map(ind => ind + indexModifier)
             indices.push(...tri_indices)
-            indexModifier += shape.numFaceVerts()
+            indexModifier += shape.mesh.numFaceVerts()
 
             // Now send the element array to GL.  ELEMENT_ARRAY_BUFFER is used for indices.
             indexBuffer = gl.createBuffer()
@@ -245,13 +245,13 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
 
             vertices = []
             normals = []
-            for (let i=0; i < shape.faces_vert.length; i++) {
-                face = shape.faces_vert[i]
+            for (let i=0; i < shape.mesh.faces_vert.length; i++) {
+                face = shape.mesh.faces_vert[i]
                 for (let vertId of face) {
-                    vertex = (shape.nodes.get(vertId) as any).a
+                    vertex = (shape.mesh.vertices.get(vertId) as any).a
                     for (let coord = 0; coord < 4; coord++) {  // Iterate through each coord.
                         vertices.push(vertex[coord])
-                        normals.push(shape.normals[i][coord])
+                        normals.push(shape.mesh.normals[i][coord])
                     }
                 }
             }
@@ -302,7 +302,7 @@ function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shap
             shapePositDuped = []
             camPositDuped = []
             // Set up vertices.
-            for (let face of shape.faces_vert) {
+            for (let face of shape.mesh.faces_vert) {
                 for (let vertex_i of face) {
                     for (let i=0; i < 4; i++) {
                         shapePositDuped.push(shape.position[i])
@@ -332,28 +332,28 @@ function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shap
     return result
 }
 
-function makeSkyboxPositBuffer(gl: WebGLRenderingContext, skybox: Shape, cam: Camera) {
-    // Run this every frame.
-     // Now process the skybox positions.
-
-    const positions: any = []
-    let vertex
-    skybox.faces_vert.map(face => face.map(vertex_i => {
-        vertex = (skybox.nodes.get(vertex_i) as any).a
-        for (let i=0; i < 4; i++) {
-            positions.push(vertex[i])
-        }
-    }))
-
-    // Now pass the list of positions into WebGL to build the
-    // shape. We do this by creating a Float32Array from the
-    // JavaScript array, then use it to fill the current buffer.
-    const buffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
-
-    return buffer
-}
+// function makeSkyboxPositBuffer(gl: WebGLRenderingContext, skybox: Shape, cam: Camera) {
+//     // Run this every frame.
+//      // Now process the skybox positions.
+//
+//     const positions: any = []
+//     let vertex
+//     skybox.mesh.faces_vert.map(face => face.map(vertex_i => {
+//         vertex = (skybox.nodes.get(vertex_i) as any).a
+//         for (let i=0; i < 4; i++) {
+//             positions.push(vertex[i])
+//         }
+//     }))
+//
+//     // Now pass the list of positions into WebGL to build the
+//     // shape. We do this by creating a Float32Array from the
+//     // JavaScript array, then use it to fill the current buffer.
+//     const buffer = gl.createBuffer()
+//     gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+//     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
+//
+//     return buffer
+// }
 
 export function main() {
     // Initialize WebGL rendering.
@@ -428,10 +428,10 @@ export function main() {
     // as the destination to receive the result.
     mat4.perspective(
         projectionMatrix,
-        state.cam.fov,
-        state.cam.aspect,
-        state.cam.near,
-        state.cam.far
+        state.scene.cam.fov,
+        state.scene.cam.aspect,
+        state.scene.cam.near,
+        state.scene.cam.far
     )
 
     // Draw the scene repeatedly
@@ -442,32 +442,32 @@ export function main() {
 
         input.handlePressed(state.currentlyPressedKeys, deltaTime,
                             state.moveSensitivity, state.rotateSensitivity,
-                            state.camType)
+                            state.scene.camType)
 
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
         // const processedShapes = transforms.processShapes(state.cam, state.shapes)
 
         // const viewMatrix = transforms.makeViewMat(state.cam)
-        const viewMatrix = transforms.makeViewMat4(state.cam)
+        const viewMatrix = transforms.makeViewMat4(state.scene.cam)
 
         // This is called when we change the shapes, and on init.
         if (Object.keys(state.staticBuffers).length === 0) {
-            state.updateStaticBuffers(gl, makeStaticBuffers(gl, state.shapes, state.skybox))
+            state.updateStaticBuffers(gl, makeStaticBuffers(gl, state.scene.shapes))
         }
 
         // const pfBuffers = makePerFrameBuffers(gl, state.shapes, state.cam)
         const pfBuffers = {}
-        const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
+        // const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
 
-        drawScene(gl, programInfo, state.staticBuffers, pfBuffers, skyboxPositBuffer,
+        drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
             viewMatrix, projectionMatrix,
-            state.shapes)
+            state.scene.shapes)
 
         requestAnimationFrame(render)
 
         // Update the rotation for the next draw
-        state.shapes.forEach(
+        state.scene.shapes.forEach(
             (shape, id, map) => {
                 // todo need vector addition to simplify...
                 shape.orientation[0] += shape.rotation_speed[0] * deltaTime

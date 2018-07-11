@@ -40,7 +40,7 @@ pub fn greet(name: &str) {
 }
 
 #[wasm_bindgen]
-pub extern fn fivecell() -> ShapeBg {
+pub fn fivecell() -> ShapeBg {
     // todo pass whole scenes instead
 
     let shape = Shape::new(shape_maker::fivecell(2.), Array::zeros(4),

@@ -11,3 +11,4 @@ workspace.xml
 */build/
 */dist/
 *.wasm
+*/from_rust.*

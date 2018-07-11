@@ -1,6 +1,8 @@
 /* tslint:disable */
 import * as wasm from './from_rust_bg';
 
+export const CameraType = Object.freeze({ Single:0,FPS:1,Free:2, });
+
 const TextDecoder = typeof self === 'object' && self.TextDecoder
     ? self.TextDecoder
     : require('util').TextDecoder;
@@ -47,31 +49,94 @@ export function greet(arg0) {
     }
 }
 
-let cachedGlobalArgumentPtr = null;
-function globalArgumentPtr() {
-    if (cachedGlobalArgumentPtr === null)
-        cachedGlobalArgumentPtr = wasm.__wbindgen_global_argument_ptr();
-    return cachedGlobalArgumentPtr;
+export function fivecell() {
+    return ShapeBg.__construct(wasm.fivecell());
 }
 
-let cachegetUint32Memory = null;
-function getUint32Memory() {
-    if (cachegetUint32Memory === null ||
-        cachegetUint32Memory.buffer !== wasm.memory.buffer)
-        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
-    return cachegetUint32Memory;
-}
+export class MeshBg {
 
-export function test() {
-    const retptr = globalArgumentPtr();
-    wasm.test(retptr);
-    const mem = getUint32Memory();
-    const ptr = mem[retptr / 4];
-    const len = mem[retptr / 4 + 1];
-    const realRet = getStringFromWasm(ptr, len);
-    wasm.__wbindgen_free(ptr, len * 1);
-    return realRet;
-}
+                static __construct(ptr) {
+                    return new MeshBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_meshbg_free(ptr);
+            }
+        }
+
+export class CameraBg {
+
+                static __construct(ptr) {
+                    return new CameraBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_camerabg_free(ptr);
+            }
+        }
+
+export class ShapeBg {
+
+                static __construct(ptr) {
+                    return new ShapeBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_shapebg_free(ptr);
+            }
+        }
+
+export class SceneBg {
+
+                static __construct(ptr) {
+                    return new SceneBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_scenebg_free(ptr);
+            }
+        }
+
+export class LightingBg {
+
+                static __construct(ptr) {
+                    return new LightingBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_lightingbg_free(ptr);
+            }
+        }
 
 let slab = [];
 
@@ -182,6 +247,14 @@ export function __wbindgen_symbol_new(ptr, len) {
 
 export function __wbindgen_is_symbol(i) {
     return typeof(getObject(i)) === 'symbol' ? 1 : 0;
+}
+
+let cachegetUint32Memory = null;
+function getUint32Memory() {
+    if (cachegetUint32Memory === null ||
+        cachegetUint32Memory.buffer !== wasm.memory.buffer)
+        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
+    return cachegetUint32Memory;
 }
 
 export function __wbindgen_string_get(i, len_ptr) {

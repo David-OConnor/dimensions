@@ -1,5 +1,4 @@
-import * as shapeMaker from "./shapeMaker";
-import {Camera, Lighting, Shape} from "./types";
+import {Camera, Lighting, Mesh, Normal, Scene, Shape, Vertex} from "./types";
 
 // todo global shapes and cam for now
 const τ = 2 * Math.PI
@@ -10,55 +9,74 @@ export const rotateSensitivity = 0.7  // radians per millisecond.
 
 export let staticBuffers = {}
 
-const defaultCam = new Camera (
-    new Float32Array([0., 0., 0., 0.]),
-    [0., 0., 0., 0., 0., 0.],
-    τ / 4.,
-    4 / 3.,
-    1.,
-    100.,
-    0.1,
-    1.0,
+// todo temp
+
+const vertices = new Map()
+vertices.set(0, {position: [0., 0., 0., 0.]} as Vertex)
+vertices.set(1, {position: [0., 1., 0., 0.]} as Vertex)
+vertices.set(2, {position: [1., 0., 0., 0.]} as Vertex)
+// const normals
+
+const mesh = new Mesh(
+    vertices,
+    [new Uint16Array([0, 1, 2])],
+    [
+        {normal: [0., 0., 1., 0.]} as Normal,
+        {normal: [0., 0., 1., 0.]} as Normal,
+        {normal: [0., 0., 1., 0.]} as Normal
+    ],
+)
+mesh.makeTris()
+
+const shapes = new Map()
+shapes.set(
+    0,
+    new Shape(
+        mesh,
+        new Float32Array([0., 0., 0., 0.]),
+        [0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0.],
+        1.
+    )
 )
 
-// These next few are set by the scene.
-export let cam = defaultCam
-export let camType = 'single'
-export let shapes = new Map()
-export let colorMax = 15.  // At this z distance, our blue/red shift fully saturated.
+const cam = new Camera(
+    new Float32Array([0., 0., 0., 0.]),
+    [0., 0., 0., 0., 0., 0.],
+    Math.PI / 2.,
+    1.,
+    1.,
+    .1,
+    100,
+    100
+)
 
-export let lighting: Lighting = {
-            ambientIntensity: 0.4,
-            diffuseIntensity: 0.4,
-            specularIntensity: 0.3,
-            ambientColor: [1.0, 1.0, 1.0, 0.4],
-            diffuseColor: [0., 1., 0., 0.2],
-            diffuseDirection: [1., 0., 0., 0.],
+const lighting: Lighting = {
+    ambientIntensity: 1.,
+    diffuseIntensity: 1.,
+    specularIntensity: 1.,
+    ambientColor: [1., 1., 1., 1.],
+    diffuseColor: [1., 1., 1., 1.],
+    diffuseDirection: [1., 1., 1., 1.],
 }
 
-export let skybox = shapeMaker.make_skybox(100, cam.position)
+export const sceneLib: Map<number, Scene> = new Map()
+sceneLib.set(
+    0,
+    {
+        shapes: shapes,
+        cam: cam,
+        camType: "free",
+        lighting: lighting,
+        colorMax: 1.,
+        sensitivities: [0.1, 0.1, 0.1]
+    }
+)
 
-// We can't modify values here directly; use setters instead.
+export let scene = sceneLib.get(0)
 
-// Imported values seem to be read-only, hence the setters.
-export function setColorMax(val: number) {
-    colorMax = val
-}
-
-export function setShapes(shapes_: Map<number, Shape>) {
-    shapes = shapes_
-}
-
-export function setLighting(lighting_: Lighting) {
-    lighting = lighting_
-}
-
-export function setCam(cam_: Camera) {
-    cam = cam_
-}
-export function setCamType(type: string) {
-    // 'single', 'fps', or 'free'
-    camType = type
+export function setScene(scene_: Scene) {
+    scene = scene_
 }
 
 export function updateStaticBuffers(gl: any, buffers: any) {

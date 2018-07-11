@@ -1,21 +1,6 @@
 // Similar to types.rs. Much of these are imported from Rust via bindgen,
 // so must be similar to their rust equivalent.
 
-// export class Node2 {
-//     a: Float32Array
-//     constructor(a: Float32Array) {
-//         this.a = a
-//     }
-// }
-//
-// export class Edge {
-//     node0: number
-//     node1: number
-//     constructor(node0: number, node1: number) {
-//         this.node0 = node0
-//         this.node1 = node1
-//     }
-// }
 
 export class Vertex {
     position: [number, number, number, number]
@@ -27,11 +12,11 @@ export class Normal {
 
 export class Mesh {
     vertices: Map<number, Vertex>
-    faces_vert: Float32Array[]  // Indicies of vertexes.
+    faces_vert: Uint16Array[]  // Indicies of vertexes.
     normals: Normal[]
     tris: number[]
 
-    constructor(vertices: Map<number, Vertex>, faces_vert: Float32Array[], normals: Normal[]) {
+    constructor(vertices: Map<number, Vertex>, faces_vert: Uint16Array[], normals: Normal[]) {
         this.vertices = vertices
         this.faces_vert = faces_vert
         this.normals = normals
@@ -103,6 +88,7 @@ export class Shape {
         this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
+        this.opacity = opacity
     }
 }
 
@@ -142,12 +128,12 @@ export interface Lighting {
 }
 
 export interface Scene {
-    id: number,
     shapes: Map<number, Shape>,
-    camStart: Camera,
+    cam: Camera,
     camType: string,  // 'single', 'fps', or 'ffree'
-    colorMax: number, // distance thresh for max 4d-color indicator.
     lighting: Lighting,
+    colorMax: number, // distance thresh for max 4d-color indicator.
+    sensitivities: [number, number, number]
 }
 
 export interface MainState {

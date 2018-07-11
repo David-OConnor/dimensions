@@ -106,7 +106,7 @@ function testDotMatrixMatrix() {
 export function findColor(dist: number): number[] {
     // produce a color ranging from red to blue, based on how close a point is
     // to the edge.
-    let portion_through = Math.abs(dist) / state.colorMax
+    let portion_through = Math.abs(dist) / state.scene.colorMax
 
     if (portion_through > 1.) {
         portion_through = 1.
@@ -120,69 +120,3 @@ export function findColor(dist: number): number[] {
         return [colorVal, baseGray, baseGray, 0.2]  // Red
     }
 }
-
-// export function handleFiles(e: any) {
-//     const file = e.target.files[0];
-//     const reader = new FileReader();  reader.addEventListener("load", processimage, false)
-//     reader.readAsArrayBuffer(file);
-// }
-//
-// function processimage(e: any) {
-//     const buffer = e.target.result;
-//     const bitmap = getBMP(buffer);
-//     const imageData = convertToImageData(bitmap);  ctx1.putImageData(imageData, 0, 0);
-// }
-//
-// function getBMP(buffer: any) {
-//     const datav = new DataView(buffer);
-//     let bitmap: any = {}
-//     bitmap.fileheader = {}; bitmap.fileheader.bfType =
-//         datav.getUint16(0, true);
-//     bitmap.fileheader.bfSize =
-//         datav.getUint32(2, true);
-//     bitmap.fileheader.bfReserved1 =
-//         datav.getUint16(6, true);
-//     bitmap.fileheader.bfReserved2 =
-//         datav.getUint16(8, true);
-//     bitmap.fileheader.bfOffBits =
-//         datav.getUint32(10, true);
-//     bitmap.infoheader = {};
-//     bitmap.infoheader.biSize =
-//         datav.getUint32(14, true);
-//     bitmap.infoheader.biWidth =
-//         datav.getUint32(18, true);
-//     bitmap.infoheader.biHeight =
-//         datav.getUint32(22, true);
-//     bitmap.infoheader.biPlanes =
-//         datav.getUint16(26, true);
-//     bitmap.infoheader.biBitCount =
-//         datav.getUint16(28, true);
-//     bitmap.infoheader.biCompression =
-//         datav.getUint32(30, true);
-//     bitmap.infoheader.biSizeImage =
-//         datav.getUint32(34, true);
-//     bitmap.infoheader.biXPelsPerMeter =
-//         datav.getUint32(38, true);
-//     bitmap.infoheader.biYPelsPerMeter =
-//         datav.getUint32(42, true);
-//     bitmap.infoheader.biClrUsed =
-//         datav.getUint32(46, true);
-//     bitmap.infoheader.biClrImportant =
-//         datav.getUint32(50, true);
-//
-//      const start = bitmap.fileheader.bfOffBits;  bitmap.stride =
-//   Math.floor((bitmap.infoheader.biBitCount
-//     *bitmap.infoheader.biWidth +
-//                             31) / 32) * 4;
-//  bitmap.pixels =
-//          new Uint8Array(buffer, start);
-//  return bitmap;
-// }
-//
-// function convertToImageData(bitmap) {
-//  canvas = document.createElement("canvas");
-//  var ctx = canvas.getContext("2d");
-//  var Width = bitmap.infoheader.biWidth;
-//  var Height = bitmap.infoheader.biHeight;
-//  var imageData = ctx.createImageData(
-//                            Width, Height);
