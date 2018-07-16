@@ -16,6 +16,9 @@
 extern crate ndarray;
 extern crate rand;
 extern crate simdnoise;
+extern crate noise;
+#[macro_use]
+extern crate serde_derive;
 
 // Vulkano
 #[macro_use]

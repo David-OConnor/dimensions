@@ -5,10 +5,8 @@ const rust = import("./from_rust");
 rust.then(
     r =>
     {
-        r.greet("World!")
-        let fiveCell = r.fivecell();
-        // console.log(fiveCell)
-        console.log("Rust complete")
+        // let sceneLib = r.scene_lib()
+        // console.log(sceneLib)
     })
 
 

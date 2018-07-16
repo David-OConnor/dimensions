@@ -108,7 +108,7 @@ pub fn render() {
     scene_lib.insert(2, scenes::spherinder_scene(aspect));
     scene_lib.insert(3, scenes::cube_scene(aspect));
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
-    scene_lib.insert(5, scenes::world_scene(aspect));
+//    scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
     scene_lib.insert(7, scenes::plot_scene(aspect));
     scene_lib.insert(8, scenes::origin_scene(aspect));

@@ -275,22 +275,27 @@ pub fn hyperrect(lens: (f32, f32, f32, f32)) -> Mesh {
         Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
+
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
+
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
+
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
+
         Normal::new(-1., 0., 0., 0.),
         Normal::new(1., 0., 0., 0.),
         Normal::new(0., 0., -1., 0.),
         Normal::new(0., 0., 1., 0.),
+
         Normal::new(0., 1., 0., 0.),
         Normal::new(0., -1., 0., 0.),
         Normal::new(-1., 0., 0., 0.),

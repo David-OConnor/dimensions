@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ndarray::prelude::*;
 use wasm_bindgen::prelude::*;
 
+
 #[derive(Debug)]
 pub struct Pt2D {
     pub x: f32,
@@ -115,9 +116,32 @@ impl Mesh {
         // it's 6 faces x 4 vertices/face.
         self.faces_vert.iter().fold(0, |acc, face| acc + face.len() as u32)
     }
+    
+    pub fn to_bg(&self) -> MeshBg {
+        let mut vertices = HashMap::new();
+        for (id, vert) in &self.vertices {
+            vertices.insert(*id, vec![vert.position.0, vert.position.1,
+                                     vert.position.2, vert.position.3]);
+        }
+
+        let faces_vert: Vec<Vec<u32>> = self.faces_vert.iter()
+            .map(|face| vec![face[0], face[1], face[2],
+                             face[3]]).collect();
+
+        let normals: Vec<Vec<f32>> = self.normals.iter()
+            .map(|norm| vec![norm.normal.0, norm.normal.1, norm.normal.2,
+                             norm.normal.3]).collect();
+
+        MeshBg {
+            vertices,
+            faces_vert,
+            normals,
+            tris: vec![self.tris[0], self.tris[1], self.tris[2], self.tris[3]]
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 #[wasm_bindgen]
 pub struct MeshBg {
     // Uses only types accepted by WASM Bindgen. No pub fields for vecs.
@@ -127,33 +151,7 @@ pub struct MeshBg {
     tris: Vec<u32>,
 }
 
-impl MeshBg {
-    pub fn from_mesh(mesh: Mesh) -> MeshBg {
-        let mut vertices = HashMap::new();
-        for (id, vert) in mesh.vertices {
-            vertices.insert(id, vec![vert.position.0, vert.position.1,
-                                     vert.position.2, vert.position.3]);
-        }
-
-        let faces_vert: Vec<Vec<u32>> = mesh.faces_vert.iter()
-            .map(|face| vec![face[0], face[1], face[2],
-                             face[3]]).collect();
-
-        let normals: Vec<Vec<f32>> = mesh.normals.iter()
-            .map(|norm| vec![norm.normal.0, norm.normal.1, norm.normal.2,
-                             norm.normal.3]).collect();
-
-        MeshBg {
-            vertices,
-            faces_vert,
-            normals,
-            tris: vec![mesh.tris[0], mesh.tris[1], mesh.tris[2], mesh.tris[3]]
-        }
-    }
-}
-
-
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 #[wasm_bindgen]
 pub struct ShapeBg {
     // See note on MeshBg.
@@ -163,25 +161,6 @@ pub struct ShapeBg {
     orientation: Vec<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     rotation_speed: Vec<f32>,  // 6 items, as with rotation.  Radians/s ?
     opacity: f32,
-}
-
-impl ShapeBg {
-    pub fn from_shape(shape: Shape) -> ShapeBg {
-        ShapeBg {
-            mesh: MeshBg::from_mesh(shape.mesh),
-            position: vec![shape.position[0], shape.position[1],
-                            shape.position[2], shape.position[3]],
-            scale: shape.scale,
-            orientation: vec![shape.orientation[0], shape.orientation[1],
-                               shape.orientation[2], shape.orientation[3],
-                               shape.orientation[4], shape.orientation[5]],
-            rotation_speed: vec![shape.rotation_speed[0], shape.rotation_speed[1],
-                                   shape.rotation_speed[2], shape.rotation_speed[3],
-                                   shape.rotation_speed[4], shape.rotation_speed[5]],
-            opacity: shape.opacity
-
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -201,6 +180,17 @@ impl Shape {
                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
 
         Shape{ mesh, position, scale: 1., orientation, rotation_speed, opacity }
+    }
+    
+    pub fn to_bg(&self) -> ShapeBg {
+        ShapeBg {
+            mesh: self.mesh.to_bg(),
+            position: self.position.to_vec(),
+            scale: self.scale,
+            orientation: self.orientation.to_vec(),
+            rotation_speed: self.rotation_speed.to_vec(),
+            opacity: self.opacity
+        }
     }
 }
 
@@ -230,9 +220,22 @@ impl Camera {
         let height = 2. * dist * (self.fov / 2.).tan();
         (width, height)
     }
+
+    pub fn to_bg(&self) -> CameraBg {
+        CameraBg {
+            position: self.position.to_vec(),
+            θ: self.θ.to_vec(),
+            fov: self.fov,
+            aspect: self.aspect,
+            aspect_4: self.aspect_4,
+            near: self.near,
+            far: self.far,
+            fourd_proj_dist: self.fourd_proj_dist
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 #[wasm_bindgen]
 pub struct CameraBg {
     // See note on MeshBg.
@@ -246,23 +249,7 @@ pub struct CameraBg {
     fourd_proj_dist: f32,
 }
 
-impl CameraBg {
-    pub fn from_camera(cam: Camera) -> CameraBg {
-        CameraBg {
-            position: vec![cam.position[0], cam.position[1],
-                           cam.position[2], cam.position[3]],
-            θ: vec![cam.θ[0], cam.θ[1], cam.θ[2], cam.θ[3]],
-            fov: cam.fov,
-            aspect: cam.aspect,
-            aspect_4: cam.aspect_4,
-            near: cam.near,
-            far: cam.far,
-            fourd_proj_dist: cam.fourd_proj_dist
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 #[wasm_bindgen]
 pub enum CameraType {
     Single,  // No camera changes; rotate the shape instead
@@ -283,7 +270,20 @@ pub struct Lighting {
     pub diffuse_direction: [f32; 4],
 }
 
-#[derive(Debug)]
+impl Lighting {
+    pub fn to_bg(&self) -> LightingBg {
+        LightingBg {
+            ambient_intensity: self.ambient_intensity,
+            diffuse_intensity: self.diffuse_intensity,
+            specular_intensity: self.specular_intensity,
+            ambient_color: self.ambient_color.to_vec(),
+            diffuse_color: self.diffuse_color.to_vec(),
+            diffuse_direction: self.diffuse_direction.to_vec()
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 #[wasm_bindgen]
 pub struct LightingBg {
     ambient_intensity: f32,
@@ -293,22 +293,6 @@ pub struct LightingBg {
     diffuse_color: Vec<f32>,
     // Direction doesn't have to be normalized; we do that in the shader.
     diffuse_direction: Vec<f32>,
-}
-
-impl LightingBg {
-    pub fn from_lighting(light: Lighting) -> LightingBg {
-        LightingBg {
-            ambient_intensity: light.ambient_intensity,
-            diffuse_intensity: light.diffuse_intensity,
-            specular_intensity: light.specular_intensity,
-            ambient_color: vec![light.ambient_color[0], light.ambient_color[1],
-                                  light.ambient_color[2], light.ambient_color[3]],
-            diffuse_color: vec![light.diffuse_color[0], light.diffuse_color[1],
-                                  light.diffuse_color[3], light.diffuse_color[4]],
-            diffuse_direction: vec![light.diffuse_direction[0], light.diffuse_direction[1],
-                                  light.diffuse_direction[3], light.diffuse_direction[4]],
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -321,7 +305,26 @@ pub struct Scene {
     pub sensitivities: (f32, f32, f32),  // move, rotate, zoom
 }
 
-#[derive(Debug)]
+impl Scene {
+    pub fn to_bg(&self) -> SceneBg {
+        let mut shapes = HashMap::new();
+        for (id, shape) in &self.shapes {
+            shapes.insert(*id, shape.to_bg());
+        }
+
+        SceneBg {
+            shapes,
+            cam: self.cam.to_bg(),
+            cam_type: self.cam_type.clone(),
+            lighting: self.lighting.to_bg(),
+            color_max: self.color_max,
+            sensitivities: vec![self.sensitivities.0, self.sensitivities.1,
+                                  self.sensitivities.2],
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 #[wasm_bindgen]
 pub struct SceneBg {
     shapes: HashMap<u32, ShapeBg>,
@@ -332,21 +335,3 @@ pub struct SceneBg {
     sensitivities: Vec<f32>,  // move, rotate, zoom
 }
 
-impl SceneBg {
-    pub fn from_scene(scene: Scene) -> SceneBg {
-        let mut shapes = HashMap::new();
-        for (id, shape) in scene.shapes {
-            shapes.insert(id, ShapeBg::from_shape(shape));
-        }
-
-        SceneBg {
-            shapes,
-            cam: CameraBg::from_camera(scene.cam),
-            cam_type: scene.cam_type,
-            lighting: LightingBg::from_lighting(scene.lighting),
-            color_max: scene.color_max,
-            sensitivities: vec![scene.sensitivities.0, scene.sensitivities.1,
-                                  scene.sensitivities.2]
-        }
-    }
-}

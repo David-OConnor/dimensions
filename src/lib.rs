@@ -15,38 +15,128 @@
 extern crate ndarray;
 extern crate rand;
 //extern crate simdnoise;
-
+extern crate noise;
 extern crate wasm_bindgen;
-use wasm_bindgen::prelude::*;
+extern crate yew;
+
+
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
 
 mod util;
+//mod scenes;
 mod shape_maker;
 mod transforms;
 mod types;
 
+use std::collections::HashMap;
+
 use ndarray::prelude::*;
+use wasm_bindgen::prelude::*;
+use yew::prelude::*;
 
-use types::{Shape, ShapeBg};
+use types::{Camera, CameraBg, Shape, ShapeBg, SceneBg};
+
+// WIDTH and HEIGHT should match WebGL canvas size.
+const WIDTH: u32 = 1024;
+const HEIGHT: u32 = 768;
+
+//#[wasm_bindgen]
+//pub fn fivecell() -> ShapeBg {
+//    // todo pass whole scenes instead
+//
+//    let shape = Shape::new(shape_maker::fivecell(2.), Array::zeros(4),
+//               Array::zeros(6), Array::zeros(6), 1.);
+//
+//    ShapeBg::from_shape(shape)
+//}
+
+//
+
+//#[wasm_bindgen]
+//pub fn scene_lib() -> JsValue {
+//let aspect = WIDTH as f32 / HEIGHT as f32;
+//
+//    let mut scene_lib = HashMap::new();
+//    scene_lib.insert(0, scenes::hypercube_scene(aspect));
+//    scene_lib.insert(1, scenes::fivecell_scene(aspect));
+//    scene_lib.insert(2, scenes::spherinder_scene(aspect));
+//    scene_lib.insert(3, scenes::cube_scene(aspect));
+//    scene_lib.insert(4, scenes::pyramid_scene(aspect));
+////    scene_lib.insert(5, scenes::world_scene(aspect));
+//    scene_lib.insert(6, scenes::grid_scene(aspect));
+//    scene_lib.insert(7, scenes::plot_scene(aspect));
+//    scene_lib.insert(8, scenes::origin_scene(aspect));
+//
+//    let scene_lib: HashMap<u32, SceneBg> = scene_lib.iter()
+//        .map(|(id, scene)| (*id, scene.to_bg())).collect();
+//
+//    JsValue::from_serde(&scene_lib).unwrap()
+//}
 
 
 #[wasm_bindgen]
-extern {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
-}
-
-#[wasm_bindgen]
-pub fn fivecell() -> ShapeBg {
+pub fn camera() -> JsValue {
     // todo pass whole scenes instead
 
-    let shape = Shape::new(shape_maker::fivecell(2.), Array::zeros(4),
-               Array::zeros(6), Array::zeros(6), 1.);
+    let cam = Camera {
+            position: array![1., 1., 1., 1.],
+            θ: array![1., 1., 1., 1., 2., 3.],
+            fov: 1.,
+            aspect: 1.,
+            aspect_4: 1.,
+            near: 1.,
+            far: 1.,
+            fourd_proj_dist: 1.,
+        }.to_bg();
 
-    ShapeBg::from_shape(shape)
+    JsValue::from_serde(&cam).unwrap()
 }
+
+//struct Model { }
+//
+//enum Msg {
+//    DoIt,
+//}
+//
+//impl Component for Model {
+//    // Some details omitted. Explore the examples to see more.
+//
+//    type Message = Msg;
+//    type Properties = ();
+//
+//    fn create(_: Self::Properties, _: ComponentLink<Self>) -> Self {
+//        Model { }
+//    }
+//
+//    fn update(&mut self, msg: Self::Message) -> ShouldRender {
+//        match msg {
+//            Msg::DoIt => {
+//                // Update your model on events
+//                true
+//            }
+//        }
+//    }
+//}
+//
+//impl Renderable<Model> for Model {
+//    fn view(&self) -> Html<Self> {
+//        html! {
+//            // Render your model here
+//            <button onclick=|_| Msg::DoIt,>{ "Click me!" }</button>
+//        }
+//    }
+//}
+//
+//fn main() {
+//    yew::initialize();
+//    App::<Model>::new().mount_to_body();
+//    yew::run_loop();
+//}
+//
+
 
 

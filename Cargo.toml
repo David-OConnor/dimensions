@@ -24,7 +24,10 @@ path = "src/main.rs"
 [dependencies]
 ndarray = "^0.11.2"
 rand = "^0.5.3"
-wasm-bindgen = "^0.2"
+noise = "^0.5.1"
+serde = "^1.0.59"
+serde_json = "^1.0.17"
+serde_derive = "^1.0.59"
 
 # WASM
 #[dependencies.wasm-bindgen]
@@ -33,7 +36,7 @@ wasm-bindgen = "^0.2"
 
 # I want something more like this:
 #[target.cfg(not(wasm32-unknown-unknown)).dependencies]
-# vulkan's not compatible with wasm-unknown-unknown.
+# vulkan's not compatible with wasm32-unknown-unknown.
 [target.'cfg(windows)'.dependencies]
 # Vulkano
 vulkano = "^0.9"
@@ -41,11 +44,13 @@ vulkano-shader-derive = "^0.9"
 vulkano-win = "^0.9"
 winit = "^0.11.0"
 time = "^0.1.37"
-simdnoise = "2.3.2"  # This breaks wasm for some reason.
+simdnoise = "2.3.2"  # simdnoise is not compatibile with wasm due to SIMD use.
 
 [target.wasm32-unknown-unknown.dependencies]
-#stdweb = "^0.4.7"
-serde = "^1.0.59"
-serde_json = "^1.0.17"
-serde_derive = "^1.0.59"
-#wasm-bindgen = "^0.2"
+yew = "^0.4.0"
+
+
+[dependencies.wasm-bindgen]
+version = "^0.2"
+features = ["serde-serialize"]
+

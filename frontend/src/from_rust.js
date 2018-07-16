@@ -3,60 +3,50 @@ import * as wasm from './from_rust_bg';
 
 export const CameraType = Object.freeze({ Single:0,FPS:1,Free:2, });
 
-const TextDecoder = typeof self === 'object' && self.TextDecoder
-    ? self.TextDecoder
-    : require('util').TextDecoder;
+let stack = [];
 
-let cachedDecoder = new TextDecoder('utf-8');
+let slab = [];
 
-let cachegetUint8Memory = null;
-function getUint8Memory() {
-    if (cachegetUint8Memory === null ||
-        cachegetUint8Memory.buffer !== wasm.memory.buffer)
-        cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
-    return cachegetUint8Memory;
-}
+function getObject(idx) {
+    if ((idx & 1) === 1) {
+        return stack[idx >> 1];
+    } else {
+        const val = slab[idx >> 1];
 
-function getStringFromWasm(ptr, len) {
-    return cachedDecoder.decode(getUint8Memory().subarray(ptr, ptr + len));
-}
+    return val.obj;
 
-export function __wbg_f_alert_alert_n(arg0, arg1) {
-    let varg0 = getStringFromWasm(arg0, arg1);
-    alert(varg0);
-}
-
-const TextEncoder = typeof self === 'object' && self.TextEncoder
-    ? self.TextEncoder
-    : require('util').TextEncoder;
-
-let cachedEncoder = new TextEncoder('utf-8');
-
-function passStringToWasm(arg) {
-
-    const buf = cachedEncoder.encode(arg);
-    const ptr = wasm.__wbindgen_malloc(buf.length);
-    getUint8Memory().set(buf, ptr);
-    return [ptr, buf.length];
-}
-
-export function greet(arg0) {
-    const [ptr0, len0] = passStringToWasm(arg0);
-    try {
-        return wasm.greet(ptr0, len0);
-    } finally {
-        wasm.__wbindgen_free(ptr0, len0 * 1);
     }
 }
 
-export function fivecell() {
-    return ShapeBg.__construct(wasm.fivecell());
+let slab_next = 0;
+
+function dropRef(idx) {
+
+    let obj = slab[idx >> 1];
+
+    obj.cnt -= 1;
+    if (obj.cnt > 0)
+        return;
+
+    // If we hit 0 then free up our space in the slab
+    slab[idx >> 1] = slab_next;
+    slab_next = idx >> 1;
 }
 
-export class MeshBg {
+function takeObject(idx) {
+    const ret = getObject(idx);
+    dropRef(idx);
+    return ret;
+}
+
+export function camera() {
+    return takeObject(wasm.camera());
+}
+
+export class LightingBg {
 
                 static __construct(ptr) {
-                    return new MeshBg(ptr);
+                    return new LightingBg(ptr);
                 }
 
                 constructor(ptr) {
@@ -66,7 +56,7 @@ export class MeshBg {
             free() {
                 const ptr = this.ptr;
                 this.ptr = 0;
-                wasm.__wbg_meshbg_free(ptr);
+                wasm.__wbg_lightingbg_free(ptr);
             }
         }
 
@@ -87,23 +77,6 @@ export class CameraBg {
             }
         }
 
-export class ShapeBg {
-
-                static __construct(ptr) {
-                    return new ShapeBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_shapebg_free(ptr);
-            }
-        }
-
 export class SceneBg {
 
                 static __construct(ptr) {
@@ -121,10 +94,10 @@ export class SceneBg {
             }
         }
 
-export class LightingBg {
+export class ShapeBg {
 
                 static __construct(ptr) {
-                    return new LightingBg(ptr);
+                    return new ShapeBg(ptr);
                 }
 
                 constructor(ptr) {
@@ -134,13 +107,26 @@ export class LightingBg {
             free() {
                 const ptr = this.ptr;
                 this.ptr = 0;
-                wasm.__wbg_lightingbg_free(ptr);
+                wasm.__wbg_shapebg_free(ptr);
             }
         }
 
-let slab = [];
+export class MeshBg {
 
-let slab_next = 0;
+                static __construct(ptr) {
+                    return new MeshBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_meshbg_free(ptr);
+            }
+        }
 
 function addHeapObject(obj) {
     if (slab_next === slab.length)
@@ -152,19 +138,6 @@ function addHeapObject(obj) {
 
     slab[idx] = { obj, cnt: 1 };
     return idx << 1;
-}
-
-let stack = [];
-
-function getObject(idx) {
-    if ((idx & 1) === 1) {
-        return stack[idx >> 1];
-    } else {
-        const val = slab[idx >> 1];
-
-    return val.obj;
-
-    }
 }
 
 export function __wbindgen_object_clone_ref(idx) {
@@ -179,20 +152,25 @@ export function __wbindgen_object_clone_ref(idx) {
     return idx;
 }
 
-function dropRef(idx) {
+export function __wbindgen_object_drop_ref(i) { dropRef(i); }
 
-    let obj = slab[idx >> 1];
+const TextDecoder = typeof self === 'object' && self.TextDecoder
+    ? self.TextDecoder
+    : require('util').TextDecoder;
 
-    obj.cnt -= 1;
-    if (obj.cnt > 0)
-        return;
+let cachedDecoder = new TextDecoder('utf-8');
 
-    // If we hit 0 then free up our space in the slab
-    slab[idx >> 1] = slab_next;
-    slab_next = idx >> 1;
+let cachegetUint8Memory = null;
+function getUint8Memory() {
+    if (cachegetUint8Memory === null ||
+        cachegetUint8Memory.buffer !== wasm.memory.buffer)
+        cachegetUint8Memory = new Uint8Array(wasm.memory.buffer);
+    return cachegetUint8Memory;
 }
 
-export function __wbindgen_object_drop_ref(i) { dropRef(i); }
+function getStringFromWasm(ptr, len) {
+    return cachedDecoder.decode(getUint8Memory().subarray(ptr, ptr + len));
+}
 
 export function __wbindgen_string_new(p, l) {
     return addHeapObject(getStringFromWasm(p, l));
@@ -249,6 +227,20 @@ export function __wbindgen_is_symbol(i) {
     return typeof(getObject(i)) === 'symbol' ? 1 : 0;
 }
 
+const TextEncoder = typeof self === 'object' && self.TextEncoder
+    ? self.TextEncoder
+    : require('util').TextEncoder;
+
+let cachedEncoder = new TextEncoder('utf-8');
+
+function passStringToWasm(arg) {
+
+    const buf = cachedEncoder.encode(arg);
+    const ptr = wasm.__wbindgen_malloc(buf.length);
+    getUint8Memory().set(buf, ptr);
+    return [ptr, buf.length];
+}
+
 let cachegetUint32Memory = null;
 function getUint32Memory() {
     if (cachegetUint32Memory === null ||
@@ -266,7 +258,19 @@ export function __wbindgen_string_get(i, len_ptr) {
     return ptr;
 }
 
+export function __wbindgen_json_parse(ptr, len) {
+    return addHeapObject(JSON.parse(getStringFromWasm(ptr, len)));
+}
+
 export function __wbindgen_throw(ptr, len) {
     throw new Error(getStringFromWasm(ptr, len));
 }
+
+export function __wbindgen_expf(x) { return Math.exp(x); }
+
+export function __wbindgen_sinf(x) { return Math.sin(x); }
+
+export function __wbindgen_exp2f(a) { return Math.pow(2, a); }
+
+export function __wbindgen_powf(x, y) { return Math.pow(x, y); }
 
