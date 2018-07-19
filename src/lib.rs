@@ -7,6 +7,7 @@
 #![allow(non_upper_case_globals)]
 #![feature(non_ascii_idents)]
 #![feature(proc_macro, wasm_custom_section, wasm_import_module)]
+#![feature(const_vec_new)]
 
 #![allow(dead_code)]  // todo remove this later
 #![warn(unused_variables)] // todo remove this later
@@ -15,9 +16,9 @@
 extern crate ndarray;
 extern crate rand;
 //extern crate simdnoise;
-extern crate noise;
+//extern crate noise;
 extern crate wasm_bindgen;
-extern crate yew;
+//extern crate yew;
 
 
 #[macro_use]
@@ -27,7 +28,7 @@ extern crate serde_json;
 
 
 mod util;
-//mod scenes;
+mod scenes;
 mod shape_maker;
 mod transforms;
 mod types;
@@ -36,7 +37,7 @@ use std::collections::HashMap;
 
 use ndarray::prelude::*;
 use wasm_bindgen::prelude::*;
-use yew::prelude::*;
+//use yew::prelude::*;
 
 use types::{Camera, CameraBg, Shape, ShapeBg, SceneBg};
 
@@ -44,38 +45,28 @@ use types::{Camera, CameraBg, Shape, ShapeBg, SceneBg};
 const WIDTH: u32 = 1024;
 const HEIGHT: u32 = 768;
 
-//#[wasm_bindgen]
-//pub fn fivecell() -> ShapeBg {
-//    // todo pass whole scenes instead
-//
-//    let shape = Shape::new(shape_maker::fivecell(2.), Array::zeros(4),
-//               Array::zeros(6), Array::zeros(6), 1.);
-//
-//    ShapeBg::from_shape(shape)
-//}
+#[wasm_bindgen]
+pub fn scene_lib() -> JsValue {
+    let aspect = WIDTH as f32 / HEIGHT as f32;
 
-//
+    let mut scene_lib = HashMap::new();
+    scene_lib.insert(0, scenes::hypercube_scene(aspect));
+    scene_lib.insert(1, scenes::fivecell_scene(aspect));
+    scene_lib.insert(2, scenes::spherinder_scene(aspect));
+    scene_lib.insert(3, scenes::cube_scene(aspect));
+    scene_lib.insert(4, scenes::pyramid_scene(aspect));
+//    scene_lib.insert(5, scenes::world_scene(aspect));
+    scene_lib.insert(6, scenes::grid_scene(aspect));
+    scene_lib.insert(7, scenes::plot_scene(aspect));
+    scene_lib.insert(8, scenes::origin_scene(aspect));
 
-//#[wasm_bindgen]
-//pub fn scene_lib() -> JsValue {
-//let aspect = WIDTH as f32 / HEIGHT as f32;
-//
-//    let mut scene_lib = HashMap::new();
-//    scene_lib.insert(0, scenes::hypercube_scene(aspect));
-//    scene_lib.insert(1, scenes::fivecell_scene(aspect));
-//    scene_lib.insert(2, scenes::spherinder_scene(aspect));
-//    scene_lib.insert(3, scenes::cube_scene(aspect));
-//    scene_lib.insert(4, scenes::pyramid_scene(aspect));
-////    scene_lib.insert(5, scenes::world_scene(aspect));
-//    scene_lib.insert(6, scenes::grid_scene(aspect));
-//    scene_lib.insert(7, scenes::plot_scene(aspect));
-//    scene_lib.insert(8, scenes::origin_scene(aspect));
-//
-//    let scene_lib: HashMap<u32, SceneBg> = scene_lib.iter()
-//        .map(|(id, scene)| (*id, scene.to_bg())).collect();
-//
-//    JsValue::from_serde(&scene_lib).unwrap()
-//}
+    let scene_lib: HashMap<u32, SceneBg> = scene_lib.iter()
+        .map(|(id, scene)| (*id, scene.to_bg())).collect();
+
+
+    JsValue::from_serde(&scene_lib).unwrap()
+
+}
 
 
 #[wasm_bindgen]

@@ -5,11 +5,8 @@ const rust = import("./from_rust");
 rust.then(
     r =>
     {
-        // let sceneLib = r.scene_lib()
-        // console.log(sceneLib)
+        state.setSceneLib(util.deserSceneLib(r.scene_lib()))
     })
-
-
 
 import {Button, Grid, Row, Col,
     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -18,7 +15,8 @@ import {Button, Grid, Row, Col,
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
 
 import * as render from './render'
-import * as state from './state';
+import * as state from './state'
+import * as util from './util'
 
 
 // Not sure how to get TS to accept WebAssembly.

@@ -5,6 +5,7 @@
 // Having algorithms tuned to the specific size matrix is ugly, but efficient.
 
 import * as state from "./state";
+import {Scene} from "./types";
 
 export function addVecs4(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array {
     // Must have 5 elements.
@@ -119,4 +120,23 @@ export function findColor(dist: number): number[] {
     } else {
         return [colorVal, baseGray, baseGray, 0.2]  // Red
     }
+}
+
+export function deserSceneLib(rawLib: any) : Map<number, Scene> {
+    // Most of the work is handled in wasm_bindgen. Currently, this only
+    // changes the field names to camelCase.
+    let result = new Map()
+    // Convert from an object with strings as keys to a map.
+    Object.keys(rawLib).forEach((id) => result.set(parseInt(id),
+        {
+            shapes: rawLib[id].shapes,
+            cam: rawLib[id].cam,
+            camType: rawLib[id].cam_type,
+            colorMax: rawLib[id].color_max,
+            lighting: rawLib[id].lighting,
+            sensitivities: rawLib[id].sensitivities
+        }
+    ))
+
+    return result
 }

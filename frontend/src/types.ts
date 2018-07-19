@@ -131,8 +131,8 @@ export interface Scene {
     shapes: Map<number, Shape>,
     cam: Camera,
     camType: string,  // 'single', 'fps', or 'ffree'
-    lighting: Lighting,
     colorMax: number, // distance thresh for max 4d-color indicator.
+    lighting: Lighting,
     sensitivities: [number, number, number]
 }
 

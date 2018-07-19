@@ -27,7 +27,6 @@ pub mod vs {
         vec4 ambient_color;
         vec4 diffuse_color;
         vec4 diffuse_direction;
-        vec4 pt_light_position;
 
         float ambient_intensity;
         float diffuse_intensity;
@@ -35,8 +34,6 @@ pub mod vs {
         float specular_intensity;
         float color_max;
         float shape_opacity;
-
-        float pt_light_brightness;
     } uniforms;
 
     void main() {

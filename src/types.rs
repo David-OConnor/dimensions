@@ -124,24 +124,20 @@ impl Mesh {
                                      vert.position.2, vert.position.3]);
         }
 
-        let faces_vert: Vec<Vec<u32>> = self.faces_vert.iter()
-            .map(|face| vec![face[0], face[1], face[2],
-                             face[3]]).collect();
-
         let normals: Vec<Vec<f32>> = self.normals.iter()
             .map(|norm| vec![norm.normal.0, norm.normal.1, norm.normal.2,
                              norm.normal.3]).collect();
 
         MeshBg {
             vertices,
-            faces_vert,
+            faces_vert: self.faces_vert.iter().map(|face| face.to_vec()).collect(),
             normals,
-            tris: vec![self.tris[0], self.tris[1], self.tris[2], self.tris[3]]
+            tris: self.tris.to_vec(),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[wasm_bindgen]
 pub struct MeshBg {
     // Uses only types accepted by WASM Bindgen. No pub fields for vecs.
@@ -151,7 +147,7 @@ pub struct MeshBg {
     tris: Vec<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[wasm_bindgen]
 pub struct ShapeBg {
     // See note on MeshBg.
@@ -235,7 +231,7 @@ impl Camera {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[wasm_bindgen]
 pub struct CameraBg {
     // See note on MeshBg.
@@ -260,6 +256,32 @@ pub enum CameraType {
 }
 
 #[derive(Clone, Debug)]
+pub struct LightSource {
+    // A point light source
+    pub position: [f32; 4],
+    pub intensity: f32,
+    pub color: [f32; 4],
+}
+
+impl LightSource {
+    pub fn to_bg(&self) -> LightSourceBg {
+        LightSourceBg {
+            position: self.position.to_vec(),
+            intensity: self.intensity,
+            color: self.color.to_vec(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[wasm_bindgen]
+pub struct LightSourceBg {
+    position: Vec<f32>,
+    intensity: f32,
+    color: Vec<f32>,
+}
+
+#[derive(Clone, Debug)]
 pub struct Lighting {
     pub ambient_intensity: f32,
     pub diffuse_intensity: f32,
@@ -268,6 +290,7 @@ pub struct Lighting {
     pub diffuse_color: [f32; 4],
     // Direction doesn't have to be normalized; we do that in the shader.
     pub diffuse_direction: [f32; 4],
+    pub sources: Vec<LightSource>,
 }
 
 impl Lighting {
@@ -278,12 +301,13 @@ impl Lighting {
             specular_intensity: self.specular_intensity,
             ambient_color: self.ambient_color.to_vec(),
             diffuse_color: self.diffuse_color.to_vec(),
-            diffuse_direction: self.diffuse_direction.to_vec()
+            diffuse_direction: self.diffuse_direction.to_vec(),
+            sources: self.sources.iter().map(|source| source.to_bg()).collect(),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[wasm_bindgen]
 pub struct LightingBg {
     ambient_intensity: f32,
@@ -293,6 +317,7 @@ pub struct LightingBg {
     diffuse_color: Vec<f32>,
     // Direction doesn't have to be normalized; we do that in the shader.
     diffuse_direction: Vec<f32>,
+    sources: Vec<LightSourceBg>,
 }
 
 #[derive(Clone, Debug)]
@@ -324,14 +349,17 @@ impl Scene {
     }
 }
 
-#[derive(Debug, Serialize)]
-#[wasm_bindgen]
+#[derive(Clone, Debug, Serialize)]
+//#[wasm_bindgen]
 pub struct SceneBg {
-    shapes: HashMap<u32, ShapeBg>,
-    cam: CameraBg,
-    cam_type: CameraType,
-    lighting: LightingBg,
-    color_max: f32, // distance thresh for max 4d-color indicator.
-    sensitivities: Vec<f32>,  // move, rotate, zoom
+    // We serialize this, it doesn't need to be bindben-capable directly,
+    // atm. Bindgen doesn't support public fields, requiring gettets/setters,
+    // driving this decision.
+    pub shapes: HashMap<u32, ShapeBg>,
+    pub cam: CameraBg,
+    pub cam_type: CameraType,
+    pub lighting: LightingBg,
+    pub color_max: f32, // distance thresh for max 4d-color indicator.
+    pub sensitivities: Vec<f32>,  // move, rotate, zoom
 }
 

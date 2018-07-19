@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 use ndarray::prelude::*;
 use rand;
 //use simdnoise;
-use noise;
+//use noise;
 
 use shape_maker;
 use types::{Camera, Lighting, Scene, Shape, CameraType};
@@ -21,6 +21,7 @@ const base_lighting: Lighting = Lighting {
         ambient_color: [1.0, 1.0, 1.0, 0.4],
         diffuse_color: [0., 1., 0., 1.0],
         diffuse_direction: [0., 0., -1., 0.],
+        sources: Vec::new(),
 };
 
 fn base_camera() -> Camera {

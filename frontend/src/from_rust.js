@@ -39,60 +39,13 @@ function takeObject(idx) {
     return ret;
 }
 
+export function scene_lib() {
+    return takeObject(wasm.scene_lib());
+}
+
 export function camera() {
     return takeObject(wasm.camera());
 }
-
-export class LightingBg {
-
-                static __construct(ptr) {
-                    return new LightingBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightingbg_free(ptr);
-            }
-        }
-
-export class CameraBg {
-
-                static __construct(ptr) {
-                    return new CameraBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_camerabg_free(ptr);
-            }
-        }
-
-export class SceneBg {
-
-                static __construct(ptr) {
-                    return new SceneBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_scenebg_free(ptr);
-            }
-        }
 
 export class ShapeBg {
 
@@ -125,6 +78,57 @@ export class MeshBg {
                 const ptr = this.ptr;
                 this.ptr = 0;
                 wasm.__wbg_meshbg_free(ptr);
+            }
+        }
+
+export class CameraBg {
+
+                static __construct(ptr) {
+                    return new CameraBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_camerabg_free(ptr);
+            }
+        }
+
+export class LightingBg {
+
+                static __construct(ptr) {
+                    return new LightingBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_lightingbg_free(ptr);
+            }
+        }
+
+export class LightSourceBg {
+
+                static __construct(ptr) {
+                    return new LightSourceBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_lightsourcebg_free(ptr);
             }
         }
 
@@ -266,11 +270,7 @@ export function __wbindgen_throw(ptr, len) {
     throw new Error(getStringFromWasm(ptr, len));
 }
 
-export function __wbindgen_expf(x) { return Math.exp(x); }
+export function __wbindgen_cosf(x) { return Math.cos(x); }
 
 export function __wbindgen_sinf(x) { return Math.sin(x); }
-
-export function __wbindgen_exp2f(a) { return Math.pow(2, a); }
-
-export function __wbindgen_powf(x, y) { return Math.pow(x, y); }
 

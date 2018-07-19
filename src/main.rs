@@ -9,6 +9,7 @@
 #![allow(unused_imports)] // todo remove this later
 #![feature(non_ascii_idents)]
 #![feature(vec_remove_item)]
+#![feature(const_vec_new)]
 
 #![feature(proc_macro, wasm_custom_section, wasm_import_module)]
 

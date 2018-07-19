@@ -115,10 +115,6 @@ pub fn render() {
 
     let mut scene = scene_lib[&7].clone();
 
-    // todo temp experiments; integrate into Lighting and Scene when complete.
-    let pt_light_position = [0., 0., 0., 0.];
-    let pt_light_brightness = 1.;
-
     let mut currently_pressed: Vec<u32> = Vec::new();
 
     // The first step of any vulkan program is to create an instance.
@@ -390,13 +386,12 @@ pub fn render() {
         model: transforms::I4(),
         view: transforms::I4(),
         proj,
-        cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
+        cam_position: [scene.cam.position[0], scene.cam.position[1],
+            scene.cam.position[2], scene.cam.position[3]],
 
         ambient_color: scene.lighting.ambient_color,
         diffuse_color: scene.lighting.diffuse_color,
         diffuse_direction: scene.lighting.diffuse_direction,
-
-        pt_light_position,
 
         ambient_intensity: scene.lighting.ambient_intensity,
         diffuse_intensity: scene.lighting.diffuse_intensity,
@@ -404,8 +399,8 @@ pub fn render() {
         color_max: scene.color_max,
         shape_opacity: 0.,
 
-        // todo temp
-        pt_light_brightness,
+//        light_sources: scene.lighting.sources,
+
     };
 
     loop {
