@@ -5,7 +5,7 @@
 // Having algorithms tuned to the specific size matrix is ugly, but efficient.
 
 import * as state from "./state";
-import {Scene} from "./types";
+import {Camera, Lighting, Mesh, Normal, Scene, Shape, Vertex} from "./types";
 
 export function addVecs4(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array {
     // Must have 5 elements.
@@ -107,7 +107,7 @@ function testDotMatrixMatrix() {
 export function findColor(dist: number): number[] {
     // produce a color ranging from red to blue, based on how close a point is
     // to the edge.
-    let portion_through = Math.abs(dist) / state.scene.colorMax
+    let portion_through = Math.abs(dist) / state.scene.color_max
 
     if (portion_through > 1.) {
         portion_through = 1.
@@ -123,20 +123,64 @@ export function findColor(dist: number): number[] {
 }
 
 export function deserSceneLib(rawLib: any) : Map<number, Scene> {
-    // Most of the work is handled in wasm_bindgen. Currently, this only
-    // changes the field names to camelCase.
+    // Convert the deserialized nested object passed from wasm_bindgen into the
+    // format used here; eg Map instead of object when appropriate, typed arrays.
     let result = new Map()
+    let cam, scene: any, shapes: Map<number, Shape>, shape: Shape, mesh: Mesh,
+        vertices: Map<number, Vertex>
     // Convert from an object with strings as keys to a map.
-    Object.keys(rawLib).forEach((id) => result.set(parseInt(id),
-        {
-            shapes: rawLib[id].shapes,
-            cam: rawLib[id].cam,
-            camType: rawLib[id].cam_type,
-            colorMax: rawLib[id].color_max,
-            lighting: rawLib[id].lighting,
-            sensitivities: rawLib[id].sensitivities
-        }
-    ))
+    Object.keys(rawLib).forEach((id) => {
+        scene = rawLib[id]
+
+        shapes = new Map()
+        // Like with out scenelib, iterate through a shape object to produce a Map.
+        Object.keys(scene.shapes).forEach((s_id) => {
+            shape = scene.shapes[s_id]
+
+            vertices = new Map()
+            Object.keys(shape.mesh.vertices).forEach((v_id: any) => {
+                vertices.set(parseInt(v_id), new Vertex(shape.mesh.vertices[v_id]))
+            })
+
+            mesh = new Mesh(
+                vertices,
+                shape.mesh.faces_vert.map((fv: any) => new Uint16Array(fv)),
+                shape.mesh.normals.map((n: any) => new Normal(n))
+            )
+
+            shapes.set(parseInt(s_id), new Shape(
+                mesh,
+                new Float32Array(shape.position),
+                shape.orientation,
+                shape.rotation_speed,
+                shape.opacity
+                )
+            )
+        })
+
+        cam = new Camera (
+            new Float32Array(scene.cam.position),
+            scene.cam.θ,
+            scene.cam.fov,
+            scene.cam.aspect,
+            scene.cam.aspect_4,
+            scene.cam.fourd_proj_dist,
+            scene.cam.near,
+            scene.cam.far,
+            scene.cam.strange,
+        )
+
+        result.set(parseInt(id),
+            {
+                shapes: shapes,
+                cam: cam,
+                cam_type: scene.cam_type.toLowerCase(),
+                color_max: scene.color_max,
+                lighting: scene.lighting,
+                sensitivities: scene.sensitivities
+            }
+        )
+    })
 
     return result
 }

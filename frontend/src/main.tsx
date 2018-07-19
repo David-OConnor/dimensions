@@ -2,11 +2,6 @@ import * as React from 'react'
 import * as ReactDOM from "react-dom"
 
 const rust = import("./from_rust");
-rust.then(
-    r =>
-    {
-        state.setSceneLib(util.deserSceneLib(r.scene_lib()))
-    })
 
 import {Button, Grid, Row, Col,
     Form, FormGroup, FormControl, ButtonGroup} from 'react-bootstrap'
@@ -17,7 +12,6 @@ import {Button, Grid, Row, Col,
 import * as render from './render'
 import * as state from './state'
 import * as util from './util'
-
 
 // Not sure how to get TS to accept WebAssembly.
 // declare const WebAssembly: any
@@ -148,7 +142,7 @@ class Main extends React.Component<any, any> {
     setScene(sceneId: number) {
         state.emptyStaticBuffers()
         this.setState({sceneId: sceneId})
-        state.setScene(state.sceneLib.get(sceneId) as any)
+        state.setScene(sceneId)
     }
 
     setSubscene(subScene: number) {
@@ -156,13 +150,6 @@ class Main extends React.Component<any, any> {
         // this.setState({subScene: subScene})
         // state.setScene([this.state.scene, subScene])
     }
-
-    // Scene descriptions:
-    // 0: Single 4d shape; controls rotate it
-    // 1: A world with scattered 3d and 4d shapes at varying positions; a terrain
-    // mesh mapped to various points in dimensions 3 and 4.
-    // 2: A small town; doubled up in the 4th dimension
-    // 3: A hyper lattice; currently of cubes.
 
     render() {
         let instructions
@@ -177,19 +164,6 @@ class Main extends React.Component<any, any> {
         } else {
             throw "Oops!"
         }
-
-        // let importObject = {
-        //     imports: { imported_func: (arg: any) => console.log(arg) },
-        //     env: {}
-        // }
-
-        // WebAssembly.instantiateStreaming(fetch('webgl_bg.wasm'))
-        //     .then((wasmModule: any) => {
-        //         alert(`This is a triumph. ${wasmModule.instance.exports.test}`);
-        //     });
-        //
-        // wasm.greet("YO DAWG")
-
 
         return (
             <div>
@@ -207,7 +181,13 @@ class Main extends React.Component<any, any> {
     }
 }
 
-state.setScene(state.sceneLib.get(0) as any)
-render.main()
+rust.then(
+    r =>
+    {
+        state.setSceneLib(util.deserSceneLib(r.scene_lib()))
+        state.setScene(1)
+        // Don't render until we've imported and initialized the scenes.
+        render.main()
+})
 
 ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)

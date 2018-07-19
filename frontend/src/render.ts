@@ -151,20 +151,22 @@ function drawScene(
                 false,
                 viewMatrix
             )
-            gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.colorMax)
-            gl.uniform1f(programInfo.uniformLocations.ambientIntensity, state.scene.lighting.ambientIntensity)
-            gl.uniform1f(programInfo.uniformLocations.specularIntensity, state.scene.lighting.specularIntensity)
+            gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.color_max)
+            gl.uniform1f(programInfo.uniformLocations.ambientIntensity,
+                state.scene.lighting.ambient_intensity)
+            gl.uniform1f(programInfo.uniformLocations.specularIntensity,
+                state.scene.lighting.specular_intensity)
 
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
                 new Float32Array(state.scene.cam.position))
             gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
-                state.scene.lighting.ambientColor)
+                state.scene.lighting.ambient_color)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightColor,
-                state.scene.lighting.diffuseColor)
+                state.scene.lighting.diffuse_color)
             gl.uniform4fv(programInfo.uniformLocations.diffuseLightDirection,
-                state.scene.lighting.diffuseDirection)
+                state.scene.lighting.diffuse_direction)
 
             {
                 const type = gl.UNSIGNED_SHORT
@@ -248,7 +250,7 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
             for (let i=0; i < shape.mesh.faces_vert.length; i++) {
                 face = shape.mesh.faces_vert[i]
                 for (let vertId of face) {
-                    vertex = (shape.mesh.vertices.get(vertId) as any).a
+                    vertex = (shape.mesh.vertices.get(vertId) as any).position
                     for (let coord = 0; coord < 4; coord++) {  // Iterate through each coord.
                         vertices.push(vertex[coord])
                         normals.push(shape.mesh.normals[i][coord])
@@ -380,7 +382,6 @@ export function main() {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.")
     }
 
-
     document.onkeyup = e => input.handleKeyUp(e)
     document.onkeydown = e => input.handleKeyDown(e)
 
@@ -442,7 +443,7 @@ export function main() {
 
         input.handlePressed(state.currentlyPressedKeys, deltaTime,
                             state.moveSensitivity, state.rotateSensitivity,
-                            state.scene.camType)
+                            state.scene.cam_type)
 
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.

@@ -63,9 +63,7 @@ pub fn scene_lib() -> JsValue {
     let scene_lib: HashMap<u32, SceneBg> = scene_lib.iter()
         .map(|(id, scene)| (*id, scene.to_bg())).collect();
 
-
     JsValue::from_serde(&scene_lib).unwrap()
-
 }
 
 

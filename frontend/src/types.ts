@@ -1,13 +1,24 @@
 // Similar to types.rs. Much of these are imported from Rust via bindgen,
 // so must be similar to their rust equivalent.
 
+// snake_case is used here for types that fall under Scene, for smoother
+// interoperability with Rust.
+
 
 export class Vertex {
     position: [number, number, number, number]
+
+    constructor(position: [number, number, number, number]) {
+        this.position = position
+    }
 }
 
 export class Normal {
     normal: [number, number, number, number]
+
+    constructor(normal: [number, number, number, number]) {
+        this.normal = normal
+    }
 }
 
 export class Mesh {
@@ -99,39 +110,48 @@ export class Camera {
     fov: number
     aspect: number
     aspect_4: number
+    fourd_proj_dist: number
     near: number
     far: number
     strange: number
 
     constructor(position: Float32Array, θ: number[],
-                fov: number, aspect: number, aspect_4: number,
+                fov: number, aspect: number, aspect_4: number, fourd_proj_dist: number,
                 near: number, far: number, strange: number) {
         this.position = position
         this.θ = θ
         this.fov = fov
         this.aspect = aspect
         this.aspect_4 = aspect_4
+        this.fourd_proj_dist = fourd_proj_dist
         this.near = near
         this.far = far
         this.strange = strange
     }
 }
 
+export interface Source {
+    position: number[]
+    intensity: number
+    color: number[]
+}
+
 export interface Lighting {
-    ambientIntensity: number,
-    diffuseIntensity: number,
-    specularIntensity: number,
-    ambientColor: number[],
-    diffuseColor: number[],
+    ambient_intensity: number,
+    diffuse_intensity: number,
+    specular_intensity: number,
+    ambient_color: number[],
+    diffuse_color: number[],
     // Direction doesn't have to be normalized; we do that in the shader.
-    diffuseDirection: number[],
+    diffuse_direction: number[],
+    sources: Source[]
 }
 
 export interface Scene {
     shapes: Map<number, Shape>,
     cam: Camera,
-    camType: string,  // 'single', 'fps', or 'ffree'
-    colorMax: number, // distance thresh for max 4d-color indicator.
+    cam_type: string,  // 'single', 'fps', or 'ffree'
+    color_max: number, // distance thresh for max 4d-color indicator.
     lighting: Lighting,
     sensitivities: [number, number, number]
 }
