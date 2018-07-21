@@ -35,26 +35,25 @@ shapes.set(
         new Float32Array([0., 0., 0., 0.]),
         [0., 0., 0., 0., 0., 0.],
         [0., 0., 0., 0., 0., 0.],
+        1.,
         1.
     )
 )
 
-const cam = new Camera(
-    new Float32Array([0., 0., 0., 0.]),
-    [0., 0., 0., 0., 0., 0.],
-    Math.PI / 2.,
-    1.,
-    1.,
-    1.,
-    .1,
-    100,
-    100
-)
+const cam: Camera = {
+    position: new Float32Array([0., 0., 0., 0.]),
+    θ: [0., 0., 0., 0., 0., 0.],
+    fov: Math.PI / 2.,
+    aspect: 1.,
+    aspect_4: 1.,
+    near: 1.,
+    far: .1,
+    fourd_proj_dist: 1.,
+}
 
 const lighting: Lighting = {
     ambient_intensity: 1.,
     diffuse_intensity: 1.,
-    specular_intensity: 1.,
     ambient_color: [1., 1., 1., 1.],
     diffuse_color: [1., 1., 1., 1.],
     diffuse_direction: [1., 1., 1., 1.],
@@ -73,7 +72,6 @@ const defaultScene =  {
 
 export let sceneLib: Map<number, Scene> = new Map()
 export let scene = defaultScene
-// export let scene = 0  // todo testing wheather to store this as num or scene.
 
 export function setSceneLib(sceneLib_: Map<number, Scene>) {
     sceneLib = sceneLib_
@@ -81,7 +79,6 @@ export function setSceneLib(sceneLib_: Map<number, Scene>) {
 
 export function setScene(sceneId: number) {
     scene = sceneLib.get(sceneId)
-    // scene = sceneId
 }
 
 export function updateStaticBuffers(gl: any, buffers: any) {

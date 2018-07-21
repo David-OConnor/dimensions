@@ -11,15 +11,8 @@ module.exports = {
             {
                 test: /\.tsx?$/,
                 loader: 'ts-loader',
-                // loaders: ['ts-loader', 'wasm-loader'],
                 exclude: /node_modules/,
             },
-            // {
-            //     test: /\.wasm$/,
-            //     type: "webassembly/experimental",
-            //     loader: 'wasm-loader',
-            //     exclude: /node_modules/,
-            // },
         ],
 
     },

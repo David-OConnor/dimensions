@@ -36,7 +36,6 @@ use winit;
 
 use input;
 use scenes;
-use shaders;
 use shape_maker;
 use transforms;
 use types::{Camera, Shape, Vertex, VertAndExtras, Normal};
@@ -46,9 +45,23 @@ const HEIGHT: u32 = 768;
 
 const τ: f32 = 2. * PI;
 
+mod vs {
+    #[derive(VulkanoShader)]
+    #[ty = "vertex"]
+    #[path = "src/vert.glsl"]
+    struct Dummy;
+}
+
+mod fs {
+    #[derive(VulkanoShader)]
+    #[ty = "fragment"]
+    #[path = "src/frag.glsl"]
+    struct Dummy;
+}
+
 // impl_vertex here, so we don't have to use the vulkano crate in wasm.
 impl_vertex!(Vertex, position);
-impl_vertex!(VertAndExtras, position, shape_posit, normal);
+impl_vertex!(VertAndExtras, position, shape_posit, normal, specular_intensity);
 impl_vertex!(Normal, normal);
 
 pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Device>) ->
@@ -75,7 +88,8 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
                     shape_posit: (shape.position[0], shape.position[1],
                                   shape.position[2], shape.position[3]),
                     normal: (shape.mesh.normals[i].normal.0, shape.mesh.normals[i].normal.1,
-                             shape.mesh.normals[i].normal.2, shape.mesh.normals[i].normal.3)
+                             shape.mesh.normals[i].normal.2, shape.mesh.normals[i].normal.3),
+                    specular_intensity: shape.specular_intensity,
                 };
                 vertex_info.push(info);
             }
@@ -113,8 +127,9 @@ pub fn render() {
     scene_lib.insert(7, scenes::plot_scene(aspect));
     scene_lib.insert(8, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&7].clone();
+    let mut scene = scene_lib[&0].clone();
 
+    let mut currently_pressed: Vec<u32> = Vec::new();
     let mut currently_pressed: Vec<u32> = Vec::new();
 
     // The first step of any vulkan program is to create an instance.
@@ -255,18 +270,7 @@ pub fn render() {
 
     let mut proj = transforms::make_proj_mat4(&scene.cam);
 
-//    let l_w = 4.;
-//    let w = 0.4;
-//    let proj_alterer = [
-//        [1. / (l_w - w), 0., 0., 0.],
-//        [0., 1. / (l_w - w), 0., 0.],
-//        [0., 0., 1. / (l_w - w), 0.],
-//        [0., 0., 0., 1. / (l_w - w)],
-//    ];
-//
-//    let proj_mat2 = transforms::dot_mm4(proj_alterer, proj_mat);
-
-    let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<shaders::vs::ty::Data>
+    let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
     ::new(device_.clone(), buffer::BufferUsage::all());
 
     // The next step is to create the shaders.
@@ -276,8 +280,8 @@ pub fn render() {
     // An overview of what the `VulkanoShader` derive macro generates can be found in the
     // `vulkano-shader-derive` crate docs. You can view them at
     // https://docs.rs/vulkano-shader-derive/*/vulkano_shader_derive/
-    let vs = shaders::vs::Shader::load(device_.clone()).expect("failed to create shader module");
-    let fs = shaders::fs::Shader::load(device_.clone()).expect("failed to create shader module");
+    let vs = vs::Shader::load(device_.clone()).expect("failed to create shader module");
+    let fs = fs::Shader::load(device_.clone()).expect("failed to create shader module");
 
     // At this point, OpenGL initialization would be finished. However in Vulkan it is not. OpenGL
     // implicitely does a lot of computation whenever you draw. In Vulkan, you have to do all this
@@ -381,7 +385,7 @@ pub fn render() {
 
     let mut prev_frame_start = time::Instant::now();
 
-    let mut static_uniforms = shaders::vs::ty::Data {
+    let mut static_uniforms = vs::ty::Data {
         // view matrix will change per frame; model will change per shape.
         model: transforms::I4(),
         view: transforms::I4(),
@@ -395,7 +399,6 @@ pub fn render() {
 
         ambient_intensity: scene.lighting.ambient_intensity,
         diffuse_intensity: scene.lighting.diffuse_intensity,
-        specular_intensity: scene.lighting.specular_intensity,
         color_max: scene.color_max,
         shape_opacity: 0.,
 
@@ -493,7 +496,7 @@ pub fn render() {
         let view_mat = transforms::make_view_mat4(&scene.cam);
         for (shape_id, shape) in &scene.shapes {
             let uniform_buffer_subbuffer = {
-                let uniform_data = shaders::vs::ty::Data {
+                let uniform_data = vs::ty::Data {
                     model: transforms::make_model_mat4(shape),
                     view: view_mat,
                     cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],

@@ -154,9 +154,6 @@ function drawScene(
             gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.color_max)
             gl.uniform1f(programInfo.uniformLocations.ambientIntensity,
                 state.scene.lighting.ambient_intensity)
-            gl.uniform1f(programInfo.uniformLocations.specularIntensity,
-                state.scene.lighting.specular_intensity)
-
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
@@ -413,7 +410,6 @@ export function main() {
             diffuseLightDirection: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_direction'),
 
             ambientIntensity: gl.getUniformLocation(shaderProgram, 'u_ambient_intensity'),
-            specularIntensity: gl.getUniformLocation(shaderProgram, 'u_specular_intensity'),
             colorMax: gl.getUniformLocation(shaderProgram, 'u_color_max'),
         },
     }

@@ -4,18 +4,18 @@ export function scene_lib(): any;
 
 export function camera(): any;
 
-export class ShapeBg {
+export class LightSourceBg {
 free(): void;
 }
 export class MeshBg {
+free(): void;
+}
+export class ShapeBg {
 free(): void;
 }
 export class CameraBg {
 free(): void;
 }
 export class LightingBg {
-free(): void;
-}
-export class LightSourceBg {
 free(): void;
 }

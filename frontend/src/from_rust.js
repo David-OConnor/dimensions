@@ -47,10 +47,10 @@ export function camera() {
     return takeObject(wasm.camera());
 }
 
-export class ShapeBg {
+export class LightSourceBg {
 
                 static __construct(ptr) {
-                    return new ShapeBg(ptr);
+                    return new LightSourceBg(ptr);
                 }
 
                 constructor(ptr) {
@@ -60,7 +60,7 @@ export class ShapeBg {
             free() {
                 const ptr = this.ptr;
                 this.ptr = 0;
-                wasm.__wbg_shapebg_free(ptr);
+                wasm.__wbg_lightsourcebg_free(ptr);
             }
         }
 
@@ -78,6 +78,23 @@ export class MeshBg {
                 const ptr = this.ptr;
                 this.ptr = 0;
                 wasm.__wbg_meshbg_free(ptr);
+            }
+        }
+
+export class ShapeBg {
+
+                static __construct(ptr) {
+                    return new ShapeBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_shapebg_free(ptr);
             }
         }
 
@@ -112,23 +129,6 @@ export class LightingBg {
                 const ptr = this.ptr;
                 this.ptr = 0;
                 wasm.__wbg_lightingbg_free(ptr);
-            }
-        }
-
-export class LightSourceBg {
-
-                static __construct(ptr) {
-                    return new LightSourceBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightsourcebg_free(ptr);
             }
         }
 

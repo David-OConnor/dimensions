@@ -5,20 +5,12 @@
 // interoperability with Rust.
 
 
-export class Vertex {
+export interface Vertex {
     position: [number, number, number, number]
-
-    constructor(position: [number, number, number, number]) {
-        this.position = position
-    }
 }
 
-export class Normal {
+export interface Normal {
     normal: [number, number, number, number]
-
-    constructor(normal: [number, number, number, number]) {
-        this.normal = normal
-    }
 }
 
 export class Mesh {
@@ -87,59 +79,42 @@ export class Shape {
     orientation: number[]
     rotation_speed: number[]
     opacity: number
-    // PerFaceVertices and tris are similar; in the indexed order. One is straight
-    // from the faces, the other is divided into tris.
-    // perFaceVertices: Float32Array
+    specular_intensity: number
 
     constructor(mesh: Mesh,
                 position: Float32Array, orientation: number[],
-                rotation_speed: number[], opacity: number) {
+                rotation_speed: number[], opacity: number, specular_intensity: number) {
         this.mesh = mesh
         this.position = position
         this.scale = 1
         this.orientation = orientation
         this.rotation_speed = rotation_speed
         this.opacity = opacity
+        this.specular_intensity = specular_intensity
     }
 }
 
-export class Camera {
+export interface Camera {
     // See Rust's Camera struct for information.
     position: Float32Array
     θ: number[]
     fov: number
     aspect: number
     aspect_4: number
-    fourd_proj_dist: number
     near: number
     far: number
-    strange: number
-
-    constructor(position: Float32Array, θ: number[],
-                fov: number, aspect: number, aspect_4: number, fourd_proj_dist: number,
-                near: number, far: number, strange: number) {
-        this.position = position
-        this.θ = θ
-        this.fov = fov
-        this.aspect = aspect
-        this.aspect_4 = aspect_4
-        this.fourd_proj_dist = fourd_proj_dist
-        this.near = near
-        this.far = far
-        this.strange = strange
-    }
+    fourd_proj_dist: number
 }
 
 export interface Source {
     position: number[]
-    intensity: number
     color: number[]
+    intensity: number
 }
 
 export interface Lighting {
     ambient_intensity: number,
     diffuse_intensity: number,
-    specular_intensity: number,
     ambient_color: number[],
     diffuse_color: number[],
     // Direction doesn't have to be normalized; we do that in the shader.

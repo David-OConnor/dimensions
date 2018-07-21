@@ -180,7 +180,7 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
         // u_scale is, ultimately, not really used.
         // This row allows us to divide by z after taking the dot product,
         // as part of our scaling operation.
-        [0., 0., -0.5, -0.],
+        [0., 0., -0.5, -cam.fourd_proj_dist],
     ]
 }
 

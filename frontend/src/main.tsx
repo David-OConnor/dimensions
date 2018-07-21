@@ -26,35 +26,21 @@ class Controls extends React.Component<any, any> {
         super(props)
     }
     render() {
-        const shapeButtons = (
-            <ButtonGroup style={{marginTop: 20}}>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(0)}>Hypercube</Button>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(1)}>5-Cell</Button>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(2)}>Cube</Button>
-            </ButtonGroup>
-        )
-
-        const hyperButtons = (
-            <ButtonGroup style={{marginTop: 20}}>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(0)}>Uniform</Button>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(1)}>Warped</Button>
-                <Button bsStyle="primary" onClick={() => this.props.setSubscene(2)}>Hyper</Button>
-            </ButtonGroup>
-        )
-
+        // Reference the scene lib in render_vulkano.rs
         return (
             <Form>
                 <ButtonGroup style={{marginTop: 20}}>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(0)}>Singles</Button>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(1)}>Small world</Button>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(2)}>Small town</Button>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(3)}>Hyper grid</Button>
-                </ButtonGroup>
 
-                <br />
-                {this.props.showShapeBtns ? shapeButtons : null}
-                {this.props.showHyperBtns ? hyperButtons : null}
-                <br />
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(0)}>Hypercube</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(1)}>5-cell</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(2)}>Spherinder</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(3)}>Cube</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(4)}>Pyramid</Button>
+                    {/*<Button bsStyle="primary" onClick={() => this.props.setScene(5)}>Small world</Button>*/}
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(6)}>Grid</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(7)}>Plot</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(8)}>Origin</Button>
+                </ButtonGroup>
 
                 {/*<Button bsStyle="primary">There's no place like home</Button>*/}
             </Form>
@@ -132,11 +118,9 @@ class Main extends React.Component<any, any> {
         super(props)
         this.state = {
             sceneId: 0,
-            subScene: 0  // The shape to display for scene 0.
         }
 
         this.setScene = this.setScene.bind(this)
-        this.setSubscene = this.setSubscene.bind(this)
     }
 
     setScene(sceneId: number) {
@@ -153,14 +137,13 @@ class Main extends React.Component<any, any> {
 
     render() {
         let instructions
-        if (this.state.scene === 0) {
+        let camType = state.scene.cam_type  // code shortener
+        if (camType === 'single') {
             instructions = <InstructionsOneShape />
-        } else if (this.state.scene === 1) {
+        } else if (camType === 'free') {
             instructions = <InstructionsFreeMove />
-        } else if (this.state.scene === 2) {
+        } else if (camType === 'fps') {
             instructions = <InstructionsFps />
-        } else if (this.state.scene === 3) {
-            instructions = <InstructionsFreeMove />
         } else {
             throw "Oops!"
         }
@@ -182,12 +165,13 @@ class Main extends React.Component<any, any> {
 }
 
 rust.then(
-    r =>
-    {
+    r => {
         state.setSceneLib(util.deserSceneLib(r.scene_lib()))
         state.setScene(1)
         // Don't render until we've imported and initialized the scenes.
         render.main()
-})
+        ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)
+    }
+)
 
-ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)
+

@@ -5,7 +5,7 @@
 // Having algorithms tuned to the specific size matrix is ugly, but efficient.
 
 import * as state from "./state";
-import {Camera, Lighting, Mesh, Normal, Scene, Shape, Vertex} from "./types";
+import {Camera, Mesh, Scene, Shape, Vertex} from "./types";
 
 export function addVecs4(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array {
     // Must have 5 elements.
@@ -84,7 +84,6 @@ function testDotMatrixVec() {
     const v = Float32Array.from([3, 1, 1.5, 2])
     let result = new Float32Array(4)
     dotMV4(result, M, v)
-    console.log("Test", result)
 }
 
 function testDotMatrixMatrix() {
@@ -97,7 +96,6 @@ function testDotMatrixMatrix() {
 
     let result = new Float32Array(16)
     dotMM4(result, M, M)
-    console.log("Test", result)
     // Should be [-1, -2, -2,  7], // todo nope
     //        [ 5,  4, -3, 10],
     //        [ 1,  0,  1, -4],
@@ -126,7 +124,7 @@ export function deserSceneLib(rawLib: any) : Map<number, Scene> {
     // Convert the deserialized nested object passed from wasm_bindgen into the
     // format used here; eg Map instead of object when appropriate, typed arrays.
     let result = new Map()
-    let cam, scene: any, shapes: Map<number, Shape>, shape: Shape, mesh: Mesh,
+    let cam: Camera, scene: any, shapes: Map<number, Shape>, shape: Shape, mesh: Mesh,
         vertices: Map<number, Vertex>
     // Convert from an object with strings as keys to a map.
     Object.keys(rawLib).forEach((id) => {
@@ -139,13 +137,13 @@ export function deserSceneLib(rawLib: any) : Map<number, Scene> {
 
             vertices = new Map()
             Object.keys(shape.mesh.vertices).forEach((v_id: any) => {
-                vertices.set(parseInt(v_id), new Vertex(shape.mesh.vertices[v_id]))
+                vertices.set(parseInt(v_id), {position: shape.mesh.vertices[v_id]})
             })
 
             mesh = new Mesh(
                 vertices,
                 shape.mesh.faces_vert.map((fv: any) => new Uint16Array(fv)),
-                shape.mesh.normals.map((n: any) => new Normal(n))
+                shape.mesh.normals.map((n: any) => { return { normal: n }})
             )
 
             shapes.set(parseInt(s_id), new Shape(
@@ -153,22 +151,21 @@ export function deserSceneLib(rawLib: any) : Map<number, Scene> {
                 new Float32Array(shape.position),
                 shape.orientation,
                 shape.rotation_speed,
-                shape.opacity
-                )
-            )
+                shape.opacity,
+                shape.specular_intensity,
+            ))
         })
 
-        cam = new Camera (
-            new Float32Array(scene.cam.position),
-            scene.cam.θ,
-            scene.cam.fov,
-            scene.cam.aspect,
-            scene.cam.aspect_4,
-            scene.cam.fourd_proj_dist,
-            scene.cam.near,
-            scene.cam.far,
-            scene.cam.strange,
-        )
+        cam = {
+            position: new Float32Array(scene.cam.position),
+            θ: scene.cam.θ,
+            fov: scene.cam.fov,
+            aspect: scene.cam.aspect,
+            aspect_4: scene.cam.aspect_4,
+            near: scene.cam.near,
+            far: scene.cam.far,
+            fourd_proj_dist: scene.cam.fourd_proj_dist,
+        }
 
         result.set(parseInt(id),
             {

@@ -35,7 +35,6 @@ use std::collections::HashMap;
 mod clipping;
 mod input;
 mod scenes;
-mod shaders;
 mod shape_maker;
 mod types;
 mod transforms;

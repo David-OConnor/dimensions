@@ -17,7 +17,6 @@ const SHAPE_OP: f32 = 0.3;
 const base_lighting: Lighting = Lighting {
         ambient_intensity: 0.6,
         diffuse_intensity: 1.,
-        specular_intensity: 0.2,
         ambient_color: [1.0, 1.0, 1.0, 0.4],
         diffuse_color: [0., 1., 0., 1.0],
         diffuse_direction: [0., 0., -1., 0.],
@@ -34,7 +33,7 @@ fn base_camera() -> Camera {
         aspect_4: 1.,
         near: 0.05,
         far: 600.,
-        fourd_proj_dist: 2.5,
+        fourd_proj_dist: 0.,
     }
 }
 
@@ -48,6 +47,7 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             fov: τ / 5.5,
             aspect,
+            fourd_proj_dist: 0.5,
             ..base_camera()
         },
         cam_type: CameraType::Single,
@@ -68,7 +68,7 @@ pub fn fivecell_scene(aspect: f32) -> Scene {
 }
 
 pub fn spherinder_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::arrow((3., 0.5), 64),
+    make_single_scene(aspect, Shape::new(shape_maker::spherinder((3., 0.5), 64),
                                          Array::zeros(4),
                                          Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }

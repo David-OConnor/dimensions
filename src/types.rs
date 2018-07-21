@@ -39,12 +39,13 @@ impl Vertex {
 #[derive(Copy, Clone, Debug)]
 pub struct VertAndExtras {
     // Used to pass attributes that go with each vertex to the shader.
+    // We do the impl_vertex in render_vulkano, so we don't need to import vulkano
+    // in the wasm target.
     pub position: (f32, f32, f32, f32),
     pub shape_posit: (f32, f32, f32, f32),
     pub normal: (f32, f32, f32, f32),
+    pub specular_intensity: f32,
 }
-// We do the impl_vertex in render_vulkano, to simplify WASM part.
-//impl_vertex!(VertAndExtras, position, shape_posit, normal);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Normal {
@@ -157,6 +158,7 @@ pub struct ShapeBg {
     orientation: Vec<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     rotation_speed: Vec<f32>,  // 6 items, as with rotation.  Radians/s ?
     opacity: f32,
+    specular_intensity: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -169,13 +171,15 @@ pub struct Shape {
     pub orientation: Array1<f32>,  // Orientation has 6 items; one for each of the 4d hyperplanes.
     pub rotation_speed: Array1<f32>,  // 6 items, as with rotation.  Radians/s ?
     pub opacity: f32,
+    pub specular_intensity: f32,
 }
 
 impl Shape {
     pub fn new(mesh: Mesh, position: Array1<f32>, orientation: Array1<f32>,
                rotation_speed: Array1<f32>, opacity: f32) -> Shape {
 
-        Shape{ mesh, position, scale: 1., orientation, rotation_speed, opacity }
+        Shape{ mesh, position, scale: 1., orientation, rotation_speed,
+            opacity, specular_intensity: 1. }
     }
     
     pub fn to_bg(&self) -> ShapeBg {
@@ -185,7 +189,8 @@ impl Shape {
             scale: self.scale,
             orientation: self.orientation.to_vec(),
             rotation_speed: self.rotation_speed.to_vec(),
-            opacity: self.opacity
+            opacity: self.opacity,
+            specular_intensity: self.specular_intensity,
         }
     }
 }
@@ -259,8 +264,8 @@ pub enum CameraType {
 pub struct LightSource {
     // A point light source
     pub position: [f32; 4],
-    pub intensity: f32,
     pub color: [f32; 4],
+    pub intensity: f32,
 }
 
 impl LightSource {
@@ -285,7 +290,6 @@ pub struct LightSourceBg {
 pub struct Lighting {
     pub ambient_intensity: f32,
     pub diffuse_intensity: f32,
-    pub specular_intensity: f32,
     pub ambient_color: [f32; 4],
     pub diffuse_color: [f32; 4],
     // Direction doesn't have to be normalized; we do that in the shader.
@@ -298,7 +302,6 @@ impl Lighting {
         LightingBg {
             ambient_intensity: self.ambient_intensity,
             diffuse_intensity: self.diffuse_intensity,
-            specular_intensity: self.specular_intensity,
             ambient_color: self.ambient_color.to_vec(),
             diffuse_color: self.diffuse_color.to_vec(),
             diffuse_direction: self.diffuse_direction.to_vec(),
@@ -312,7 +315,6 @@ impl Lighting {
 pub struct LightingBg {
     ambient_intensity: f32,
     diffuse_intensity: f32,
-    specular_intensity: f32,
     ambient_color: Vec<f32>,
     diffuse_color: Vec<f32>,
     // Direction doesn't have to be normalized; we do that in the shader.

@@ -16,7 +16,6 @@ export const vsSource = `
     uniform vec4 u_diffuse_light_direction;
     
     uniform float u_ambient_intensity;
-    uniform float u_specular_intensity;
     uniform float u_color_max;
            
     varying vec4 v_fourd_color;
