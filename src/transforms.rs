@@ -184,17 +184,17 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     ]
 }
 
-pub fn make_model_mat4(shape: &Shape) -> [[f32; 4]; 4] {
+pub fn make_model_mat4(orientation: &Array1<f32>, scale: f32) -> [[f32; 4]; 4] {
     // We ommit translation, since we are constrained
-    let S = make_scaler4(shape.scale);
-    let R = make_rotator4(&shape.orientation);
+    let S = make_scaler4(scale);
+    let R = make_rotator4(orientation);
     dot_mm4(R, S)
 }
 
-pub fn make_view_mat4(cam: &Camera) -> [[f32; 4]; 4] {
+pub fn make_view_mat4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     // Non-homogenous, in the nested-array format used by Vulkan.
-    let negθ = array![-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]];
-    make_rotator4(&negθ)
+//    let negθ = array![-θ[0], -θ[1], -θ[2], -θ[3], -θ[4], -θ[5]];
+    make_rotator4(&-θ)
 }
 
 

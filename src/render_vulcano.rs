@@ -124,8 +124,9 @@ pub fn render() {
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
 //    scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
-    scene_lib.insert(7, scenes::plot_scene(aspect));
-    scene_lib.insert(8, scenes::origin_scene(aspect));
+    scene_lib.insert(7, scenes::grid_scene_4d(aspect));
+    scene_lib.insert(8, scenes::plot_scene(aspect));
+    scene_lib.insert(9, scenes::origin_scene(aspect));
 
     let mut scene = scene_lib[&0].clone();
 
@@ -493,11 +494,11 @@ pub fn render() {
             ).unwrap();
 
         // Update the view matrix once per frame.
-        let view_mat = transforms::make_view_mat4(&scene.cam);
+        let view_mat = transforms::make_view_mat4(&scene.cam.θ);
         for (shape_id, shape) in &scene.shapes {
             let uniform_buffer_subbuffer = {
                 let uniform_data = vs::ty::Data {
-                    model: transforms::make_model_mat4(shape),
+                    model: transforms::make_model_mat4(&shape.orientation, shape.scale),
                     view: view_mat,
                     cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
                     shape_opacity: shape.opacity,

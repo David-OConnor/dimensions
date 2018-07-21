@@ -49,6 +49,7 @@ const HEIGHT: u32 = 768;
 pub fn scene_lib() -> JsValue {
     let aspect = WIDTH as f32 / HEIGHT as f32;
 
+    // todo this is duped from render_vulkano.
     let mut scene_lib = HashMap::new();
     scene_lib.insert(0, scenes::hypercube_scene(aspect));
     scene_lib.insert(1, scenes::fivecell_scene(aspect));
@@ -57,8 +58,9 @@ pub fn scene_lib() -> JsValue {
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
 //    scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
-    scene_lib.insert(7, scenes::plot_scene(aspect));
-    scene_lib.insert(8, scenes::origin_scene(aspect));
+    scene_lib.insert(7, scenes::grid_scene_4d(aspect));
+    scene_lib.insert(8, scenes::plot_scene(aspect));
+    scene_lib.insert(9, scenes::origin_scene(aspect));
 
     let scene_lib: HashMap<u32, SceneBg> = scene_lib.iter()
         .map(|(id, scene)| (*id, scene.to_bg())).collect();
@@ -66,23 +68,35 @@ pub fn scene_lib() -> JsValue {
     JsValue::from_serde(&scene_lib).unwrap()
 }
 
+fn mat_as_js(mat: [[f32; 4]; 4]) -> Vec<f32> {
+    // Prep the array for JS, which uses flat Float32 arrays passed as Vecs instead of
+    // 2d arrays.
+    let mut result = Vec::new();
+    for row in &mat {
+        result.append(&mut row.to_vec());
+    }
+    result
+}
 
 #[wasm_bindgen]
-pub fn camera() -> JsValue {
-    // todo pass whole scenes instead
+pub fn view_mat(θ: Vec<f32>) -> Vec<f32> {
+    // Note: We don't use this since it's faster to simply create these in JS.
+    let mat = transforms::make_view_mat4(&Array::from_vec(θ));
+    mat_as_js(mat)
+}
 
-    let cam = Camera {
-            position: array![1., 1., 1., 1.],
-            θ: array![1., 1., 1., 1., 2., 3.],
-            fov: 1.,
-            aspect: 1.,
-            aspect_4: 1.,
-            near: 1.,
-            far: 1.,
-            fourd_proj_dist: 1.,
-        }.to_bg();
+#[wasm_bindgen]
+pub fn model_mat(orientation: Vec<f32>, scale: f32) -> Vec<f32> {
+    // Note: We don't use this since it's faster to simply create these in JS.
+    let mat = transforms::make_model_mat4(&Array::from_vec(orientation), scale);
+    mat_as_js(mat)
+}
 
-    JsValue::from_serde(&cam).unwrap()
+#[wasm_bindgen]
+pub fn rotator(θ: Vec<f32>) -> Vec<f32> {
+    // Note: We don't use this since it's faster to simply create these in JS.
+    let mat = transforms::make_rotator4(&Array::from_vec(θ));
+    mat_as_js(mat)
 }
 
 //struct Model { }

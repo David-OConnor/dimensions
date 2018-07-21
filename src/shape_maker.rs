@@ -439,10 +439,10 @@ pub fn terrain(dims: (f32, f32), res: u32,
     Mesh::new(vertices, faces_vert, normals)
 }
 
+
 pub fn hypergrid(dims: (f32, f32, f32), res: u32,
                  spissitude_map: Array3<f32>) -> HashMap<u32, Shape> {
-    // Position is the center.
-    // todo incorporate position.
+    // todo you could make this recursive, for a grid of arbitrary dimension.
     let mut result = HashMap::new();
 
     let mut x = -dims.0 / 2.;
@@ -462,7 +462,23 @@ pub fn hypergrid(dims: (f32, f32, f32), res: u32,
         }
         x += dims.0 / res as f32
     }
-    return result
+    result
+}
+
+pub fn grid_4d(dims: (f32, f32, f32, f32), res: u32) -> HashMap<u32, Shape> {
+    // Creates and evenly spaced grid in 4 dimensions.
+    let mut result = HashMap::new();
+
+    let mut u = -dims.3 / 2.;
+    let mut id = 0;
+    for i in 0..res {
+        let spiss = Array3::ones((res as usize, res as usize, res as usize)) * u;
+        let subgrid = hypergrid((dims.0, dims.1, dims.2), res, spiss);
+
+        u += dims.3 / res as f32
+    }
+
+    result
 }
 
 pub fn arrow(lens: (f32, f32), res: u32) -> Mesh {

@@ -47,22 +47,82 @@ export function camera() {
     return takeObject(wasm.camera());
 }
 
-export class LightSourceBg {
+let cachegetFloat32Memory = null;
+function getFloat32Memory() {
+    if (cachegetFloat32Memory === null ||
+        cachegetFloat32Memory.buffer !== wasm.memory.buffer)
+        cachegetFloat32Memory = new Float32Array(wasm.memory.buffer);
+    return cachegetFloat32Memory;
+}
 
-                static __construct(ptr) {
-                    return new LightSourceBg(ptr);
-                }
+let cachegetUint64Memory = null;
+function getUint64Memory() {
+    if (cachegetUint64Memory === null ||
+        cachegetUint64Memory.buffer !== wasm.memory.buffer)
+        cachegetUint64Memory = new BigUint64Array(wasm.memory.buffer);
+    return cachegetUint64Memory;
+}
 
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
+function passArrayF32ToWasm(arg) {
+    const ptr = wasm.__wbindgen_malloc(arg.length * 4);
+    getFloat32Memory().set(arg, ptr / 4);
+    return [ptr, arg.length];
+}
 
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightsourcebg_free(ptr);
-            }
-        }
+function getArrayF32FromWasm(ptr, len) {
+    return getFloat32Memory().subarray(ptr / 4, ptr / 4 + len);
+}
+
+let cachedGlobalArgumentPtr = null;
+function globalArgumentPtr() {
+    if (cachedGlobalArgumentPtr === null)
+        cachedGlobalArgumentPtr = wasm.__wbindgen_global_argument_ptr();
+    return cachedGlobalArgumentPtr;
+}
+
+let cachegetUint32Memory = null;
+function getUint32Memory() {
+    if (cachegetUint32Memory === null ||
+        cachegetUint32Memory.buffer !== wasm.memory.buffer)
+        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
+    return cachegetUint32Memory;
+}
+
+export function view_mat(arg0) {
+    const [ptr0, len0] = passArrayF32ToWasm(arg0);
+    const retptr = globalArgumentPtr();
+    wasm.view_mat(retptr, ptr0, len0);
+    const mem = getUint32Memory();
+    const ptr = mem[retptr / 4];
+    const len = mem[retptr / 4 + 1];
+    const realRet = getArrayF32FromWasm(ptr, len);
+    wasm.__wbindgen_free(ptr, len * 4);
+    return realRet;
+}
+
+export function model_mat(arg0, arg1) {
+    const [ptr0, len0] = passArrayF32ToWasm(arg0);
+    const retptr = globalArgumentPtr();
+    wasm.model_mat(retptr, ptr0, len0, arg1);
+    const mem = getUint32Memory();
+    const ptr = mem[retptr / 4];
+    const len = mem[retptr / 4 + 1];
+    const realRet = getArrayF32FromWasm(ptr, len);
+    wasm.__wbindgen_free(ptr, len * 4);
+    return realRet;
+}
+
+export function rotator(arg0) {
+    const [ptr0, len0] = passArrayF32ToWasm(arg0);
+    const retptr = globalArgumentPtr();
+    wasm.rotator(retptr, ptr0, len0);
+    const mem = getUint32Memory();
+    const ptr = mem[retptr / 4];
+    const len = mem[retptr / 4 + 1];
+    const realRet = getArrayF32FromWasm(ptr, len);
+    wasm.__wbindgen_free(ptr, len * 4);
+    return realRet;
+}
 
 export class MeshBg {
 
@@ -78,6 +138,23 @@ export class MeshBg {
                 const ptr = this.ptr;
                 this.ptr = 0;
                 wasm.__wbg_meshbg_free(ptr);
+            }
+        }
+
+export class LightingBg {
+
+                static __construct(ptr) {
+                    return new LightingBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_lightingbg_free(ptr);
             }
         }
 
@@ -98,6 +175,23 @@ export class ShapeBg {
             }
         }
 
+export class LightSourceBg {
+
+                static __construct(ptr) {
+                    return new LightSourceBg(ptr);
+                }
+
+                constructor(ptr) {
+                    this.ptr = ptr;
+                }
+
+            free() {
+                const ptr = this.ptr;
+                this.ptr = 0;
+                wasm.__wbg_lightsourcebg_free(ptr);
+            }
+        }
+
 export class CameraBg {
 
                 static __construct(ptr) {
@@ -112,23 +206,6 @@ export class CameraBg {
                 const ptr = this.ptr;
                 this.ptr = 0;
                 wasm.__wbg_camerabg_free(ptr);
-            }
-        }
-
-export class LightingBg {
-
-                static __construct(ptr) {
-                    return new LightingBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightingbg_free(ptr);
             }
         }
 
@@ -243,14 +320,6 @@ function passStringToWasm(arg) {
     const ptr = wasm.__wbindgen_malloc(buf.length);
     getUint8Memory().set(buf, ptr);
     return [ptr, buf.length];
-}
-
-let cachegetUint32Memory = null;
-function getUint32Memory() {
-    if (cachegetUint32Memory === null ||
-        cachegetUint32Memory.buffer !== wasm.memory.buffer)
-        cachegetUint32Memory = new Uint32Array(wasm.memory.buffer);
-    return cachegetUint32Memory;
 }
 
 export function __wbindgen_string_get(i, len_ptr) {

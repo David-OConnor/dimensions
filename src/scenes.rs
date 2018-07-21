@@ -269,6 +269,24 @@ pub fn grid_scene(aspect: f32) -> Scene {
     }
 }
 
+pub fn grid_scene_4d(aspect: f32) -> Scene {
+    let grid_size: usize = 10;
+    let shapes = shape_maker::grid_4d((200., 200., 200., 200.), grid_size as u32);
+
+    Scene {
+        shapes,
+        cam: Camera {
+            position: array![0., 0., -1., 0.],
+            aspect,
+            ..base_camera()
+        },
+        cam_type: CameraType::Free,
+        color_max: 100.,
+        lighting: base_lighting,
+        sensitivities: (5., 0.5, 0.2),
+    }
+}
+
 pub fn plot_scene(aspect: f32) -> Scene {
     // Plot a 4d function, with 2 inputs and 2 outputs.
     // Test func: f(x) = x^2 + 1, in complex plane.

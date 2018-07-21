@@ -38,8 +38,9 @@ class Controls extends React.Component<any, any> {
                     <Button bsStyle="primary" onClick={() => this.props.setScene(4)}>Pyramid</Button>
                     {/*<Button bsStyle="primary" onClick={() => this.props.setScene(5)}>Small world</Button>*/}
                     <Button bsStyle="primary" onClick={() => this.props.setScene(6)}>Grid</Button>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(7)}>Plot</Button>
-                    <Button bsStyle="primary" onClick={() => this.props.setScene(8)}>Origin</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(7)}>Grid 4d</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(8)}>Plot</Button>
+                    <Button bsStyle="primary" onClick={() => this.props.setScene(9)}>Origin</Button>
                 </ButtonGroup>
 
                 {/*<Button bsStyle="primary">There's no place like home</Button>*/}
@@ -169,7 +170,7 @@ rust.then(
         state.setSceneLib(util.deserSceneLib(r.scene_lib()))
         state.setScene(1)
         // Don't render until we've imported and initialized the scenes.
-        render.main()
+        render.main(r.view_mat, r.model_mat, r.rotator)
         ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)
     }
 )

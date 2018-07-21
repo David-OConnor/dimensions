@@ -2,9 +2,8 @@
 
 import * as state from "./state"
 import {addVecs4, dotMV4, mulVConst4} from "./util"
-import * as transforms from "./transforms"
 
-export function handlePressed(pressed: number[], deltaT: number,
+export function handlePressed(makeRotator: Function, pressed: number[], deltaT: number,
                                 moveSensitivity: number, rotateSensitivity: number,
                                 camType: string) {
     // Add if it's not already there.
@@ -18,28 +17,28 @@ export function handlePressed(pressed: number[], deltaT: number,
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, -1, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, 0, -1, 0]), moveAmount, false)
                 }
                 break
             case 83:  // s
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 1, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, 0, 1, 0]), moveAmount, false)
                 }
                 break
             case 68:  // d
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([1, 0, 0, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 65:  // a
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([-1, 0, 0, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([-1, 0, 0, 0]), moveAmount, false)
                 }
                 break
             case 32:  // Space
@@ -48,7 +47,7 @@ export function handlePressed(pressed: number[], deltaT: number,
                 } else if (camType === 'fps') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 1, 0, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, 1, 0, 0]), moveAmount, false)
                 }
                 break
             case 67:  // c
@@ -57,7 +56,7 @@ export function handlePressed(pressed: number[], deltaT: number,
                 } else if (camType === 'fps') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 17:  // Control
@@ -66,21 +65,21 @@ export function handlePressed(pressed: number[], deltaT: number,
                 } else if (camType === 'fps') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, -1, 0, 0]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, -1, 0, 0]), moveAmount, false)
                 }
                 break
             case 82:  // r
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 0, 1]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, 0, 0, 1]), moveAmount, false)
                 }
                 break
             case 70:  // f
                 if (camType === 'single') {
                     console.log()
                 } else {
-                    moveCam(new Float32Array([0, 0, 0, -1]), moveAmount, false)
+                    moveCam(makeRotator, new Float32Array([0, 0, 0, -1]), moveAmount, false)
                 }
                 break
 
@@ -192,12 +191,12 @@ export function handleKeyUp(event: any) {
     if (index !== -1) { state.currentlyPressedKeys.splice(index, 1) }
 }
 
-function moveCam(unitVec: Float32Array, amount: number, fps: boolean) {
+function moveCam(makeRotator: Function, unitVec: Float32Array, amount: number, fps: boolean) {
     // Modifies the global camera
     // With first-person-shooter controls, ignore all input except rotation
     // around the y axis.
     const θ = fps ? [0, 0, state.scene.cam.θ[2], 0, 0, 0] : state.scene.cam.θ
-    const R = transforms.makeRotator(new Float32Array(16), θ)
+    const R = makeRotator(θ)
 
     let v = new Float32Array(4)
     dotMV4(v, R, unitVec)

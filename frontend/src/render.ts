@@ -3,8 +3,9 @@ import {mat4} from 'gl-matrix'
 import * as input from './input'
 import * as shaders from './shaders'
 import * as state from './state'
-import * as transforms from './transforms'
 import {Camera, ProgramInfo, Shape} from './types'
+
+import * as transforms from './transforms'
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -59,7 +60,10 @@ function drawScene(
     viewMatrix: Float32Array,
     projectionMatrix: Float32Array,
     shapes: Map<number, Shape>,
+    modelMatMaker: Function,
 ) {
+
+
 
     // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -80,6 +84,9 @@ function drawScene(
 
     shapes.forEach(
         (shape, s_id, map_) => {
+
+            // console.log(test, "Ruest")
+            // console.log(test2, "JS")
             // Create a perspective matrix, a special matrix that is
             // used to simulate the distortion of perspective in a camera.
             // Our field of view is 45 degrees, with a width/height
@@ -144,7 +151,7 @@ function drawScene(
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.modelMatrix,
                 false,
-                transforms.makeModelMat4(shape)
+                modelMatMaker(shape.orientation, shape.scale)
             )
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.viewMatrix,
@@ -290,9 +297,6 @@ function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shap
 
     shapes.forEach(
         (shape, s_id, map_) => {
-            // modelMat = transforms.makeModelMat(shape)
-            // dotMM5(modelViewMat, viewMat, modelMat)
-
             // Now create an array of positions for the shapes.
             faceColors = []
 
@@ -354,7 +358,7 @@ function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shap
 //     return buffer
 // }
 
-export function main() {
+export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotator: Function) {
     // Initialize WebGL rendering.
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
@@ -437,16 +441,18 @@ export function main() {
         const deltaTime = now - then;
         then = now;
 
-        input.handlePressed(state.currentlyPressedKeys, deltaTime,
-                            state.moveSensitivity, state.rotateSensitivity,
+        input.handlePressed(makeRotator, state.currentlyPressedKeys, deltaTime,
+                            state.scene.sensitivities[0], state.scene.sensitivities[1],
                             state.scene.cam_type)
 
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
-        // const processedShapes = transforms.processShapes(state.cam, state.shapes)
 
-        // const viewMatrix = transforms.makeViewMat(state.cam)
-        const viewMatrix = transforms.makeViewMat4(state.scene.cam)
+        const viewMatrix = viewMatMaker(state.scene.cam.θ)
+        const viewMatrixR = transforms.makeViewMat4(state.scene.cam)
+
+        console.log(viewMatrix, "JS")
+        console.log(viewMatrixR, "RUST")
 
         // This is called when we change the shapes, and on init.
         if (Object.keys(state.staticBuffers).length === 0) {
@@ -459,7 +465,7 @@ export function main() {
 
         drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
             viewMatrix, projectionMatrix,
-            state.scene.shapes)
+            state.scene.shapes, modelMatMaker)
 
         requestAnimationFrame(render)
 
