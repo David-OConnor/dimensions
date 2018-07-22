@@ -109,7 +109,7 @@ function makeScaler(out: Float32Array, scale: number): Float32Array {
     return out
 }
 
-export function makeModelMat4(shape: Shape): Float32Array {
+export function makeModelMat4(orientation: number[], scale: number): Float32Array {
     // T must be done last, since we scale and rotate with respect to the orgin,
     // defined in the shape's initial nodes. S may be applied at any point.
     // These 4d matrices don't translate; we do it separately, since we can only
@@ -122,22 +122,22 @@ export function makeModelMat4(shape: Shape): Float32Array {
     let R = new Float32Array(16)
     let S = new Float32Array(16)
 
-    makeScaler(S, shape.scale)
-    makeRotator(R, shape.orientation)
+    makeScaler(S, scale)
+    makeRotator(R, orientation)
 
     dotMM4(R, R, S)
 
     return R
 }
 
-export function makeViewMat4(cam: Camera): Float32Array {
+export function makeViewMat4(θ: number[]): Float32Array {
     // For a first-person sperspective, Translate first; then rotate (around the
     // camera=origin)
 
     // See note in makeViewMat4 re leaving out translation.
 
     // Negate, since we're rotating the world relative to the camera.
-    const negθ = [-cam.θ[0], -cam.θ[1], -cam.θ[2], -cam.θ[3], -cam.θ[4], -cam.θ[5]]
+    const negθ = [-θ[0], -θ[1], -θ[2], -θ[3], -θ[4], -θ[5]]
 
     // todo creating extra matrices here
     let R = new Float32Array(16)

@@ -1,16 +1,11 @@
 #version 450
 
 layout(location = 0) in vec4 position;
-
 layout(location = 1) in vec4 shape_posit;
 layout(location = 2) in vec4 normal;
+layout(location = 3) in float specular_intensity;
 
-layout(location = 0) out vec4 fourd_color;
-layout(location = 2) out vec4 view_posit;
-layout(location = 3) out vec4 diffuse_direction;
-layout(location = 4) out vec4 diffuse_color;
-layout(location = 6) out vec4 normal_;
-layout(location = 7) out vec4 frag_pos;
+layout(location = 0) out vec4 color;
 
 layout(set = 0, binding = 0) uniform Data {
     mat4 model;
@@ -29,18 +24,9 @@ layout(set = 0, binding = 0) uniform Data {
     float shape_opacity;
 } uniforms;
 
-void main() {
-    // For model transform, position after the transform
-    vec4 positioned_pt = (uniforms.model * position) + shape_posit;
-    // for view transform, position first.
-    positioned_pt = uniforms.view * (positioned_pt - uniforms.cam_position);
-
-    // This operation scales the 4d components based on the light
-    // distance creating their projection.
-
-    gl_Position = uniforms.proj * positioned_pt;  // todo 3d
-
-    // Now calculate the color, based on passed u dist from cam.
+vec4 find_fourd_color(vec4 positioned_pt) {
+    // calculate a color to represent position in the fourth dimension,
+    // based on u dist between vertex and cam.
     float u_dist = uniforms.cam_position[3] - positioned_pt[3];
 
     float portion_through = abs(u_dist) / uniforms.color_max;
@@ -51,18 +37,44 @@ void main() {
 
     float base_gray = 0.0;
     float color_val = base_gray + portion_through;
+    vec4 fourd_color;
 
     if (u_dist > 0.) {
         fourd_color = vec4(base_gray, base_gray, color_val, uniforms.shape_opacity);  // Blue
     } else {
         fourd_color = vec4(color_val, base_gray, base_gray, uniforms.shape_opacity);  // Red
     }
-    fourd_color = fourd_color * uniforms.ambient_intensity;
+    return fourd_color * uniforms.ambient_intensity;
+}
 
-    view_posit = positioned_pt;
-    diffuse_direction = uniforms.diffuse_direction;
-    diffuse_color = uniforms.diffuse_color;
+vec4 find_diffuse_color() {
+    vec4 norm = normalize(uniforms.model * normalize(normal));
+    vec4 dir = normalize(uniforms.diffuse_direction);
+    // diffuse_weight is based on the andle of the face compared to the angle
+    // of the incoming light.
+    float diffuse_weight = max(dot(norm, dir), 0.);
+    return uniforms.diffuse_color * diffuse_weight * uniforms.diffuse_intensity;
+}
 
-    normal_ = uniforms.model * normal;
-    frag_pos = positioned_pt;
+void main() {
+    // For model transform, position after the transform
+    vec4 positioned_pt = (uniforms.model * position) + shape_posit;
+    // for view transform, position first.
+    positioned_pt = uniforms.view * (positioned_pt - uniforms.cam_position);
+
+    // gl_Position is a builtin name used to output the projected point.
+    // todo convert to 3d homo before passing to proj?
+    gl_Position = uniforms.proj * positioned_pt;
+
+    vec4 fourd_color = find_fourd_color(positioned_pt);
+    vec4 diffuse_color = find_diffuse_color();
+
+//        view_posit = positioned_pt;
+//        diffuse_direction = uniforms.diffuse_direction;
+//        diffuse_color = uniforms.diffuse_color;
+//        specular_intensity = uniforms.specular_intensity;
+
+//        normal_ = uniforms.model * normal;
+//        frag_pos = positioned_pt;
+        color = mix(fourd_color, diffuse_color, 0.5);
 }

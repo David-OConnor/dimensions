@@ -81,14 +81,11 @@ pub fn make_static_buffers(shapes: &HashMap<u32, Shape>, device: Arc<device::Dev
 
         for (i, face) in shape.mesh.faces_vert.iter().enumerate() {
             for vert_id in face {
-                let v = shape.mesh.vertices[vert_id].position;
-                // todo Vertice position can be done in static buffers!
                 let info = VertAndExtras {
-                    position: (v.0, v.1, v.2, v.3),
+                    position: shape.mesh.vertices[vert_id].position,
                     shape_posit: (shape.position[0], shape.position[1],
                                   shape.position[2], shape.position[3]),
-                    normal: (shape.mesh.normals[i].normal.0, shape.mesh.normals[i].normal.1,
-                             shape.mesh.normals[i].normal.2, shape.mesh.normals[i].normal.3),
+                    normal: shape.mesh.normals[i].normal,
                     specular_intensity: shape.specular_intensity,
                 };
                 vertex_info.push(info);
@@ -404,11 +401,9 @@ pub fn render() {
         shape_opacity: 0.,
 
 //        light_sources: scene.lighting.sources,
-
     };
 
     loop {
-
         static_uniforms.proj = transforms::make_proj_mat4(&scene.cam); // todo LOOK AT THIS!!!!
         // delta_time is inverse frame rate. Used for making movements and
         // rotations dependent on time rather than frame rate.

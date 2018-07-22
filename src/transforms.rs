@@ -64,9 +64,6 @@ pub fn make_rotator4(θ: &Array1<f32>) -> [[f32; 4]; 4] {
     let cos_zu = θ[5].cos();
     let sin_zu = θ[5].sin();
 
-    // Potentially there exist 4 hyperrotations as well? ie combinations of
-    // 3 axes ?  xyz  yzu  zux  uxy
-
     // Rotations around the xy, yz, and xz planes should appear normal.
     let R_xy = [
         [cos_xy, sin_xy, 0., 0.],
@@ -128,7 +125,7 @@ pub fn I4() -> [[f32; 4]; 4] {
 }
 
 fn make_scaler4(scale: f32) -> [[f32; 4]; 4] {
-    // Return a scale matrix; the pt must have 1 appended to its end.
+    // Return a scale matrix.
     [
         [scale, 0., 0., 0.],
         [0., scale, 0., 0.],
@@ -185,7 +182,8 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
 }
 
 pub fn make_model_mat4(orientation: &Array1<f32>, scale: f32) -> [[f32; 4]; 4] {
-    // We ommit translation, since we are constrained
+    // We ommit translation, since we are constrained by GLSL only supporting
+    // size up to 4.
     let S = make_scaler4(scale);
     let R = make_rotator4(orientation);
     dot_mm4(R, S)

@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use ndarray::prelude::*;
-use wasm_bindgen::prelude::*;
-
 
 #[derive(Debug)]
 pub struct Pt2D {
@@ -139,7 +137,7 @@ impl Mesh {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub struct MeshBg {
     // Uses only types accepted by WASM Bindgen. No pub fields for vecs.
     vertices: HashMap<u32, Vec<f32>>,
@@ -149,7 +147,7 @@ pub struct MeshBg {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub struct ShapeBg {
     // See note on MeshBg.
     mesh: MeshBg,
@@ -237,7 +235,7 @@ impl Camera {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub struct CameraBg {
     // See note on MeshBg.
     position: Vec<f32>,
@@ -251,7 +249,7 @@ pub struct CameraBg {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub enum CameraType {
     Single,  // No camera changes; rotate the shape instead
     // Move foward, back, left, right, and look around. No roll look.  Not sure
@@ -279,7 +277,7 @@ impl LightSource {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub struct LightSourceBg {
     position: Vec<f32>,
     intensity: f32,
@@ -311,7 +309,7 @@ impl Lighting {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 pub struct LightingBg {
     ambient_intensity: f32,
     diffuse_intensity: f32,

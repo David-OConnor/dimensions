@@ -23,9 +23,6 @@ extern crate wasm_bindgen;
 
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
-
 
 mod util;
 mod scenes;
@@ -80,14 +77,12 @@ fn mat_as_js(mat: [[f32; 4]; 4]) -> Vec<f32> {
 
 #[wasm_bindgen]
 pub fn view_mat(θ: Vec<f32>) -> Vec<f32> {
-    // Note: We don't use this since it's faster to simply create these in JS.
     let mat = transforms::make_view_mat4(&Array::from_vec(θ));
     mat_as_js(mat)
 }
 
 #[wasm_bindgen]
 pub fn model_mat(orientation: Vec<f32>, scale: f32) -> Vec<f32> {
-    // Note: We don't use this since it's faster to simply create these in JS.
     let mat = transforms::make_model_mat4(&Array::from_vec(orientation), scale);
     mat_as_js(mat)
 }

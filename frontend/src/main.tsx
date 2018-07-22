@@ -164,12 +164,38 @@ class Main extends React.Component<any, any> {
         )
     }
 }
+import * as transforms from './transforms'
+function bug_tester(viewMat: Function, modelMat: Function) {
+    let wasm_model, wasm_view, control_model, control_view
+    let θ1 = [1., 2., 0., -1., 0., 0.]
+    let θ2 = [1., 2., 0., -1., 0., 0.]
+    for (let i=0; i<1000; i++) {
+        // control_model = transforms.makeModelMat4(θ1, 1.)
+        // control_view = transforms.makeViewMat4(θ2)
+
+        wasm_model = modelMat(θ1, 1.)
+        wasm_view = viewMat(θ2)
+
+        θ1[4] += -0.5
+        θ1[2] -= 1.123
+        θ2[0] += -1.5
+        θ2[1] -= 2.33
+
+
+        // console.log("Control view", control_view)
+        console.log("wasm view", wasm_view)
+
+        // console.log("Control mod", control_model)
+        console.log("wasm mod", wasm_model)
+    }
+}
 
 rust.then(
     r => {
         state.setSceneLib(util.deserSceneLib(r.scene_lib()))
         state.setScene(1)
         // Don't render until we've imported and initialized the scenes.
+        // bug_tester(r.view_mat, r.model_mat)
         render.main(r.view_mat, r.model_mat, r.rotator)
         ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)
     }

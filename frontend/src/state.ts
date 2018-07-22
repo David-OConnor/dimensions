@@ -73,6 +73,16 @@ export let scene = defaultScene
 
 export function setSceneLib(sceneLib_: Map<number, Scene>) {
     sceneLib = sceneLib_
+
+    // sceneLib.forEach(
+    //     (scene, id, map_) => {
+    //         scene.shapes.forEach(
+    //             (shape, shape_id, map_) => {
+    //                 shape.mesh.makeTris()
+    //             }
+    //         )
+    //     }
+    // )
 }
 
 export function setScene(sceneId: number) {

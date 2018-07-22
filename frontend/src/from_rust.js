@@ -1,8 +1,6 @@
 /* tslint:disable */
 import * as wasm from './from_rust_bg';
 
-export const CameraType = Object.freeze({ Single:0,FPS:1,Free:2, });
-
 let stack = [];
 
 let slab = [];
@@ -41,10 +39,6 @@ function takeObject(idx) {
 
 export function scene_lib() {
     return takeObject(wasm.scene_lib());
-}
-
-export function camera() {
-    return takeObject(wasm.camera());
 }
 
 let cachegetFloat32Memory = null;
@@ -123,91 +117,6 @@ export function rotator(arg0) {
     wasm.__wbindgen_free(ptr, len * 4);
     return realRet;
 }
-
-export class MeshBg {
-
-                static __construct(ptr) {
-                    return new MeshBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_meshbg_free(ptr);
-            }
-        }
-
-export class LightingBg {
-
-                static __construct(ptr) {
-                    return new LightingBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightingbg_free(ptr);
-            }
-        }
-
-export class ShapeBg {
-
-                static __construct(ptr) {
-                    return new ShapeBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_shapebg_free(ptr);
-            }
-        }
-
-export class LightSourceBg {
-
-                static __construct(ptr) {
-                    return new LightSourceBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_lightsourcebg_free(ptr);
-            }
-        }
-
-export class CameraBg {
-
-                static __construct(ptr) {
-                    return new CameraBg(ptr);
-                }
-
-                constructor(ptr) {
-                    this.ptr = ptr;
-                }
-
-            free() {
-                const ptr = this.ptr;
-                this.ptr = 0;
-                wasm.__wbg_camerabg_free(ptr);
-            }
-        }
 
 function addHeapObject(obj) {
     if (slab_next === slab.length)

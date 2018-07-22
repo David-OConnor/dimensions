@@ -84,9 +84,6 @@ function drawScene(
 
     shapes.forEach(
         (shape, s_id, map_) => {
-
-            // console.log(test, "Ruest")
-            // console.log(test2, "JS")
             // Create a perspective matrix, a special matrix that is
             // used to simulate the distortion of perspective in a camera.
             // Our field of view is 45 degrees, with a width/height
@@ -142,35 +139,44 @@ function drawScene(
             gl.useProgram(programInfo.program)
 
             // Set the shader uniforms
-            gl.uniformMatrix4fv(
-                programInfo.uniformLocations.projectionMatrix,
-                false,  // transponse is always false for WebGl.
-                projectionMatrix
-            )
+
+            let modelMatRust  = modelMatMaker(shape.orientation, shape.scale)
+            let modelMatJs = transforms.makeModelMat4(shape.orientation, shape.scale)
 
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.modelMatrix,
                 false,
-                modelMatMaker(shape.orientation, shape.scale)
+                // modelMatMaker(shape.orientation, shape.scale)
+                // transforms.makeModelMat4(shape)
+                modelMatJs
             )
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.viewMatrix,
                 false,
                 viewMatrix
             )
-            gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.color_max)
-            gl.uniform1f(programInfo.uniformLocations.ambientIntensity,
-                state.scene.lighting.ambient_intensity)
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.projectionMatrix,
+                false,  // transponse is always false for WebGl.
+                projectionMatrix
+            )
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
                 new Float32Array(state.scene.cam.position))
-            gl.uniform4fv(programInfo.uniformLocations.ambientLightColor,
-                state.scene.lighting.ambient_color)
-            gl.uniform4fv(programInfo.uniformLocations.diffuseLightColor,
-                state.scene.lighting.diffuse_color)
-            gl.uniform4fv(programInfo.uniformLocations.diffuseLightDirection,
-                state.scene.lighting.diffuse_direction)
+            gl.uniform4fv(programInfo.uniformLocations.ambientColor,
+                new Float32Array(state.scene.lighting.ambient_color))
+            gl.uniform4fv(programInfo.uniformLocations.diffuseColor,
+                new Float32Array(state.scene.lighting.diffuse_color))
+            gl.uniform4fv(programInfo.uniformLocations.diffuseDirection,
+                new Float32Array(state.scene.lighting.diffuse_direction))
+
+            gl.uniform1f(programInfo.uniformLocations.ambientIntensity,
+                state.scene.lighting.ambient_intensity)
+            gl.uniform1f(programInfo.uniformLocations.diffuseIntensity,
+                state.scene.lighting.diffuse_intensity)
+            gl.uniform1f(programInfo.uniformLocations.colorMax, state.scene.color_max)
+            gl.uniform1f(programInfo.uniformLocations.shapeOpacity, shape.opacity)
 
             {
                 const type = gl.UNSIGNED_SHORT
@@ -398,8 +404,8 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         program: shaderProgram,
         skyboxProgram: shaderSkybox,
         attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'a_position'),
-            normal: gl.getAttribLocation(shaderProgram, 'a_normal'),
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'position'),
+            normal: gl.getAttribLocation(shaderProgram, 'normal'),
             // skyboxTexCoords: gl.getAttribLocation(shaderSkybox, 'a_texcoord'),
         },
         uniformLocations: {
@@ -409,12 +415,14 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
 
             shapePosition: gl.getUniformLocation(shaderProgram, 'u_shape_position'),
             camPosition: gl.getUniformLocation(shaderProgram, 'u_cam_position'),
-            ambientlightColor: gl.getUniformLocation(shaderProgram, 'u_ambient_light_color'),
-            diffuseLightColor: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_color'),
-            diffuseLightDirection: gl.getUniformLocation(shaderProgram, 'u_diffuse_light_direction'),
+            ambientColor: gl.getUniformLocation(shaderProgram, 'u_ambient_color'),
+            diffuseColor: gl.getUniformLocation(shaderProgram, 'u_diffuse_color'),
+            diffuseDirection: gl.getUniformLocation(shaderProgram, 'u_diffuse_direction'),
 
             ambientIntensity: gl.getUniformLocation(shaderProgram, 'u_ambient_intensity'),
+            diffuseIntensity: gl.getUniformLocation(shaderProgram, 'u_diffuse_intensity'),
             colorMax: gl.getUniformLocation(shaderProgram, 'u_color_max'),
+            shapeOpacity: gl.getUniformLocation(shaderProgram, 'u_shape_opacity'),
         },
     }
 
@@ -435,6 +443,8 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         state.scene.cam.far
     )
 
+    // modelMatMaker(state.scene.shapes.get(0).orientation, state.scene.shapes.get(0).scale)
+
     // Draw the scene repeatedly
     function render(now: number) {
         now *= 0.001;  // convert to seconds
@@ -448,11 +458,8 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
 
-        const viewMatrix = viewMatMaker(state.scene.cam.θ)
-        const viewMatrixR = transforms.makeViewMat4(state.scene.cam)
-
-        console.log(viewMatrix, "JS")
-        console.log(viewMatrixR, "RUST")
+        // const viewMatrix = viewMatMaker(state.scene.cam.θ)
+        const viewMatrixJ = transforms.makeViewMat4(state.scene.cam.θ)
 
         // This is called when we change the shapes, and on init.
         if (Object.keys(state.staticBuffers).length === 0) {
@@ -464,8 +471,10 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         // const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
 
         drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
-            viewMatrix, projectionMatrix,
+            viewMatrixJ, projectionMatrix,
             state.scene.shapes, modelMatMaker)
+
+        // viewMatrix.free()
 
         requestAnimationFrame(render)
 

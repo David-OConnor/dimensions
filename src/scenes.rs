@@ -15,10 +15,10 @@ const τ: f32 = 2. * PI;
 const SHAPE_OP: f32 = 0.3;
 
 const base_lighting: Lighting = Lighting {
-        ambient_intensity: 0.6,
-        diffuse_intensity: 1.,
-        ambient_color: [1.0, 1.0, 1.0, 0.4],
-        diffuse_color: [0., 1., 0., 1.0],
+        ambient_intensity: 0.8,
+        diffuse_intensity: 0.6,
+        ambient_color: [1.0, 1.0, 1.0, 0.6],
+        diffuse_color: [1., 1., 1., 1.0],
         diffuse_direction: [0., 0., -1., 0.],
         sources: Vec::new(),
 };
