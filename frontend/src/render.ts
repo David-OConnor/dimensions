@@ -1,11 +1,9 @@
-import {mat4} from 'gl-matrix'
-
 import * as input from './input'
 import * as shaders from './shaders'
 import * as state from './state'
 import {Camera, ProgramInfo, Shape} from './types'
 
-import * as transforms from './transforms'
+// import * as transforms from './transforms'
 
 // WebGl reference:
 // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context
@@ -117,7 +115,6 @@ function drawScene(
                     offset)
                 gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition)
             }
-
             gl.bindBuffer(gl.ARRAY_BUFFER, staticBuffers.normalBuffers.get(s_id))
             gl.vertexAttribPointer(
                 programInfo.attribLocations.normal,
@@ -140,15 +137,15 @@ function drawScene(
 
             // Set the shader uniforms
 
-            let modelMatRust  = modelMatMaker(shape.orientation, shape.scale)
-            let modelMatJs = transforms.makeModelMat4(shape.orientation, shape.scale)
+            let modelMat  = modelMatMaker(shape.orientation, shape.scale)
+            // let modelMatJs = transforms.makeModelMat4(shape.orientation, shape.scale)
 
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.modelMatrix,
                 false,
                 // modelMatMaker(shape.orientation, shape.scale)
                 // transforms.makeModelMat4(shape)
-                modelMatJs
+                modelMat
             )
             gl.uniformMatrix4fv(
                 programInfo.uniformLocations.viewMatrix,
@@ -160,16 +157,17 @@ function drawScene(
                 false,  // transponse is always false for WebGl.
                 projectionMatrix
             )
+
             gl.uniform4fv(programInfo.uniformLocations.shapePosition,
                 new Float32Array(shape.position))
             gl.uniform4fv(programInfo.uniformLocations.camPosition,
                 new Float32Array(state.scene.cam.position))
             gl.uniform4fv(programInfo.uniformLocations.ambientColor,
-                new Float32Array(state.scene.lighting.ambient_color))
+                state.scene.lighting.ambient_color)
             gl.uniform4fv(programInfo.uniformLocations.diffuseColor,
-                new Float32Array(state.scene.lighting.diffuse_color))
+                state.scene.lighting.diffuse_color)
             gl.uniform4fv(programInfo.uniformLocations.diffuseDirection,
-                new Float32Array(state.scene.lighting.diffuse_direction))
+                state.scene.lighting.diffuse_direction)
 
             gl.uniform1f(programInfo.uniformLocations.ambientIntensity,
                 state.scene.lighting.ambient_intensity)
@@ -263,7 +261,7 @@ export function makeStaticBuffers(gl: WebGLRenderingContext, shapes_: Map<number
                     vertex = (shape.mesh.vertices.get(vertId) as any).position
                     for (let coord = 0; coord < 4; coord++) {  // Iterate through each coord.
                         vertices.push(vertex[coord])
-                        normals.push(shape.mesh.normals[i][coord])
+                        normals.push(shape.mesh.normals[i].normal[coord])
                     }
                 }
             }
@@ -364,7 +362,8 @@ function makePerFrameBuffers(gl: WebGLRenderingContext, shapes: Map<number, Shap
 //     return buffer
 // }
 
-export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotator: Function) {
+export function main(viewMatMaker: Function, modelMatMaker: Function,
+                     makeRotator: Function, makeProj: Function) {
     // Initialize WebGL rendering.
     const canvas = document.getElementById("glCanvas")
     const gl = (canvas as any).getContext("webgl")
@@ -372,9 +371,9 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
     gl.clearColor(0.0, 0.0, 0.0, 1.0)  // Clear to black, fully opaque
     gl.clearDepth(1.0)                 // Clear everything
 
-    gl.disable(gl.BLEND);
-    gl.enable(gl.CULL_FACE)
-    gl.enable(gl.DEPTH_TEST)
+    gl.enable(gl.BLEND);
+    gl.disable(gl.CULL_FACE)
+    gl.disable(gl.DEPTH_TEST)
     gl.disable(gl.DITHER)
     gl.disable(gl.POLYGON_OFFSET_FILL)
     gl.disable(gl.SAMPLE_ALPHA_TO_COVERAGE)
@@ -432,16 +431,19 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
 
     // Note: If we want dynamically-adjustable FOV, we need to move this,
     // or part of it to drawScene.
-    let projectionMatrix = mat4.create()
-    // note: glmatrix.js always has the first argument
-    // as the destination to receive the result.
-    mat4.perspective(
-        projectionMatrix,
-        state.scene.cam.fov,
-        state.scene.cam.aspect,
-        state.scene.cam.near,
-        state.scene.cam.far
-    )
+    // let projectionMatrix = mat4.create()
+    // // note: glmatrix.js always has the first argument
+    // // as the destination to receive the result.
+    // mat4.perspective(
+    //     projectionMatrix,
+    //     state.scene.cam.fov,
+    //     state.scene.cam.aspect,
+    //     state.scene.cam.near,
+    //     state.scene.cam.far
+    // )
+
+    // let projectionMatrix = transforms.makeProjMat(state.scene.cam)
+    let projectionMatrix = makeProj(state.scene.cam)
 
     // modelMatMaker(state.scene.shapes.get(0).orientation, state.scene.shapes.get(0).scale)
 
@@ -458,8 +460,8 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         // Here's where we call the routine that builds all the
         // objects we'll be drawing.
 
-        // const viewMatrix = viewMatMaker(state.scene.cam.θ)
-        const viewMatrixJ = transforms.makeViewMat4(state.scene.cam.θ)
+        const viewMatrix = viewMatMaker(state.scene.cam.θ)
+        // const viewMatrixJ = transforms.makeViewMat4(state.scene.cam.θ)
 
         // This is called when we change the shapes, and on init.
         if (Object.keys(state.staticBuffers).length === 0) {
@@ -471,7 +473,7 @@ export function main(viewMatMaker: Function, modelMatMaker: Function, makeRotato
         // const skyboxPositBuffer = makeSkyboxPositBuffer(gl, state.skybox, state.cam)
 
         drawScene(gl, programInfo, state.staticBuffers, pfBuffers,
-            viewMatrixJ, projectionMatrix,
+            viewMatrix, projectionMatrix,
             state.scene.shapes, modelMatMaker)
 
         // viewMatrix.free()

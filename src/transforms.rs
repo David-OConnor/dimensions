@@ -181,6 +181,30 @@ pub fn make_proj_mat4(cam: &Camera) -> [[f32; 4]; 4] {
     ]
 }
 
+pub fn make_proj_mat_gl(cam: &Camera) -> [[f32; 4]; 4] {
+    // This is a similar to the main proj matrix func, but uses a traditional
+    // opengl matrix.
+    let t = (cam.fov / 2.).tan() * cam.near;
+    let b = -t;
+    let r = t * cam.aspect;
+    let l = -t * cam.aspect;
+    let n = cam.near;
+    let f = cam.far;
+
+    [
+        [2.*n / (r - l), 0., (r+l) / (r-l), 0.],
+        [0., -2.*n / (t-b), (t+b) / (t-b), 0.],
+        [0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n) + (-f-n) / (f-n)],
+          // todo this like seems like it should be right, but doesn't work.
+//        [0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n)],
+        // u_scale is, ultimately, not really used.
+        // This row allows us to divide by z after taking the dot product,
+        // as part of our scaling operation.
+          // * 2. at end is so we can use the same 4d proj factor in Vulkan and WebGl.
+        [0., 0., 1., cam.fourd_proj_dist * 2.]
+    ]
+}
+
 pub fn make_model_mat4(orientation: &Array1<f32>, scale: f32) -> [[f32; 4]; 4] {
     // We ommit translation, since we are constrained by GLSL only supporting
     // size up to 4.

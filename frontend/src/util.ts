@@ -5,7 +5,7 @@
 // Having algorithms tuned to the specific size matrix is ugly, but efficient.
 
 import * as state from "./state";
-import {Camera, Mesh, Scene, Shape, Vertex} from "./types";
+import {Camera, Lighting, Mesh, Scene, Shape, Source, Vertex} from "./types";
 
 export function addVecs4(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array {
     // Must have 5 elements.
@@ -125,7 +125,7 @@ export function deserSceneLib(rawLib: any) : Map<number, Scene> {
     // format used here; eg Map instead of object when appropriate, typed arrays.
     let result = new Map()
     let cam: Camera, scene: any, shapes: Map<number, Shape>, shape: Shape, mesh: Mesh,
-        vertices: Map<number, Vertex>
+        vertices: Map<number, Vertex>, lighting: Lighting
     // Convert from an object with strings as keys to a map.
     Object.keys(rawLib).forEach((id) => {
         scene = rawLib[id]
@@ -167,13 +167,22 @@ export function deserSceneLib(rawLib: any) : Map<number, Scene> {
             fourd_proj_dist: scene.cam.fourd_proj_dist,
         }
 
+        lighting = {
+            ambient_intensity: scene.lighting.ambient_intensity,
+            diffuse_intensity: scene.lighting.diffuse_intensity,
+            ambient_color: new Float32Array(scene.lighting.ambient_color),
+            diffuse_color: new Float32Array(scene.lighting.diffuse_color),
+            diffuse_direction: new Float32Array(scene.lighting.diffuse_direction),
+            sources: scene.lighting.sources
+        }
+
         result.set(parseInt(id),
             {
                 shapes: shapes,
                 cam: cam,
                 cam_type: scene.cam_type.toLowerCase(),
                 color_max: scene.color_max,
-                lighting: scene.lighting,
+                lighting,
                 sensitivities: scene.sensitivities
             }
         )

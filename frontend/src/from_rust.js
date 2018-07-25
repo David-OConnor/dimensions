@@ -106,6 +106,19 @@ export function model_mat(arg0, arg1) {
     return realRet;
 }
 
+export function proj_mat(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+    const [ptr0, len0] = passArrayF32ToWasm(arg0);
+    const [ptr1, len1] = passArrayF32ToWasm(arg1);
+    const retptr = globalArgumentPtr();
+    wasm.proj_mat(retptr, ptr0, len0, ptr1, len1, arg2, arg3, arg4, arg5, arg6, arg7);
+    const mem = getUint32Memory();
+    const ptr = mem[retptr / 4];
+    const len = mem[retptr / 4 + 1];
+    const realRet = getArrayF32FromWasm(ptr, len);
+    wasm.__wbindgen_free(ptr, len * 4);
+    return realRet;
+}
+
 export function rotator(arg0) {
     const [ptr0, len0] = passArrayF32ToWasm(arg0);
     const retptr = globalArgumentPtr();
@@ -247,6 +260,8 @@ export function __wbindgen_json_parse(ptr, len) {
 export function __wbindgen_throw(ptr, len) {
     throw new Error(getStringFromWasm(ptr, len));
 }
+
+export function __wbindgen_Math_tan(x) { return Math.tan(x); }
 
 export function __wbindgen_cosf(x) { return Math.cos(x); }
 

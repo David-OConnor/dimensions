@@ -63,7 +63,6 @@ void main() {
     positioned_pt = uniforms.view * (positioned_pt - uniforms.cam_position);
 
     // gl_Position is a builtin name used to output the projected point.
-    // todo convert to 3d homo before passing to proj?
     gl_Position = uniforms.proj * positioned_pt;
 
     vec4 fourd_color = find_fourd_color(positioned_pt);

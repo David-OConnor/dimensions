@@ -115,10 +115,9 @@ export interface Source {
 export interface Lighting {
     ambient_intensity: number,
     diffuse_intensity: number,
-    ambient_color: number[],
-    diffuse_color: number[],
-    // Direction doesn't have to be normalized; we do that in the shader.
-    diffuse_direction: number[],
+    ambient_color: Float32Array,
+    diffuse_color: Float32Array
+    diffuse_direction: Float32Array
     sources: Source[]
 }
 

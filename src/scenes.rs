@@ -58,7 +58,7 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
 }
 
 pub fn hypercube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::make_hypercube(1.), Array::zeros(6),
+    make_single_scene(aspect, Shape::new(shape_maker::make_hypercube(1.), Array::zeros(4),
         Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
@@ -80,12 +80,12 @@ pub fn origin_scene(aspect: f32) -> Scene {
 }
 
 pub fn cube_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::cube(1.), array![0., 0., 0., 0.],
+    make_single_scene(aspect, Shape::new(shape_maker::cube(1.), Array::zeros(4),
                                          Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
 pub fn pyramid_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::rect_pyramid((1., 1., 1.)), array![0., 0., 0., 0.],
+    make_single_scene(aspect, Shape::new(shape_maker::rect_pyramid((1., 1., 1.)), Array::zeros(4),
                                          Array::zeros(6), Array::zeros(6), SHAPE_OP))
 }
 
@@ -270,7 +270,7 @@ pub fn grid_scene(aspect: f32) -> Scene {
 }
 
 pub fn grid_scene_4d(aspect: f32) -> Scene {
-    let grid_size: usize = 10;
+    let grid_size: usize = 5;
     let shapes = shape_maker::grid_4d((200., 200., 200., 200.), grid_size as u32);
 
     Scene {

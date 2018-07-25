@@ -57,8 +57,7 @@ export const vsSource = `
         vec4 positioned_pt = (u_model * position) + u_shape_position;
         positioned_pt = u_view * (positioned_pt - u_cam_position);
         
-        vec4 positioned_3d = vec4(positioned_pt[0], positioned_pt[1], positioned_pt[2], 1.);
-        gl_Position = u_proj * positioned_3d;
+        gl_Position = u_proj * positioned_pt;
 
         vec4 fourd_color = find_fourd_color(positioned_pt);
         vec4 diffuse_color = find_diffuse_color();

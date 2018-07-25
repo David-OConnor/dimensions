@@ -440,6 +440,21 @@ pub fn terrain(dims: (f32, f32), res: u32,
 }
 
 
+//pub fn grid(n_dims: u32, dims: Vec<f32>, res: u32) -> HashMap<u32, Shape> {
+//    // An evenly-spaced grid of n-dimensions.
+//    let mut result = HashMap::new();
+//    if n_dims == 0 {
+//        return result
+//    }
+//
+//    for i in 0..res {
+//
+//    }
+//
+//    grid(active_dim, dims, res)
+//}
+
+
 pub fn hypergrid(dims: (f32, f32, f32), res: u32,
                  spissitude_map: Array3<f32>) -> HashMap<u32, Shape> {
     // todo you could make this recursive, for a grid of arbitrary dimension.
@@ -466,7 +481,9 @@ pub fn hypergrid(dims: (f32, f32, f32), res: u32,
 }
 
 pub fn grid_4d(dims: (f32, f32, f32, f32), res: u32) -> HashMap<u32, Shape> {
-    // Creates and evenly spaced grid in 4 dimensions.
+    // Creates and evenly spaced grid in 4 dimensions. We don't take a
+    // map like with the 3d grid, since by definition it's evenly spaced; there's
+    // no 5th dimension in the program to map to!
     let mut result = HashMap::new();
 
     let mut u = -dims.3 / 2.;
@@ -474,6 +491,12 @@ pub fn grid_4d(dims: (f32, f32, f32, f32), res: u32) -> HashMap<u32, Shape> {
     for i in 0..res {
         let spiss = Array3::ones((res as usize, res as usize, res as usize)) * u;
         let subgrid = hypergrid((dims.0, dims.1, dims.2), res, spiss);
+
+        for (_, shape) in subgrid.into_iter() {
+            // We discard the id in the subgrid's HashMap.
+            result.insert(id, shape);
+            id += 1;
+        }
 
         u += dims.3 / res as f32
     }
@@ -487,6 +510,10 @@ pub fn arrow(lens: (f32, f32), res: u32) -> Mesh {
 
     combine_meshes(body, vec![(point, [0., 0., 0., lens.0])])
 }
+
+//pub fn make_sphere(radius: f32, res: u32) -> Mesh {
+//    assert_eq!(res % 2, 0);
+//}
 
 pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     // This is a 4d cylinder analog that extends spheres along a line in the direction

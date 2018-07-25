@@ -125,7 +125,7 @@ pub fn render() {
     scene_lib.insert(8, scenes::plot_scene(aspect));
     scene_lib.insert(9, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&0].clone();
+    let mut scene = scene_lib[&6].clone();
 
     let mut currently_pressed: Vec<u32> = Vec::new();
     let mut currently_pressed: Vec<u32> = Vec::new();
@@ -269,7 +269,7 @@ pub fn render() {
     let mut proj = transforms::make_proj_mat4(&scene.cam);
 
     let uniform_buffer = buffer::cpu_pool::CpuBufferPool::<vs::ty::Data>
-    ::new(device_.clone(), buffer::BufferUsage::all());
+        ::new(device_.clone(), buffer::BufferUsage::all());
 
     // The next step is to create the shaders.
     //
@@ -404,7 +404,9 @@ pub fn render() {
     };
 
     loop {
-        static_uniforms.proj = transforms::make_proj_mat4(&scene.cam); // todo LOOK AT THIS!!!!
+        // We update the projection Mat each frame to account for zoom changes.
+        // todo: We should only update it when the zoom changes.
+        static_uniforms.proj = transforms::make_proj_mat4(&scene.cam);
         // delta_time is inverse frame rate. Used for making movements and
         // rotations dependent on time rather than frame rate.
         let frame_start = time::Instant::now();
@@ -488,16 +490,20 @@ pub fn render() {
                 ]
             ).unwrap();
 
-        // Update the view matrix once per frame.
         let view_mat = transforms::make_view_mat4(&scene.cam.θ);
+        let static_uniforms_perframe = vs::ty::Data {
+            view: view_mat,
+            cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
+            ..static_uniforms,
+        };
+        // Update the view matrix once per frame.
+
         for (shape_id, shape) in &scene.shapes {
             let uniform_buffer_subbuffer = {
                 let uniform_data = vs::ty::Data {
                     model: transforms::make_model_mat4(&shape.orientation, shape.scale),
-                    view: view_mat,
-                    cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
                     shape_opacity: shape.opacity,
-                    ..static_uniforms
+                    ..static_uniforms_perframe,
                 };
 
                 uniform_buffer.next(uniform_data).unwrap()

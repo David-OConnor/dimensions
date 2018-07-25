@@ -144,3 +144,21 @@ export function makeViewMat4(θ: number[]): Float32Array {
     makeRotator(R, negθ)
     return R
 }
+
+
+export function makeProjMat(cam: Camera): Float32Array {
+    let t = Math.tan(cam.fov / 2.) * cam.near;
+    let b = -t;
+    let r = t * cam.aspect;
+    let l = -t * cam.aspect;
+    let n = cam.near;
+    let f = cam.far;
+
+    return new Float32Array([
+        2.*n / (r - l), 0., (r+l) / (r-l), 0.,
+        0., 2.*n / (t-b), (t+b) / (t-b), 0.,
+        0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n) + (-f-n) / (f-n),
+        // 0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n),
+        0., 0., 1., cam.fourd_proj_dist * 2.,
+    ])
+}

@@ -165,38 +165,54 @@ class Main extends React.Component<any, any> {
     }
 }
 import * as transforms from './transforms'
+import {Camera} from "./types";
 function bug_tester(viewMat: Function, modelMat: Function) {
     let wasm_model, wasm_view, control_model, control_view
-    let θ1 = [1., 2., 0., -1., 0., 0.]
-    let θ2 = [1., 2., 0., -1., 0., 0.]
-    for (let i=0; i<1000; i++) {
-        // control_model = transforms.makeModelMat4(θ1, 1.)
-        // control_view = transforms.makeViewMat4(θ2)
+    let θ1 = [1., 2., -0.45, -1., 0.23, 0.]
+    let θ2 = [-1.2, 1.5, 0., -1., 0., 0.02]
+    control_model = transforms.makeModelMat4(θ1, 1.)
+    control_view = transforms.makeViewMat4(θ2)
 
-        wasm_model = modelMat(θ1, 1.)
-        wasm_view = viewMat(θ2)
-
-        θ1[4] += -0.5
-        θ1[2] -= 1.123
-        θ2[0] += -1.5
-        θ2[1] -= 2.33
+    wasm_view = new Float32Array(viewMat(θ2))
+    wasm_model = modelMat(θ1, 1.)
 
 
-        // console.log("Control view", control_view)
-        console.log("wasm view", wasm_view)
+    θ1[4] += -0.5
+    θ1[2] -= 1.123
+    θ2[0] += -1.5
+    θ2[1] -= 2.33
 
-        // console.log("Control mod", control_model)
-        console.log("wasm mod", wasm_model)
-    }
+
+    console.log("Control view", control_view)
+    console.log("wasm view", wasm_view)
+
+    console.log("Control mod", control_model)
+    console.log("wasm mod", wasm_model)
 }
 
 rust.then(
     r => {
         state.setSceneLib(util.deserSceneLib(r.scene_lib()))
-        state.setScene(1)
+        state.setScene(0)
         // Don't render until we've imported and initialized the scenes.
-        // bug_tester(r.view_mat, r.model_mat)
-        render.main(r.view_mat, r.model_mat, r.rotator)
+
+        // todo A WASM-bindgen bug causes new func calls to overwrite old results between
+        // WASM funcs. Calling .slice copies the typed array, as a workaround.
+        // bug_tester(
+        //     (θ: Float32Array) => r.view_mat(θ).slice(),
+        //     (θ: Float32Array, scale: number) => r.model_mat(θ, scale).slice()
+        // )
+        render.main(
+            // Code to smooth over the interface where bindgen can't handle.
+            (θ: Float32Array) => r.view_mat(θ).slice(),
+            (θ: Float32Array, scale: number) => r.model_mat(θ, scale).slice(),
+            (θ: Float32Array) => r.rotator(θ).slice(),
+
+            (cam: Camera) => r.proj_mat(
+                cam.position, new Float32Array(cam.θ), cam.fov, cam.aspect, cam.aspect_4, cam.near,
+                cam.far, cam.fourd_proj_dist
+        ).slice()
+        )
         ReactDOM.render(<Main />, document.getElementById('root') as HTMLElement)
     }
 )

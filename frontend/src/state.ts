@@ -52,9 +52,9 @@ const cam: Camera = {
 const lighting: Lighting = {
     ambient_intensity: 1.,
     diffuse_intensity: 1.,
-    ambient_color: [1., 1., 1., 1.],
-    diffuse_color: [1., 1., 1., 1.],
-    diffuse_direction: [1., 1., 1., 1.],
+    ambient_color: new Float32Array([1., 1., 1., 1.]),
+    diffuse_color: new Float32Array([1., 1., 1., 1.]),
+    diffuse_direction: new Float32Array([1., 1., 1., 1.]),
     sources: []
 }
 
@@ -73,16 +73,6 @@ export let scene = defaultScene
 
 export function setSceneLib(sceneLib_: Map<number, Scene>) {
     sceneLib = sceneLib_
-
-    // sceneLib.forEach(
-    //     (scene, id, map_) => {
-    //         scene.shapes.forEach(
-    //             (shape, shape_id, map_) => {
-    //                 shape.mesh.makeTris()
-    //             }
-    //         )
-    //     }
-    // )
 }
 
 export function setScene(sceneId: number) {

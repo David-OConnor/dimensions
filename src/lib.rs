@@ -66,7 +66,7 @@ pub fn scene_lib() -> JsValue {
 }
 
 fn mat_as_js(mat: [[f32; 4]; 4]) -> Vec<f32> {
-    // Prep the array for JS, which uses flat Float32 arrays passed as Vecs instead of
+    // Prep the array for JS, which uses flat Float32arrays passed as Vecs instead of
     // 2d arrays.
     let mut result = Vec::new();
     for row in &mat {
@@ -84,6 +84,19 @@ pub fn view_mat(θ: Vec<f32>) -> Vec<f32> {
 #[wasm_bindgen]
 pub fn model_mat(orientation: Vec<f32>, scale: f32) -> Vec<f32> {
     let mat = transforms::make_model_mat4(&Array::from_vec(orientation), scale);
+    mat_as_js(mat)
+}
+
+#[wasm_bindgen]
+pub fn proj_mat(position: Vec<f32>, θ: Vec<f32>, fov: f32, aspect: f32, aspect_4: f32,
+                 near: f32, far: f32, fourd_proj_dist: f32) -> Vec<f32> {
+    // We can't pass the camera directly due to bindgen limitations.
+    let cam = Camera {
+        position: Array::from_vec(position), θ: Array::from_vec(θ),
+        fov, aspect, aspect_4, near, far, fourd_proj_dist
+    };
+
+    let mat = transforms::make_proj_mat_gl(&cam);
     mat_as_js(mat)
 }
 

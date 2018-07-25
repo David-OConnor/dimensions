@@ -30,9 +30,6 @@ extern crate vulkano_win;
 extern crate wasm_bindgen;
 extern crate winit;
 
-use std::collections::HashMap;
-
-mod clipping;
 mod input;
 mod scenes;
 mod shape_maker;
@@ -41,6 +38,8 @@ mod transforms;
 mod render_vulcano;
 mod util;
 
+use std::collections::HashMap;
+
 fn main() {
     render_vulcano::render();
 }
@@ -48,8 +47,4 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn cam_transform() {
-    }
 }
