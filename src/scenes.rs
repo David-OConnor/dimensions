@@ -43,7 +43,7 @@ fn make_single_scene(aspect: f32, shape: Shape) -> Scene {
     Scene {
         shapes,
         cam: Camera {
-            position: array![0., 0., -4., 0.],
+            position: array![0., 0., -2., 0.],
             θ: array![0., 0., τ / 2., 0., 0., 0.],
             fov: τ / 5.5,
             aspect,
@@ -68,8 +68,10 @@ pub fn fivecell_scene(aspect: f32) -> Scene {
 }
 
 pub fn twentyfourcell_scene(aspect: f32) -> Scene {
-    make_single_scene(aspect, Shape::new(shape_maker::twentyfourcell(2.), Array::zeros(4),
-                                         Array::zeros(6), Array::zeros(6), SHAPE_OP))
+    let mut scene = make_single_scene(aspect, Shape::new(shape_maker::twentyfourcell(2.), Array::zeros(4),
+                                         Array::zeros(6), Array::zeros(6), SHAPE_OP));
+    scene.cam.position[2] = -3.0;  // Need to be more zoomed out compared to the simpler shapes.
+    scene
 }
 
 pub fn spherinder_scene(aspect: f32) -> Scene {

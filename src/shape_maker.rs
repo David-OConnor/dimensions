@@ -521,111 +521,40 @@ pub fn twentyfourcell(radius: f32) -> Mesh {
     let coords = [
 //        // Permutations of (±1, ±1, 0, 0)
 //        // Could do this cleverly with an iteration
-
         // Outside
-        [1., 0., 0., 1.],
-        [0., 1., 0., 1.],
-        [0., 0., 1., 1.],
-        [-1., 0., 0., 1.],
-        [0., -1., 0., 1.],
-        [0., 0., -1., 1.],
-
-        // Inside
-        [1., 0., 0., -1.],
-        [0., 1., 0., -1.],
-        [0., 0., 1., -1.],
-        [-1., 0., 0., -1.],
-        [0., -1., 0., -1.],
-        [0., 0., -1., -1.],
+        [1., 0., 0., 1.], // 0
+        [0., 1., 0., 1.],  // 1
+        [0., 0., 1., 1.],  // 2
+        [-1., 0., 0., 1.],  // 3
+        [0., -1., 0., 1.],  // 4
+        [0., 0., -1., 1.],  // 5
 
         // Middle
-        [1., 1., 0., 0.],
-        [1., 0., 1., 0.],
-        [0., 1., 1., 0.],
+        [1., 1., 0., 0.],  // 6
+        [1., 0., 1., 0.],  // 7
+        [0., 1., 1., 0.],  // 8
 
-        [-1., -1., 0., 0.],
-        [-1., 0., -1., 0.],
-        [0., -1., -1., 0.],
+        [-1., -1., 0., 0.],  // 9
+        [-1., 0., -1., 0.],  // 10
+        [0., -1., -1., 0.],  // 11
 
-        [1., -1., 0., 0.],
-        [1., 0., -1., 0.],
-        [0., 1., -1., 0.],
+        [1., -1., 0., 0.],  // 12
+        [1., 0., -1., 0.],  // 13
+        [0., 1., -1., 0.],  // 14
 
-        [-1., 1., 0., 0.],
-        [-1., 0., 1., 0.],
-        [0., -1., 1., 0.],
+        [-1., 1., 0., 0.],  // 15
+        [-1., 0., 1., 0.],  // 16
+        [0., -1., 1., 0.],  // 17
+
+        // Inside
+        [1., 0., 0., -1.],  // 18
+        [0., 1., 0., -1.],  // 19
+        [0., 0., 1., -1.],  // 20
+        [-1., 0., 0., -1.],  // 21
+        [0., -1., 0., -1.],  // 22
+        [0., 0., -1., -1.],  //23
 
     ];
-
-//    let coords = [
-//        // Permutations of (±1, ±1, ±1, ±1) and (±2, 0, 0, 0)
-//        // Could do this cleverly with an iteration
-//        [1., 1., 1., 1.],
-//
-//        [-1., 1., 1., 1.],
-//        [1., -1., 1., 1.],
-//        [1., 1., -1., 1.],
-//        [1., 1., 1., -1.],
-//
-//        [-1., -1., 1., 1.],
-//        [1., -1., -1., 1.],
-//        [1., 1., -1., -1.],
-//        [-1., 1., 1., -1.],
-//        [-1., 1., -1., 1.],
-//        [1., -1., 1., -1.],
-//
-//        [1., -1., -1., -1.],
-//        [-1., 1., -1., -1.],
-//        [-1., -1., 1., -1.],
-//        [-1., -1., -1., 1.],
-//
-//        [-1., -1., -1., -1.],
-//
-//        [2., 0., 0., 0.],
-//        [0., 2., 0., 0.],
-//        [0., 0., 2., 0.],
-//        [0., 0., 0., 2.],
-//
-//        [-2., 0., 0., 0.],
-//        [0., -2., 0., 0.],
-//        [0., 0., -2., 0.],
-//        [0., 0., 0., -2.],
-//    ];
-
-//    let coords = [
-//        // Permutations of (±1, ±1, ±1, ±1) and (±2, 0, 0, 0)
-//        // Could do this cleverly with an iteration
-//        [1., 1., 1., 1.],
-//        [-1., 1., 1., 1.],
-//        [1., -1., 1., 1.],
-//        [-1., -1., 1., 1.],
-//
-//        [1., 1., -1., 1.],
-//        [1., -1., -1., 1.],
-//        [-1., 1., -1., 1.],
-//        [-1., -1., -1., 1.],
-//
-//        [2., 0., 0., 0.],
-//        [0., 2., 0., 0.],
-//        [0., 0., 2., 0.],
-//        [0., 0., 0., 2.],
-//
-//        [-2., 0., 0., 0.],
-//        [0., -2., 0., 0.],
-//        [0., 0., -2., 0.],
-//        [0., 0., 0., -2.],
-//
-//
-//        [1., 1., 1., -1.],
-//        [-1., 1., 1., -1.],
-//        [1., -1., 1., -1.],
-//        [-1., -1., 1., -1.],
-//
-//        [1., 1., -1., -1.],
-//        [1., -1., -1., -1.],
-//        [-1., 1., -1., -1.],
-//        [-1., -1., -1., -1.],
-//    ];
 
     let mut vertices = HashMap::new();
     for (id, coord) in coords.iter().enumerate() {
@@ -634,9 +563,17 @@ pub fn twentyfourcell(radius: f32) -> Mesh {
         ));
     }
 
-    // Each face has 3 vertices and 3 edges.
-    // Each vertex is connected to 4 others.
+    // Each outer and inner face has 3 vertices and 3 edges
+    // Inner and outer resemble octahedrons. Middle resembles a cuboctahedron.
+    // Middle has 8 3-vert faces.
+    // Each vertex is connected to 8 others.
     // Ref drawing in tablet
+    // 96 faces total:
+    // 8 in inner; 8 in outer; 8 in middle
+    // 24 connecting middle squares to outside
+    // 24 connecting middle squares to inside
+    // 18 connecting middle triangles to outside.
+
     let faces_vert = vec![
         // Outside to itself right
         array![0, 1, 2],
@@ -661,30 +598,155 @@ pub fn twentyfourcell(radius: f32) -> Mesh {
         array![21, 20, 22],
         array![21, 22, 23],
         array![21, 23, 19],
+
+        // Leaving this commented out chunk to prove a point: There are no square
+        // faces! the squares in the 'middle' are just a tool to organize this.
+        // The 24-cell has 96 triangular faces. Same principle as with the octahedron.
+
+//        // Middle square faces
+//        array![9, 10, 15, 16],  // Left
+//        array![6, 7, 12, 13],  // Right
+//
+//        array![9, 17, 12, 11],  // Bottom
+//        array![15, 8, 6, 14],  // Top
+//
+//        array![10, 14, 13, 11],  // Aft
+//        array![8, 7, 17, 16],  // Forward
+
+        // These triangular middle faces each have an edge belonging to a different
+        // one of the (non-face) squares above.
+        // Bottom tris
+        array![11, 13, 12],  // aft right
+        array![12, 7, 17],  // fwd right
+        array![17, 16, 9],  // fwd lrft
+        array![9, 10, 11],  // aft left
+
+        // Top tris
+        array![14, 13, 6],  // aft right
+        array![6, 7, 8],  // fwd right
+        array![8, 16, 15],  // fwd lrft
+        array![15, 10, 14],  // aft left
+
+        // Connect each of these tris to a point on the inside and outside; 24 total.
+        // Each vertex in the middle is at the intersection of two of the squares.
+        // Connect each middle vertex to the two inner and outer vertices corresponding
+        // to these squares.
+
+        // Notice the cyclic pattern below.
+        // Inner
+        array![6, 1, 0],  // top right
+        array![7, 0, 2],  // right forward
+        array![8, 2, 1 ],  // forward top
+
+        array![9, 4, 3],  // bottom left
+        array![10, 3, 5],  // left aft
+        array![11, 5, 4],  // aft bottom
+        array![12, 4, 0],  // bottom right
+        array![13, 0, 5],  // right aft
+        array![14, 5, 1],  // aft top
+        array![15, 1, 3],  // top left
+        array![16, 3, 2],  // left forward
+        array![17, 2, 4 ],  // forward  bottom
+
+        // Outer
+        array![6, 19, 18],  // top right
+        array![7, 18, 20],  // right forward
+        array![8, 20, 19 ],  // forward top
+
+        array![9, 22, 21],  // bottom left
+        array![10, 21, 23],  // left aft
+        array![11, 23, 22],  // aft bottom
+        array![12, 22, 18],  // bottom right
+        array![13, 18, 23],  // right aft
+        array![14, 23, 19],  // aft top
+        array![15, 19, 21],  // top left
+        array![16, 21, 20],  // left forward
+        array![17, 20, 22 ],  // forward  bottom
+
+        // Connect each middle square to its point on the inside and outside
+        // octahedrons, with triangular faces.  This forms new octahedrons.
+        // We make use of cyclic patterns here to simplify the logic.
+        // This uses up 48 faces; 24 connecting to inner, 24 connecting to outer.
+
+        // Left square to inner
+        array![9, 10, 3],
+        array![10, 15, 3],
+        array![15, 16, 3],
+        array![16, 9, 3],
+
+        // Left square to outer
+        array![9, 10, 21],
+        array![10, 15, 21],
+        array![15, 16, 21],
+        array![16, 9, 21],
+
+        // Right square to inner
+        array![6, 7, 0],
+        array![7, 12, 0],
+        array![12, 13, 0],
+        array![13, 6, 0],
+
+        // Right square to outer
+        array![6, 7, 18],
+        array![7, 12, 18],
+        array![12, 13, 18],
+        array![13, 6, 18],
+
+        // Bottom square to inner
+        array![9, 17, 4],
+        array![17, 12, 4],
+        array![12, 11, 4],
+        array![11, 9, 1],
+
+        // Bottom square to outer
+        array![9, 17, 22],
+        array![17, 12, 22],
+        array![12, 11, 22],
+        array![11, 9, 22],
+
+        // Top square to inner
+        array![15, 8, 1],
+        array![8, 6, 1],
+        array![6, 14, 1],
+        array![14, 15, 1],
+
+        // Top square to outer
+        array![15, 8, 19],
+        array![8, 6, 19],
+        array![6, 14, 19],
+        array![14, 15, 19],
+
+        // Aft square to inner
+        array![10, 14, 5],
+        array![14, 13, 5],
+        array![13, 11, 5],
+        array![11, 10, 5],
+
+        // Aft square to outer
+        array![10, 14, 23],
+        array![14, 13, 23],
+        array![13, 11, 23],
+        array![11, 10, 23],
+
+        // Forward square to inner
+        array![8, 7, 2],
+        array![7, 17, 2],
+        array![17, 16, 2],
+        array![16, 8, 2],
+
+        // Forward square to outer
+        array![8, 7, 20],
+        array![7, 17, 20],
+        array![17, 16, 20],
+        array![16, 8, 20],
+        // only 78 so far...
+
     ];
 
-    let normals = vec![  // todo fix this.
-        Normal::new(0., 0., 1., 0.),
-        Normal::new(0., 0., -1., 0.),
-        Normal::new(0., 1., 0., 0.),
-        Normal::new(0., -1., 0., 0.),
-
-        Normal::new(0., 0., 1., 0.),
-        Normal::new(0., 0., -1., 0.),
-        Normal::new(0., 1., 0., 0.),
-        Normal::new(0., -1., 0., 0.),
-
-        Normal::new(0., 0., 1., 0.),
-        Normal::new(0., 0., -1., 0.),
-        Normal::new(0., 1., 0., 0.),
-        Normal::new(0., -1., 0., 0.),
-
-        Normal::new(0., 0., 1., 0.),
-        Normal::new(0., 0., -1., 0.),
-        Normal::new(0., 1., 0., 0.),
-        Normal::new(0., -1., 0., 0.),
-
-    ];
+//    let normals = vec![
+//        Normal::new(0., 0., 1., 0.),
+//    ];
+    let normals: Vec<Normal> = faces_vert.iter().map(|face| Normal::new(1., 0., 1., 0.)).collect();
 
     Mesh::new(vertices, faces_vert, normals)
 }
