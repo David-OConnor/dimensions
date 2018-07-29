@@ -11,7 +11,7 @@
 #![feature(vec_remove_item)]
 #![feature(const_vec_new)]
 
-#![feature(proc_macro, wasm_custom_section, wasm_import_module)]
+#![feature(wasm_custom_section, wasm_import_module)]
 
 #[macro_use]
 extern crate ndarray;

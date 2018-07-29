@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use ndarray::prelude::*;
 
-use types::{Camera, Shape};
+use types::{Camera};
 
 pub fn dot_mv4(M: [[f32; 4]; 4], v: [f32; 4]) -> [f32; 4] {
     // Dot a len-4 matrix with a vec.
@@ -193,7 +191,7 @@ pub fn make_proj_mat_gl(cam: &Camera) -> [[f32; 4]; 4] {
 
     [
         [2.*n / (r - l), 0., (r+l) / (r-l), 0.],
-        [0., -2.*n / (t-b), (t+b) / (t-b), 0.],
+        [0., 2.*n / (t-b), (t+b) / (t-b), 0.],
         [0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n) + (-f-n) / (f-n)],
           // todo this like seems like it should be right, but doesn't work.
 //        [0., 0., -(f+n) / (f-n), -(2.*f*n) / (f-n)],

@@ -6,7 +6,8 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 #![feature(non_ascii_idents)]
-#![feature(proc_macro, wasm_custom_section, wasm_import_module)]
+#![feature(use_extern_macros, proc_macro_span, proc_macro_raw_ident)]
+#![feature(wasm_custom_section, wasm_import_module)]
 #![feature(const_vec_new)]
 
 #![allow(dead_code)]  // todo remove this later
@@ -16,7 +17,7 @@
 extern crate ndarray;
 extern crate rand;
 //extern crate simdnoise;
-//extern crate noise;
+extern crate noise;
 extern crate wasm_bindgen;
 //extern crate yew;
 
@@ -50,10 +51,11 @@ pub fn scene_lib() -> JsValue {
     let mut scene_lib = HashMap::new();
     scene_lib.insert(0, scenes::hypercube_scene(aspect));
     scene_lib.insert(1, scenes::fivecell_scene(aspect));
+    scene_lib.insert(10, scenes::twentyfourcell_scene(aspect));
     scene_lib.insert(2, scenes::spherinder_scene(aspect));
     scene_lib.insert(3, scenes::cube_scene(aspect));
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
-//    scene_lib.insert(5, scenes::world_scene(aspect));
+    scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
     scene_lib.insert(7, scenes::grid_scene_4d(aspect));
     scene_lib.insert(8, scenes::plot_scene(aspect));

@@ -116,16 +116,17 @@ pub fn render() {
     let mut scene_lib = HashMap::new();
     scene_lib.insert(0, scenes::hypercube_scene(aspect));
     scene_lib.insert(1, scenes::fivecell_scene(aspect));
+    scene_lib.insert(10, scenes::twentyfourcell_scene(aspect));
     scene_lib.insert(2, scenes::spherinder_scene(aspect));
     scene_lib.insert(3, scenes::cube_scene(aspect));
     scene_lib.insert(4, scenes::pyramid_scene(aspect));
-//    scene_lib.insert(5, scenes::world_scene(aspect));
+    scene_lib.insert(5, scenes::world_scene(aspect));
     scene_lib.insert(6, scenes::grid_scene(aspect));
     scene_lib.insert(7, scenes::grid_scene_4d(aspect));
     scene_lib.insert(8, scenes::plot_scene(aspect));
     scene_lib.insert(9, scenes::origin_scene(aspect));
 
-    let mut scene = scene_lib[&6].clone();
+    let mut scene = scene_lib[&10].clone();
 
     let mut currently_pressed: Vec<u32> = Vec::new();
     let mut currently_pressed: Vec<u32> = Vec::new();
@@ -494,7 +495,7 @@ pub fn render() {
         let static_uniforms_perframe = vs::ty::Data {
             view: view_mat,
             cam_position: [scene.cam.position[0], scene.cam.position[1], scene.cam.position[2], scene.cam.position[3]],
-            ..static_uniforms,
+            ..static_uniforms
         };
         // Update the view matrix once per frame.
 
@@ -503,7 +504,7 @@ pub fn render() {
                 let uniform_data = vs::ty::Data {
                     model: transforms::make_model_mat4(&shape.orientation, shape.scale),
                     shape_opacity: shape.opacity,
-                    ..static_uniforms_perframe,
+                    ..static_uniforms_perframe
                 };
 
                 uniform_buffer.next(uniform_data).unwrap()

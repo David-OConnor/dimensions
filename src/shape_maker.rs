@@ -488,7 +488,7 @@ pub fn grid_4d(dims: (f32, f32, f32, f32), res: u32) -> HashMap<u32, Shape> {
 
     let mut u = -dims.3 / 2.;
     let mut id = 0;
-    for i in 0..res {
+    for _ in 0..res {
         let spiss = Array3::ones((res as usize, res as usize, res as usize)) * u;
         let subgrid = hypergrid((dims.0, dims.1, dims.2), res, spiss);
 
@@ -515,6 +515,180 @@ pub fn arrow(lens: (f32, f32), res: u32) -> Mesh {
 //    assert_eq!(res % 2, 0);
 //}
 
+pub fn twentyfourcell(radius: f32) -> Mesh {
+    // Using this diagram as reference:
+    // https://en.wikipedia.org/wiki/24-cell#/media/File:Schlegel_wireframe_24-cell.png
+    let coords = [
+//        // Permutations of (±1, ±1, 0, 0)
+//        // Could do this cleverly with an iteration
+
+        // Outside
+        [1., 0., 0., 1.],
+        [0., 1., 0., 1.],
+        [0., 0., 1., 1.],
+        [-1., 0., 0., 1.],
+        [0., -1., 0., 1.],
+        [0., 0., -1., 1.],
+
+        // Inside
+        [1., 0., 0., -1.],
+        [0., 1., 0., -1.],
+        [0., 0., 1., -1.],
+        [-1., 0., 0., -1.],
+        [0., -1., 0., -1.],
+        [0., 0., -1., -1.],
+
+        // Middle
+        [1., 1., 0., 0.],
+        [1., 0., 1., 0.],
+        [0., 1., 1., 0.],
+
+        [-1., -1., 0., 0.],
+        [-1., 0., -1., 0.],
+        [0., -1., -1., 0.],
+
+        [1., -1., 0., 0.],
+        [1., 0., -1., 0.],
+        [0., 1., -1., 0.],
+
+        [-1., 1., 0., 0.],
+        [-1., 0., 1., 0.],
+        [0., -1., 1., 0.],
+
+    ];
+
+//    let coords = [
+//        // Permutations of (±1, ±1, ±1, ±1) and (±2, 0, 0, 0)
+//        // Could do this cleverly with an iteration
+//        [1., 1., 1., 1.],
+//
+//        [-1., 1., 1., 1.],
+//        [1., -1., 1., 1.],
+//        [1., 1., -1., 1.],
+//        [1., 1., 1., -1.],
+//
+//        [-1., -1., 1., 1.],
+//        [1., -1., -1., 1.],
+//        [1., 1., -1., -1.],
+//        [-1., 1., 1., -1.],
+//        [-1., 1., -1., 1.],
+//        [1., -1., 1., -1.],
+//
+//        [1., -1., -1., -1.],
+//        [-1., 1., -1., -1.],
+//        [-1., -1., 1., -1.],
+//        [-1., -1., -1., 1.],
+//
+//        [-1., -1., -1., -1.],
+//
+//        [2., 0., 0., 0.],
+//        [0., 2., 0., 0.],
+//        [0., 0., 2., 0.],
+//        [0., 0., 0., 2.],
+//
+//        [-2., 0., 0., 0.],
+//        [0., -2., 0., 0.],
+//        [0., 0., -2., 0.],
+//        [0., 0., 0., -2.],
+//    ];
+
+//    let coords = [
+//        // Permutations of (±1, ±1, ±1, ±1) and (±2, 0, 0, 0)
+//        // Could do this cleverly with an iteration
+//        [1., 1., 1., 1.],
+//        [-1., 1., 1., 1.],
+//        [1., -1., 1., 1.],
+//        [-1., -1., 1., 1.],
+//
+//        [1., 1., -1., 1.],
+//        [1., -1., -1., 1.],
+//        [-1., 1., -1., 1.],
+//        [-1., -1., -1., 1.],
+//
+//        [2., 0., 0., 0.],
+//        [0., 2., 0., 0.],
+//        [0., 0., 2., 0.],
+//        [0., 0., 0., 2.],
+//
+//        [-2., 0., 0., 0.],
+//        [0., -2., 0., 0.],
+//        [0., 0., -2., 0.],
+//        [0., 0., 0., -2.],
+//
+//
+//        [1., 1., 1., -1.],
+//        [-1., 1., 1., -1.],
+//        [1., -1., 1., -1.],
+//        [-1., -1., 1., -1.],
+//
+//        [1., 1., -1., -1.],
+//        [1., -1., -1., -1.],
+//        [-1., 1., -1., -1.],
+//        [-1., -1., -1., -1.],
+//    ];
+
+    let mut vertices = HashMap::new();
+    for (id, coord) in coords.iter().enumerate() {
+        vertices.insert(id as u32, Vertex::new(
+            coord[0] * radius/2., coord[1] * radius/2., coord[2] * radius/2., coord[3] * radius/2.
+        ));
+    }
+
+    // Each face has 3 vertices and 3 edges.
+    // Each vertex is connected to 4 others.
+    // Ref drawing in tablet
+    let faces_vert = vec![
+        // Outside to itself right
+        array![0, 1, 2],
+        array![0, 2, 4],
+        array![0, 4, 5],
+        array![0, 5, 1],
+
+        // Outside to itself left
+        array![3, 1, 2],
+        array![3, 2, 4],
+        array![3, 4, 5],
+        array![3, 5, 1],
+
+        // Inside to itself right
+        array![18, 19, 20],
+        array![18, 20, 22],
+        array![18, 22, 23],
+        array![18, 23, 19],
+
+        // Inside to itself left
+        array![21, 19, 20],
+        array![21, 20, 22],
+        array![21, 22, 23],
+        array![21, 23, 19],
+    ];
+
+    let normals = vec![  // todo fix this.
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+
+        Normal::new(0., 0., 1., 0.),
+        Normal::new(0., 0., -1., 0.),
+        Normal::new(0., 1., 0., 0.),
+        Normal::new(0., -1., 0., 0.),
+
+    ];
+
+    Mesh::new(vertices, faces_vert, normals)
+}
+
 pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     // This is a 4d cylinder analog that extends spheres along a line in the direction
     // not used by the spheres.
@@ -536,7 +710,7 @@ pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     let mut vertices = HashMap::new();
     let mut id = 0;
 
-    // We build vertices and vaces for both spheres in one pass.
+    // We build vertices and faces for both spheres in one pass.
     for i in 0..res {
         // ISO standard definitions of θ and φ. The reverse is common too.
         let φ = util::value_from_grid(i, res, (0., τ));  // longitude, 0 to τ
@@ -553,6 +727,7 @@ pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
             id += 1;
         }
     }
+
     // Add top and bottom vertices.
     vertices.insert(id, Vertex::new(0., lens.1, 0., 0.));
     vertices.insert(id + svc, Vertex::new(0., lens.1, 0., 0.));
@@ -570,7 +745,7 @@ pub fn spherinder(lens: (f32, f32), res: u32) -> Mesh {
     for i in 0..res {
         let mut lon_adjuster = 0;
         if i == res - 1 {
-            // Num lat vertices * num lon verts between thsi and origin,
+            // Num lat vertices * num lon verts between this and origin,
             // - the original lon adjustor of res/2.
             lon_adjuster = res/2 * (res - 1) - res/2;
         }

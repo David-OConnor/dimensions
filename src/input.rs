@@ -5,6 +5,7 @@ use std::f32::consts::PI;
 use ndarray::prelude::*;
 
 use scenes;
+use transforms;
 use types::{Camera, CameraType, Scene, Shape};
 
 const τ: f32 = 2. * PI;
@@ -35,8 +36,13 @@ pub fn move_camera(direction: MoveDirection, θ: &Array1<f32>, amount: f32) -> A
         MoveDirection::Kata => array![0., 0., 0., -1.],
     };
 
-    unit_vec * amount
-    // transforms::rotate_4d(θ).dot(&unit_vec)
+//    unit_vec * amount
+    let adjusted_θ = array![θ[0], θ[1], θ[2], 0., 0., 0.];
+
+    let v = transforms::dot_mv4(transforms::make_rotator4(&adjusted_θ),
+                                [unit_vec[0], unit_vec[1], unit_vec[2], unit_vec[3]]).to_vec();
+    Array::from_vec(v) * amount
+
 }
 
 pub fn handle_pressed<'a>(pressed: &[u32], delta_time: f32,
